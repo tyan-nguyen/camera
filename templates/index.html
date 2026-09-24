@@ -1,0 +1,2345 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hệ Thống Giám Sát & Nhận Dạng Biển Số Xe (ANPR Multi-Zone)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Font Inter & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Custom smooth scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.4);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.7);
+        }
+
+        /* Animations */
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateX(100%) scale(0.92); }
+            to { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        @keyframes toastSlideOut {
+            from { opacity: 1; transform: translateX(0) scale(1); }
+            to { opacity: 0; transform: translateX(100%) scale(0.92); }
+        }
+        @keyframes modalScaleIn {
+            from { opacity: 0; transform: scale(0.92) translateY(12px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes modalScaleOut {
+            from { opacity: 1; transform: scale(1) translateY(0); }
+            to { opacity: 0; transform: scale(0.92) translateY(12px); }
+        }
+        @keyframes toastProgress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+        .toast-animate-in { animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .toast-animate-out { animation: toastSlideOut 0.25s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+        .modal-animate-in { animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .modal-animate-out { animation: modalScaleOut 0.2s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+    <!-- ========================================== -->
+    <!-- 1. AUTH LOGIN OVERLAY MODAL -->
+    <!-- ========================================== -->
+    <div id="login-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl p-4">
+        <div class="glass-panel max-w-md w-full rounded-3xl p-6 sm:p-8 relative border border-slate-700/80 shadow-2xl shadow-blue-500/10">
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-xl shadow-blue-500/30">
+                    <i class="fa-solid fa-video text-white text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-extrabold text-white tracking-tight">ANPR NGUYỄN TRÌNH</h2>
+                <p class="text-xs text-slate-400 mt-1">Hệ Thống Phân Loại Vùng & Giám Sát Biển Số Xe</p>
+            </div>
+
+            <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                <div id="login-error" class="hidden p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center space-x-2">
+                    <i class="fa-solid fa-circle-exclamation text-rose-400 text-sm flex-shrink-0"></i>
+                    <span id="login-error-text">Tên đăng nhập hoặc mật khẩu không đúng.</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Tên Đăng Nhập:</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400 text-xs">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" id="login-username" required placeholder="admin / quanly / user"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mật Khẩu:</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400 text-xs">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+                        <input type="password" id="login-password" required placeholder="••••••••"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                        <button type="button" onclick="togglePasswordVisibility('login-password', 'login-pwd-eye')" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-white">
+                            <i class="fa-solid fa-eye text-xs" id="login-pwd-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" id="login-submit-btn"
+                        class="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center space-x-2 transition-all">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Đăng Nhập</span>
+                    </button>
+                </div>
+
+                <div class="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+                    <div class="font-semibold text-slate-300">Tài khoản mặc định:</div>
+                    <div class="flex flex-wrap gap-1.5 pt-0.5">
+                        <span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 font-mono">admin / admin123</span>
+                        <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">quanly / quanly123</span>
+                        <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono">user / user123</span>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. MAIN HEADER NAVIGATION -->
+    <!-- ========================================== -->
+    <header class="glass-panel sticky top-0 z-40 border-b border-slate-800 shadow-lg shadow-black/20">
+        <div class="max-w-[1600px] mx-auto px-3.5 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between">
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer select-none" onclick="switchTab('dashboard')">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/25 flex-shrink-0">
+                    <i class="fa-solid fa-video text-white text-sm sm:text-base"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm sm:text-lg font-extrabold tracking-tight text-white flex items-center gap-1.5">
+                        <span>ANPR NGUYỄN TRÌNH</span>
+                        <span id="header-user-role-badge" class="hidden sm:inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">AI PRO</span>
+                    </h1>
+                    <p class="text-[10px] sm:text-xs text-slate-400 truncate max-w-[150px] sm:max-w-none">Phân Loại Vùng & Nhận Dạng Biển Số</p>
+                </div>
+            </div>
+
+            <!-- Desktop Navigation Tabs -->
+            <nav id="desktop-nav-tabs" class="hidden lg:flex space-x-1.5 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard"
+                    class="tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-md flex items-center">
+                    <i class="fa-solid fa-gauge-high mr-2"></i>Live Dashboard
+                </button>
+                <button onclick="switchTab('history')" id="tab-history"
+                    class="tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all duration-200 flex items-center">
+                    <i class="fa-solid fa-clock-rotate-left mr-2"></i>Tra Cứu Lịch Sử
+                </button>
+                <button onclick="switchTab('cameras')" id="tab-cameras"
+                    class="tab-btn role-admin-only px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all duration-200 flex items-center">
+                    <i class="fa-solid fa-camera mr-2"></i>Quản Lý Camera
+                </button>
+                <button onclick="switchTab('settings')" id="tab-settings"
+                    class="tab-btn role-admin-only px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all duration-200 flex items-center">
+                    <i class="fa-solid fa-sliders mr-2"></i>Cấu Hình Hệ Thống
+                </button>
+            </nav>
+
+            <!-- Header Controls & User Profile -->
+            <div class="flex items-center space-x-2 sm:space-x-3 text-xs">
+                <!-- Voice Alert Button -->
+                <button id="voice-toggle-btn" onclick="toggleVoiceAlert()"
+                    title="Bật / Tắt âm thanh thông báo và cảnh báo giọng đọc"
+                    class="flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all font-medium cursor-pointer shadow-sm">
+                    <i class="fa-solid fa-volume-high text-xs sm:text-sm" id="voice-icon"></i>
+                    <span class="hidden sm:inline font-semibold" id="voice-status-text">Âm thanh: BẬT</span>
+                </button>
+
+                <!-- User Profile Dropdown Button -->
+                <div class="relative" id="user-menu-container">
+                    <button onclick="toggleUserDropdown()" id="user-profile-btn"
+                        class="flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-blue-500 text-slate-200 hover:text-white transition-all">
+                        <div class="w-6 h-6 rounded-lg bg-blue-600/30 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-xs" id="user-avatar-initial">
+                            U
+                        </div>
+                        <span class="hidden md:inline font-semibold text-xs truncate max-w-[100px]" id="user-display-name">Người dùng</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 glass-panel rounded-2xl p-2 border border-slate-700 shadow-2xl z-50">
+                        <div class="px-3 py-2 border-b border-slate-800">
+                            <div class="font-bold text-white text-xs" id="user-dropdown-fullname">Đang tải...</div>
+                            <div class="text-[11px] text-slate-400" id="user-dropdown-role">Quyền: User</div>
+                        </div>
+                        <div class="py-1 space-y-0.5">
+                            <button onclick="openChangePasswordModal()" class="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center space-x-2 transition-colors">
+                                <i class="fa-solid fa-key text-blue-400 w-4"></i>
+                                <span>Đổi Mật Khẩu</span>
+                            </button>
+                            <button onclick="openUsersManagementModal()" id="btn-manage-users" class="hidden w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center space-x-2 transition-colors">
+                                <i class="fa-solid fa-users-gear text-emerald-400 w-4"></i>
+                                <span>Quản Lý Tài Khoản</span>
+                            </button>
+                            <button onclick="openActionGroupsModal()" id="btn-manage-action-groups" class="hidden w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center space-x-2 transition-colors">
+                                <i class="fa-solid fa-diagram-project text-amber-400 w-4"></i>
+                                <span>Nhóm Hành Động (Webhook)</span>
+                            </button>
+                        </div>
+                        <div class="pt-1 border-t border-slate-800">
+                            <button onclick="handleLogout()" class="w-full text-left px-3 py-2 rounded-xl text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center space-x-2 transition-colors">
+                                <i class="fa-solid fa-right-from-bracket w-4"></i>
+                                <span>Đăng Xuất</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Hamburger Toggle Button -->
+                <button id="mobile-menu-btn" onclick="toggleMobileMenu()"
+                    class="lg:hidden p-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none"
+                    aria-label="Toggle Menu">
+                    <i class="fa-solid fa-bars text-base transition-transform duration-200" id="mobile-menu-icon"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Drawer Menu -->
+        <div id="mobile-menu-drawer" class="hidden lg:hidden border-t border-slate-800 bg-slate-950/95 backdrop-blur-xl px-3.5 py-3 space-y-2 transition-all">
+            <div class="grid grid-cols-2 gap-2" id="mobile-nav-tabs">
+                <button onclick="switchTabMobile('dashboard')" id="mob-tab-dashboard"
+                    class="mob-tab-btn flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-md transition-all">
+                    <i class="fa-solid fa-gauge-high text-sm"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button onclick="switchTabMobile('history')" id="mob-tab-history"
+                    class="mob-tab-btn flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900/80 border border-slate-800 hover:text-white transition-all">
+                    <i class="fa-solid fa-clock-rotate-left text-sm"></i>
+                    <span>Tra Cứu</span>
+                </button>
+                <button onclick="switchTabMobile('cameras')" id="mob-tab-cameras"
+                    class="mob-tab-btn role-admin-only flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900/80 border border-slate-800 hover:text-white transition-all">
+                    <i class="fa-solid fa-camera text-sm"></i>
+                    <span>Camera</span>
+                </button>
+                <button onclick="switchTabMobile('settings')" id="mob-tab-settings"
+                    class="mob-tab-btn role-admin-only flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900/80 border border-slate-800 hover:text-white transition-all">
+                    <i class="fa-solid fa-sliders text-sm"></i>
+                    <span>Cấu Hình</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================== -->
+    <!-- 3. MAIN CONTENT BODY -->
+    <!-- ========================================== -->
+    <main class="flex-1 p-3 sm:p-4 md:p-6 max-w-[1600px] w-full mx-auto">
+
+        <!-- TAB 1: LIVE DASHBOARD -->
+        <div id="page-dashboard" class="space-y-4 sm:space-y-6">
+            
+            <!-- Zone Filter Tabs Bar -->
+            <div class="flex flex-wrap items-center justify-between gap-3 glass-panel p-2.5 sm:p-3 rounded-2xl">
+                <div class="flex items-center space-x-1.5 overflow-x-auto">
+                    <span class="text-xs text-slate-400 font-semibold mr-1.5 flex items-center gap-1">
+                        <i class="fa-solid fa-filter text-blue-400"></i> Lọc Vùng:
+                    </span>
+                    <button onclick="setDashboardZoneFilter('ALL')" id="zone-btn-ALL"
+                        class="zone-filter-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-blue-600 text-white shadow">
+                        Tất Cả
+                    </button>
+                    <button onclick="setDashboardZoneFilter('TRUONGLAI')" id="zone-btn-TRUONGLAI"
+                        class="zone-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-all border border-slate-700/80">
+                        🚗 Trường Lái
+                    </button>
+                    <button onclick="setDashboardZoneFilter('KHO_BAI')" id="zone-btn-KHO_BAI"
+                        class="zone-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-all border border-slate-700/80">
+                        📦 Kho Bãi
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-2 text-xs">
+                    <select id="dashboard-func-filter" onchange="renderCameraGrid()" class="bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500">
+                        <option value="ALL">-- Tất cả chức năng --</option>
+                        <option value="ANPR">📸 Camera Đọc Biển Số (AI)</option>
+                        <option value="SURVEILLANCE">👁️ Camera Quan Sát (CCTV)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Grid Camera Snapshots -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5" id="camera-grid">
+                <!-- Populated dynamically -->
+            </div>
+
+            <!-- Realtime Event Log Banner -->
+            <div class="glass-panel rounded-2xl p-3.5 sm:p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-0 mb-3.5">
+                    <h2 class="text-base sm:text-lg font-bold flex items-center space-x-2 text-white">
+                        <i class="fa-solid fa-bolt text-amber-400"></i>
+                        <span>Sự Kiện Ra / Vào Trực Tiếp (Real-time Feed)</span>
+                    </h2>
+                    <span class="text-[11px] sm:text-xs text-slate-400 flex items-center space-x-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block"></span>
+                        <span>Đồng bộ tức thì & Thông báo đẩy App</span>
+                    </span>
+                </div>
+                <div class="overflow-x-auto -mx-3.5 sm:mx-0">
+                    <div class="inline-block min-w-full align-middle px-3.5 sm:px-0">
+                        <table class="w-full text-left text-xs sm:text-sm text-slate-300">
+                            <thead class="text-[10px] sm:text-xs uppercase bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                                <tr>
+                                    <th class="p-2.5 sm:p-3 whitespace-nowrap">Thời gian</th>
+                                    <th class="p-2.5 sm:p-3 whitespace-nowrap">Camera & Vùng</th>
+                                    <th class="p-2.5 sm:p-3 whitespace-nowrap">Biển Số Xe</th>
+                                    <th class="p-2.5 sm:p-3 whitespace-nowrap">Hành Động / Webhook</th>
+                                    <th class="p-2.5 sm:p-3 whitespace-nowrap">Góc Nhìn</th>
+                                    <th class="p-2.5 sm:p-3 whitespace-nowrap">Độ Tin Cậy</th>
+                                    <th class="p-2.5 sm:p-3 whitespace-nowrap">Ảnh Biển</th>
+                                    <th class="p-2.5 sm:p-3 text-right whitespace-nowrap">Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="realtime-log-body" class="divide-y divide-slate-800/80">
+                                <tr>
+                                    <td colspan="8" class="p-6 text-center text-slate-500 text-xs sm:text-sm">Đang chờ sự kiện phát hiện xe từ luồng RTSP...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: VEHICLE HISTORY & SEARCH -->
+        <div id="page-history" class="hidden space-y-4 sm:space-y-6">
+            <!-- Filter Bar -->
+            <div class="glass-panel rounded-2xl p-3.5 sm:p-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3 items-center w-full">
+                    <div>
+                        <input type="text" id="filter-plate" placeholder="Nhập biển số xe..."
+                            onkeydown="if(event.key==='Enter') fetchHistoryLogs(1)"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                    </div>
+
+                    <div>
+                        <select id="filter-zone" onchange="fetchHistoryLogs(1)"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                            <option value="">-- Tất cả Vùng --</option>
+                            <option value="TRUONGLAI">🚗 Trường Lái</option>
+                            <option value="KHO_BAI">📦 Kho Bãi</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <select id="filter-camera" onchange="fetchHistoryLogs(1)"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                            <option value="">-- Tất cả Camera --</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <select id="filter-action-status" onchange="fetchHistoryLogs(1)"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                            <option value="">-- Tất cả Trạng Thái --</option>
+                            <option value="APPROVED">✅ Hợp Lệ (Approved)</option>
+                            <option value="UNPLANNED">⚠️ Xe Không Kế Hoạch</option>
+                            <option value="REJECTED">❌ Từ Chối (Rejected)</option>
+                            <option value="WARNING">⚡ Cảnh Báo (Warning)</option>
+                            <option value="INFO">ℹ️ Thông Tin (Info)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <button onclick="fetchHistoryLogs(1)"
+                            class="w-full px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 transition-all">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <span>Tìm kiếm</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Table -->
+            <div class="glass-panel rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="text-[10px] sm:text-xs uppercase bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                            <tr>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Thời gian</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Camera / Vùng</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Biển Số Xe</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Trạng Thái / Hành Động</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Góc Nhìn</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Ảnh Biển Số</th>
+                                <th class="p-3 sm:p-4 text-right whitespace-nowrap">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-slate-800/80">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-slate-400">
+                <span id="pagination-info" class="text-center sm:text-left">Hiển thị 0 bản ghi</span>
+                <div class="flex space-x-2" id="pagination-btns"></div>
+            </div>
+        </div>
+
+        <!-- TAB 3: CAMERA MANAGEMENT (Admin Only) -->
+        <div id="page-cameras" class="hidden space-y-4 sm:space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <h2 class="text-lg sm:text-xl font-bold text-white">Quản Lý Phân Loại & Luồng Camera</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Phân loại theo Vùng (Trường lái, Kho bãi), Chức năng (Đọc biển số, Quan sát) & Gán Nhóm Hành Động Webhook</p>
+                </div>
+                <div class="flex items-center space-x-2 w-full sm:w-auto">
+                    <button onclick="openActionGroupsModal()"
+                        class="flex-1 sm:flex-none px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 font-semibold text-xs sm:text-sm rounded-xl shadow flex items-center justify-center space-x-2 transition-all">
+                        <i class="fa-solid fa-diagram-project"></i>
+                        <span>Nhóm Hành Động (Webhook)</span>
+                    </button>
+                    <button onclick="openAddCameraModal()"
+                        class="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center space-x-2 transition-all">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Thêm Camera Mới</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="text-[10px] sm:text-xs uppercase bg-slate-900/80 text-slate-400 border-b border-slate-800">
+                            <tr>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Tên Camera</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Phân Loại Vùng</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Chức Năng</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Nhóm Hành Động (API)</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">FPS</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Trạng Thái</th>
+                                <th class="p-3 sm:p-4 text-right whitespace-nowrap">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="camera-table-body" class="divide-y divide-slate-800/80">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: SYSTEM SETTINGS (Admin Only) -->
+        <div id="page-settings" class="hidden space-y-4 sm:space-y-6 max-w-4xl mx-auto">
+            <div>
+                <h2 class="text-lg sm:text-xl font-bold text-white">Cấu Hình Hệ Thống & Thông Báo Đẩy</h2>
+                <p class="text-xs text-slate-400 mt-1">Quản lý mô hình nhận dạng OCR AI và cấu hình Firebase Cloud Messaging (FCM Push Notification) cho App Android / iOS.</p>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-4 sm:p-6 space-y-6 border border-slate-800">
+                <!-- Toast Notification -->
+                <div id="settings-toast"
+                    class="hidden p-3.5 sm:p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs sm:text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-circle-check text-base flex-shrink-0"></i>
+                    <span>Cấu hình đã được lưu và áp dụng tức thì!</span>
+                </div>
+
+                <!-- 1. OCR Engine Section -->
+                <div>
+                    <label class="block text-xs sm:text-sm font-semibold text-slate-200 mb-3">1. Mô Hình Nhận Dạng Biển Số Xe (OCR Engine):</label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                        <label class="relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-blue-500 transition-all">
+                            <input type="radio" name="ocr_engine" value="yolo_local" class="sr-only peer" onchange="toggleEngineFields('yolo_local')">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-bold text-xs sm:text-sm text-slate-100 flex items-center space-x-2">
+                                    <i class="fa-solid fa-microchip text-blue-400"></i>
+                                    <span>YOLOv8 Local (GPU)</span>
+                                </span>
+                                <span class="w-4 h-4 rounded-full border-2 border-slate-500 peer-checked:border-blue-500 peer-checked:bg-blue-500 transition-all"></span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Chạy cục bộ siêu tốc ~6ms trên GPU NVIDIA RTX 3050 CUDA.</p>
+                        </label>
+
+                        <label class="relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-emerald-500 transition-all">
+                            <input type="radio" name="ocr_engine" value="openai_api" class="sr-only peer" onchange="toggleEngineFields('openai_api')">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-bold text-xs sm:text-sm text-slate-100 flex items-center space-x-2">
+                                    <i class="fa-solid fa-robot text-emerald-400"></i>
+                                    <span>OpenAI Vision API</span>
+                                </span>
+                                <span class="w-4 h-4 rounded-full border-2 border-slate-500 peer-checked:border-emerald-500 peer-checked:bg-emerald-500 transition-all"></span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Gửi ảnh xe nhận dạng ngầm bằng OpenAI GPT-4o-mini.</p>
+                        </label>
+
+                        <label class="relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-purple-500 transition-all">
+                            <input type="radio" name="ocr_engine" value="gemini_api" class="sr-only peer" onchange="toggleEngineFields('gemini_api')">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-bold text-xs sm:text-sm text-slate-100 flex items-center space-x-2">
+                                    <i class="fa-solid fa-sparkles text-purple-400"></i>
+                                    <span>Google Gemini API</span>
+                                </span>
+                                <span class="w-4 h-4 rounded-full border-2 border-slate-500 peer-checked:border-purple-500 peer-checked:bg-purple-500 transition-all"></span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Gửi ảnh xe nhận dạng ngầm bằng Gemini 2.0 Flash.</p>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- OpenAI Fields -->
+                <div id="openai-fields" class="hidden p-3.5 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <h3 class="text-xs sm:text-sm font-semibold text-emerald-400 flex items-center space-x-2">
+                        <i class="fa-solid fa-key"></i>
+                        <span>Cấu Hình OpenAI Vision API</span>
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">OpenAI API Key:</label>
+                            <input type="password" id="input-openai-key" placeholder="sk-..."
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Model Name:</label>
+                            <input type="text" id="input-openai-model" placeholder="gpt-4o-mini"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-emerald-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gemini Fields -->
+                <div id="gemini-fields" class="hidden p-3.5 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <h3 class="text-xs sm:text-sm font-semibold text-purple-400 flex items-center space-x-2">
+                        <i class="fa-solid fa-key"></i>
+                        <span>Cấu Hình Google Gemini API</span>
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Gemini API Key:</label>
+                            <input type="password" id="input-gemini-key" placeholder="AIzaSy..."
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Model Name:</label>
+                            <input type="text" id="input-gemini-model" placeholder="gemini-2.0-flash"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-purple-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Firebase Cloud Messaging (FCM) Push Section -->
+                <div class="p-3.5 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs sm:text-sm font-semibold text-amber-400 flex items-center space-x-2">
+                            <i class="fa-brands fa-google text-amber-400"></i>
+                            <span>2. Cấu Hình Firebase Cloud Messaging (FCM Push Notification)</span>
+                        </h3>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20">Android & iOS</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400">Dùng để đẩy thông báo nổi (Heads-up Notification) và phát chuông cảnh báo tới App Android ngay cả khi tắt app / tắt màn hình.</p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">FCM Server Key (Khóa máy chủ):</label>
+                            <input type="password" id="input-fcm-key" placeholder="AAAA... (Lấy từ Firebase Console > Project Settings > Cloud Messaging)"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Firebase Project ID:</label>
+                            <input type="text" id="input-fcm-project" placeholder="anpr-nguyentrinh-project"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-amber-500">
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex items-center justify-between">
+                        <button type="button" onclick="sendTestPushNotification()"
+                            class="px-3.5 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 font-semibold text-xs rounded-xl flex items-center space-x-1.5 transition-all">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>Gửi Thử Nghiệm Thông Báo Đến Điện Thoại</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="pt-2 flex justify-end">
+                    <button onclick="saveSystemSettings()"
+                        class="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center space-x-2 transition-all">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Lưu Cấu Hình & Áp Dụng</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================== -->
+    <!-- 4. MODALS & POPUPS -->
+    <!-- ========================================== -->
+
+    <!-- Action Groups Modal (Quản Lý Nhóm Hành Động Webhook) -->
+    <div id="action-groups-modal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto max-h-[95vh] flex flex-col">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                <div class="flex items-center space-x-2.5">
+                    <i class="fa-solid fa-diagram-project text-amber-400 text-lg"></i>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-white">Quản Lý Danh Mục Nhóm Hành Động (Webhook)</h3>
+                        <p class="text-[11px] text-slate-400">Mỗi nhóm hành động có 1 địa chỉ API để gọi kiểm tra sau khi nhận dạng biển số</p>
+                    </div>
+                </div>
+                <button onclick="closeActionGroupsModal()" class="text-slate-400 hover:text-white text-xl p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="py-3 flex justify-between items-center">
+                <span class="text-xs text-slate-400">Danh sách các API Webhook đã tích hợp</span>
+                <button onclick="openCreateActionGroupForm()"
+                    class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl shadow flex items-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Thêm Nhóm Hành Động</span>
+                </button>
+            </div>
+
+            <!-- Create / Edit Action Group Form -->
+            <div id="ag-form-container" class="hidden mb-4 p-4 rounded-xl bg-slate-900 border border-slate-700 space-y-3">
+                <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider" id="ag-form-title">Thêm Nhóm Hành Động Mới</h4>
+                <form id="ag-admin-form" onsubmit="handleActionGroupSubmit(event)" class="space-y-3">
+                    <input type="hidden" id="ag-form-id" value="">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tên Nhóm Hành Động:</label>
+                            <input type="text" id="ag-form-name" required placeholder="Ví dụ: Kiểm tra đăng ký lịch học/thi"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs focus:border-amber-500 text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Mã Nhóm (Code Unique):</label>
+                            <input type="text" id="ag-form-code" required placeholder="KIEM_TRA_DANG_KY_LICH"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono uppercase focus:border-amber-500 text-slate-200">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Địa Chỉ API Webhook:</label>
+                            <input type="text" id="ag-form-url" required placeholder="https://qltl.nguyentrinh.com.vn/api2/kiem-tra-lich?plate={plate}"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 focus:border-amber-500">
+                            <span class="text-[10px] text-slate-400 mt-0.5 block">Hỗ trợ template {plate}, {camera_id} nếu là GET query</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Phương Thức HTTP:</label>
+                            <select id="ag-form-method" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs focus:border-amber-500 text-slate-200">
+                                <option value="POST">POST (Gửi JSON Body)</option>
+                                <option value="GET">GET (Query String)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Mô Tả / Ghi Chú:</label>
+                        <input type="text" id="ag-form-desc" placeholder="Mô tả chức năng nghiệp vụ..."
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-amber-500">
+                    </div>
+
+                    <div class="flex justify-end space-x-2 pt-1">
+                        <button type="button" onclick="closeActionGroupForm()" class="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg">Hủy</button>
+                        <button type="submit" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow">Lưu Nhóm Hành Động</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Action Groups Table -->
+            <div class="overflow-x-auto flex-1">
+                <table class="w-full text-left text-xs">
+                    <thead class="text-[10px] uppercase bg-slate-900 text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="p-3">ID</th>
+                            <th class="p-3">Tên Nhóm</th>
+                            <th class="p-3">Mã Code</th>
+                            <th class="p-3">API URL</th>
+                            <th class="p-3">Phương Thức</th>
+                            <th class="p-3 text-right">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="action-groups-table-body" class="divide-y divide-slate-800">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management Modal (Admin Only - With Camera Permission Checklist) -->
+    <div id="users-modal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-3xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto max-h-[95vh] flex flex-col">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                <div class="flex items-center space-x-2.5">
+                    <i class="fa-solid fa-users-gear text-blue-400 text-lg"></i>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-white">Quản Lý Tài Khoản & Phân Quyền Camera</h3>
+                        <p class="text-[11px] text-slate-400">Cấp quyền camera nào thì tài khoản chỉ xem, tra cứu và nhận thông báo từ camera đó (Admin toàn quyền)</p>
+                    </div>
+                </div>
+                <button onclick="closeUsersManagementModal()" class="text-slate-400 hover:text-white text-xl p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="py-3 flex justify-between items-center">
+                <span class="text-xs text-slate-400">Danh sách tài khoản hệ thống</span>
+                <button onclick="openCreateUserForm()"
+                    class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow flex items-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Thêm Tài Khoản</span>
+                </button>
+            </div>
+
+            <!-- Create / Edit User Inline Form -->
+            <div id="user-form-container" class="hidden mb-4 p-4 rounded-xl bg-slate-900 border border-slate-700 space-y-3">
+                <h4 class="text-xs font-bold text-blue-400 uppercase tracking-wider" id="user-form-title">Tạo Tài Khoản Mới</h4>
+                <form id="user-admin-form" onsubmit="handleUserAdminSubmit(event)" class="space-y-3">
+                    <input type="hidden" id="admin-user-id" value="">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tên Đăng Nhập:</label>
+                            <input type="text" id="admin-user-username" required placeholder="username"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs focus:border-blue-500 text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Họ & Tên:</label>
+                            <input type="text" id="admin-user-fullname" placeholder="Nguyễn Văn A"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs focus:border-blue-500 text-slate-200">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1" id="admin-user-pwd-label">Mật Khẩu:</label>
+                            <input type="password" id="admin-user-password" placeholder="••••••••"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs focus:border-blue-500 text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Phân Quyền Vai Trò:</label>
+                            <select id="admin-user-role" onchange="toggleCameraChecklistVisibility()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs focus:border-blue-500 text-slate-200">
+                                <option value="user">👤 User (Chỉ xem camera được cấp)</option>
+                                <option value="quan_ly">🛡️ Quản Lý (Sửa/Xóa log camera được cấp)</option>
+                                <option value="admin">👑 Admin (Toàn quyền 100% camera)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Trạng Thái:</label>
+                            <select id="admin-user-active" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs focus:border-blue-500 text-slate-200">
+                                <option value="true">Hoạt động</option>
+                                <option value="false">Khóa tài khoản</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Camera Permission Checklist Section -->
+                    <div id="user-camera-permission-section" class="pt-2 border-t border-slate-800">
+                        <label class="block text-xs font-semibold text-amber-400 mb-2 flex items-center space-x-1.5">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            <span>Phân Quyền Truy Cập Camera (Chọn các camera cấp phép cho tài khoản này):</span>
+                        </label>
+                        <div id="user-camera-checklist" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-2 rounded-xl bg-slate-950 border border-slate-800">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-2 pt-2">
+                        <button type="button" onclick="closeUserForm()" class="px-3 py-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg">Hủy</button>
+                        <button type="submit" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow">Lưu Tài Khoản</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Users Table -->
+            <div class="overflow-x-auto flex-1">
+                <table class="w-full text-left text-xs">
+                    <thead class="text-[10px] uppercase bg-slate-900 text-slate-400 border-b border-slate-800">
+                        <tr>
+                            <th class="p-3">ID</th>
+                            <th class="p-3">Username</th>
+                            <th class="p-3">Họ Tên</th>
+                            <th class="p-3">Quyền Hạn</th>
+                            <th class="p-3">Camera Được Cấp</th>
+                            <th class="p-3">Trạng Thái</th>
+                            <th class="p-3 text-right">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body" class="divide-y divide-slate-800">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add / Edit Camera Modal -->
+    <div id="camera-form-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-5 sm:p-6 relative border border-slate-700 shadow-2xl">
+            <button onclick="closeAddCameraModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-base sm:text-lg font-bold text-white mb-4" id="camera-modal-title">Thêm Camera Mới</h3>
+            
+            <form id="camera-form" onsubmit="handleCameraFormSubmit(event)" class="space-y-3.5">
+                <input type="hidden" id="cam-form-id" value="">
+                
+                <!-- Status Alert Banner -->
+                <div id="cam-form-alert" class="hidden p-3 rounded-xl text-xs flex items-center space-x-2 font-medium"></div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Tên Camera:</label>
+                    <input type="text" id="cam-form-name" required placeholder="Ví dụ: Cổng Vào Làn 1 - Trường lái..."
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Phân Loại Vùng:</label>
+                        <select id="cam-form-zone" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
+                            <option value="TRUONGLAI">🚗 Trường Lái (TRUONGLAI)</option>
+                            <option value="KHO_BAI">📦 Kho Bãi (KHO_BAI)</option>
+                            <option value="TRU_SO">🏢 Trụ Sở Chính (TRU_SO)</option>
+                            <option value="KHO_XE">🚜 Bãi Xe Chuyên Dụng (KHO_XE)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Phân Loại Chức Năng:</label>
+                        <select id="cam-form-function" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
+                            <option value="ANPR">📸 CAMERA Đọc Biển Số (Chạy AI)</option>
+                            <option value="SURVEILLANCE">👁️ CAMERA Quan Sát (Chỉ xem)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nhóm Hành Động (Webhook Gọi Sau Khi Nhận Dạng):</label>
+                    <select id="cam-form-action-group" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
+                        <option value="">-- Mặc Định / Không Gán Nhóm --</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Đường Dẫn RTSP hoặc Số hiệu Webcam:</label>
+                    <input type="text" id="cam-form-url" required placeholder="rtsp://admin:pass@192.168.1.100:554/live"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:border-blue-500 font-mono text-slate-200">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Target FPS (Khung hình AI):</label>
+                        <input type="number" id="cam-form-fps" required min="1" max="30" value="6"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Trạng Thái:</label>
+                        <select id="cam-form-active" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
+                            <option value="true">Đang Bật</option>
+                            <option value="false">Tắt</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" onclick="closeAddCameraModal()"
+                        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium rounded-xl transition-all">Hủy</button>
+                    <button type="submit" id="cam-form-submit-btn"
+                        class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/30 flex items-center space-x-1.5 transition-all">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Lưu Camera</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Vehicle Plate Modal -->
+    <div id="edit-log-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+        <div class="glass-panel max-w-md w-full rounded-2xl p-5 sm:p-6 relative border border-slate-700 shadow-2xl">
+            <button onclick="closeEditLogModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-base sm:text-lg font-bold text-white mb-3 flex items-center space-x-2">
+                <i class="fa-solid fa-pen-to-square text-amber-400"></i>
+                <span>Chỉnh Sửa Biển Số Xe</span>
+            </h3>
+            
+            <form id="edit-log-form" onsubmit="handleEditLogSubmit(event)" class="space-y-4">
+                <input type="hidden" id="edit-log-id" value="">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Biển Số Xe:</label>
+                    <input type="text" id="edit-log-plate" required placeholder="Ví dụ: 84A12345"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold focus:border-amber-500 text-amber-400 uppercase">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Góc Nhìn Phương Tiện:</label>
+                    <select id="edit-log-view" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:border-amber-500 text-slate-200">
+                        <option value="front">🚗 Mặt trước (Front)</option>
+                        <option value="rear">🚙 Mặt sau (Rear)</option>
+                        <option value="unknown">❓ Không rõ (Unknown)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ghi Chú / Trạng Thái (Summary):</label>
+                    <input type="text" id="edit-log-summary" placeholder="Ghi chú sự kiện..."
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:border-amber-500 text-slate-200">
+                </div>
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" onclick="closeEditLogModal()" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs rounded-xl">Hủy</button>
+                    <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl shadow">Lưu Thay Đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Detail Modal (Event Details) -->
+    <div id="image-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto">
+            <button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-base sm:text-lg font-bold mb-3 text-white" id="modal-title">Chi Tiết Sự Kiện Nhận Dạng</h3>
+            <div id="modal-summary-box" class="hidden mb-4 p-3 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs flex items-center space-x-2 font-medium">
+                <i class="fa-solid fa-info-circle text-blue-400 text-sm flex-shrink-0"></i>
+                <span id="modal-summary-text"></span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-300">Ảnh Crop Biển Số</span>
+                    </div>
+                    <div class="relative group cursor-zoom-in overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-inner"
+                        onclick="openImageViewer(document.getElementById('modal-plate-img').src, 'Ảnh Crop Biển Số')">
+                        <img id="modal-plate-img" class="w-full h-44 sm:h-56 object-contain" src="" alt="Plate Crop">
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-slate-300">Ảnh Toàn Cảnh Phương Tiện</span>
+                    </div>
+                    <div class="relative group cursor-zoom-in overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-inner"
+                        onclick="openImageViewer(document.getElementById('modal-full-img').src, 'Ảnh Toàn Cảnh')">
+                        <img id="modal-full-img" class="w-full h-44 sm:h-56 object-cover" src="" alt="Full Frame">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox Image Viewer Modal -->
+    <div id="image-viewer-modal" class="fixed inset-0 z-[60] hidden bg-black/95 backdrop-blur-md flex flex-col select-none">
+        <div class="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 bg-slate-900/95 border-b border-slate-800 z-10">
+            <h3 class="text-xs sm:text-sm font-bold text-slate-100 truncate" id="viewer-title">Xem Chi Tiết Hình Ảnh</h3>
+            <button onclick="closeImageViewer()" class="p-1.5 text-slate-400 hover:text-white text-lg rounded-xl hover:bg-slate-800">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div id="viewer-container" class="flex-1 relative overflow-hidden flex items-center justify-center cursor-grab bg-slate-950/70">
+            <img id="viewer-img" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl" src="" alt="Viewer Image">
+        </div>
+    </div>
+
+    <!-- Camera Live Fullview Modal -->
+    <div id="camera-zoom-modal" class="fixed inset-0 z-50 hidden bg-black/95 backdrop-blur-lg flex flex-col p-2 sm:p-4">
+        <div class="flex items-center justify-between px-3 py-2.5 border-b border-slate-800 mb-2">
+            <h3 class="text-sm sm:text-base font-bold text-white truncate" id="zoom-modal-title">LIVE CAMERA FULLVIEW</h3>
+            <button onclick="closeZoomModal()" class="p-2 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="flex-1 relative overflow-hidden flex items-center justify-center bg-black rounded-xl">
+            <img id="zoom-modal-img" class="w-full h-full object-contain" src="" alt="Live Stream">
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="change-pwd-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+        <div class="glass-panel max-w-sm w-full rounded-2xl p-5 relative border border-slate-700 shadow-2xl">
+            <button onclick="closeChangePasswordModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-base font-bold text-white mb-3 flex items-center space-x-2">
+                <i class="fa-solid fa-key text-blue-400"></i>
+                <span>Đổi Mật Khẩu</span>
+            </h3>
+            <form id="change-pwd-form" onsubmit="handleChangePasswordSubmit(event)" class="space-y-3">
+                <div id="change-pwd-msg" class="hidden p-2.5 rounded-xl text-xs flex items-center space-x-1.5">
+                    <span id="change-pwd-msg-text"></span>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Mật Khẩu Cũ:</label>
+                    <input type="password" id="change-pwd-old" required placeholder="••••••••"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs focus:border-blue-500 text-slate-200">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Mật Khẩu Mới:</label>
+                    <input type="password" id="change-pwd-new" required minlength="4" placeholder="Tối thiểu 4 ký tự"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs focus:border-blue-500 text-slate-200">
+                </div>
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="closeChangePasswordModal()" class="px-3.5 py-2 bg-slate-800 text-slate-300 text-xs rounded-xl">Hủy</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow">Đổi Mật Khẩu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container (Top Right High Z-Index) -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[300] flex flex-col space-y-2.5 pointer-events-none max-w-md w-full px-3"></div>
+
+    <!-- ========================================== -->
+    <!-- 5. JAVASCRIPT LOGIC -->
+    <!-- ========================================== -->
+    <script>
+        let currentTab = 'dashboard';
+        let currentUser = null;
+        let camerasList = [];
+        let actionGroupsList = [];
+        let currentDashboardZone = 'ALL';
+
+        /* --- TOAST SYSTEM --- */
+        function showToast(message, type = 'info', duration = 3500) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let iconClass = 'fa-solid fa-circle-info';
+            let iconBg = 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+            let progressColor = 'bg-blue-500';
+
+            if (type === 'success') {
+                iconClass = 'fa-solid fa-circle-check';
+                iconBg = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                progressColor = 'bg-emerald-500';
+            } else if (type === 'error') {
+                iconClass = 'fa-solid fa-circle-exclamation';
+                iconBg = 'bg-rose-500/20 text-rose-400 border-rose-500/30';
+                progressColor = 'bg-rose-500';
+            } else if (type === 'warning') {
+                iconClass = 'fa-solid fa-triangle-exclamation';
+                iconBg = 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+                progressColor = 'bg-amber-500';
+            }
+
+            toast.className = `glass-panel pointer-events-auto w-full rounded-2xl p-3.5 shadow-2xl border border-slate-700/90 relative overflow-hidden flex items-start space-x-3 toast-animate-in`;
+            toast.innerHTML = `
+                <div class="w-8 h-8 rounded-xl ${iconBg} border flex items-center justify-center flex-shrink-0">
+                    <i class="${iconClass}"></i>
+                </div>
+                <div class="flex-1 pr-2 pt-0.5">
+                    <p class="text-xs sm:text-sm font-medium text-slate-200 leading-snug break-words">${message}</p>
+                </div>
+                <button class="text-slate-400 hover:text-white p-1 text-xs" onclick="this.closest('.glass-panel').remove()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('toast-animate-in');
+                toast.classList.add('toast-animate-out');
+                setTimeout(() => toast.remove(), 250);
+            }, duration);
+        }
+
+        /* --- AUTHENTICATION & RBAC --- */
+        async function checkAuthStatus() {
+            try {
+                const res = await fetch('/api/v1/auth/me');
+                if (res.ok) {
+                    currentUser = await res.json();
+                    document.getElementById('login-modal').classList.add('hidden');
+                    applyUserPermissions();
+                    return true;
+                } else {
+                    currentUser = null;
+                    document.getElementById('login-modal').classList.remove('hidden');
+                    return false;
+                }
+            } catch (e) {
+                currentUser = null;
+                document.getElementById('login-modal').classList.remove('hidden');
+                return false;
+            }
+        }
+
+        async function handleLoginSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            const errorBox = document.getElementById('login-error');
+            const errorText = document.getElementById('login-error-text');
+            const btn = document.getElementById('login-submit-btn');
+
+            errorBox.classList.add('hidden');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    currentUser = data.user;
+                    document.getElementById('login-modal').classList.add('hidden');
+                    applyUserPermissions();
+                    await loadActionGroupsList();
+                    await loadCameras();
+                    loadRecentDashboardLogs();
+                    initWebSocket();
+                } else {
+                    errorText.innerText = data.detail || 'Đăng nhập thất bại.';
+                    errorBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorText.innerText = 'Lỗi kết nối máy chủ: ' + err;
+                errorBox.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function handleLogout() {
+            stopAllGridStreams();
+            try {
+                const controller = new AbortController();
+                const tid = setTimeout(() => controller.abort(), 3000);
+                await fetch('/api/v1/auth/logout', { method: 'POST', signal: controller.signal });
+                clearTimeout(tid);
+            } catch (e) { }
+            currentUser = null;
+            document.getElementById('user-dropdown-menu').classList.add('hidden');
+            document.getElementById('login-modal').classList.remove('hidden');
+            showToast("Đã đăng xuất tài khoản thành công.", "info", 3000);
+        }
+
+        function togglePasswordVisibility(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            input.type = input.type === 'password' ? 'text' : 'password';
+            icon.className = input.type === 'password' ? 'fa-solid fa-eye text-xs' : 'fa-solid fa-eye-slash text-xs';
+        }
+
+        function toggleUserDropdown() {
+            document.getElementById('user-dropdown-menu').classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('user-menu-container');
+            if (container && !container.contains(e.target)) {
+                const menu = document.getElementById('user-dropdown-menu');
+                if (menu) menu.classList.add('hidden');
+            }
+        });
+
+        function applyUserPermissions() {
+            if (!currentUser) return;
+            const role = currentUser.role || 'user';
+            const name = currentUser.full_name || currentUser.username;
+            document.getElementById('user-display-name').innerText = name;
+            document.getElementById('user-avatar-initial').innerText = (currentUser.username || 'U').charAt(0).toUpperCase();
+            document.getElementById('user-dropdown-fullname').innerText = name;
+
+            let roleName = role === 'admin' ? '👑 Quản Trị Viên (Admin)' : (role === 'quan_ly' ? '🛡️ Quản Lý' : '👤 Giám Sát Viên');
+            document.getElementById('user-dropdown-role').innerText = roleName;
+
+            const headerBadge = document.getElementById('header-user-role-badge');
+            if (headerBadge) {
+                headerBadge.innerText = role.toUpperCase();
+            }
+
+            const isAdmin = (role === 'admin');
+            document.querySelectorAll('.role-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
+            
+            const btnManageUsers = document.getElementById('btn-manage-users');
+            if (btnManageUsers) btnManageUsers.classList.toggle('hidden', !isAdmin);
+
+            const btnManageAG = document.getElementById('btn-manage-action-groups');
+            if (btnManageAG) btnManageAG.classList.toggle('hidden', !isAdmin);
+
+            if (!isAdmin && (currentTab === 'cameras' || currentTab === 'settings')) {
+                switchTab('dashboard');
+            }
+        }
+
+        /* --- NAVIGATION TABS --- */
+        let activeGridStreamTimers = {};
+
+        function stopAllGridStreams() {
+            Object.keys(activeGridStreamTimers).forEach(id => {
+                clearTimeout(activeGridStreamTimers[id]);
+            });
+            activeGridStreamTimers = {};
+        }
+
+        function startCameraGridStream(camId, imgElement) {
+            if (!imgElement) return;
+            
+            function loadNext() {
+                if (!document.body.contains(imgElement) || currentTab !== 'dashboard') {
+                    delete activeGridStreamTimers[camId];
+                    return;
+                }
+                const tempImg = new Image();
+                tempImg.onload = () => {
+                    if (document.body.contains(imgElement) && currentTab === 'dashboard') {
+                        imgElement.src = tempImg.src;
+                        activeGridStreamTimers[camId] = setTimeout(loadNext, 300);
+                    }
+                };
+                tempImg.onerror = () => {
+                    if (document.body.contains(imgElement) && currentTab === 'dashboard') {
+                        activeGridStreamTimers[camId] = setTimeout(loadNext, 2000);
+                    }
+                };
+                tempImg.src = `/api/v1/cameras/${camId}/snapshot?_t=${Date.now()}`;
+            }
+
+            loadNext();
+        }
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            ['dashboard', 'history', 'cameras', 'settings'].forEach(t => {
+                const page = document.getElementById(`page-${t}`);
+                const btn = document.getElementById(`tab-${t}`);
+                if (page) page.classList.toggle('hidden', t !== tabId);
+                if (btn) {
+                    if (t === tabId) {
+                        btn.className = 'tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg transition-all bg-blue-600 text-white shadow-md flex items-center';
+                    } else {
+                        btn.className = 'tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all flex items-center';
+                    }
+                }
+            });
+
+            if (tabId !== 'dashboard') {
+                stopAllGridStreams();
+            } else {
+                renderCameraGrid();
+            }
+
+            if (tabId === 'history') fetchHistoryLogs(1);
+            if (tabId === 'settings') loadSettingsValues();
+        }
+
+        function toggleMobileMenu() {
+            const drawer = document.getElementById('mobile-menu-drawer');
+            drawer.classList.toggle('hidden');
+        }
+
+        function switchTabMobile(tabId) {
+            switchTab(tabId);
+            document.getElementById('mobile-menu-drawer').classList.add('hidden');
+        }
+
+        /* --- ZONE FILTERING --- */
+        function setDashboardZoneFilter(zone) {
+            currentDashboardZone = zone;
+            ['ALL', 'TRUONGLAI', 'KHO_BAI'].forEach(z => {
+                const btn = document.getElementById(`zone-btn-${z}`);
+                if (btn) {
+                    if (z === zone) {
+                        btn.className = 'zone-filter-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-blue-600 text-white shadow';
+                    } else {
+                        btn.className = 'zone-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-all border border-slate-700/80';
+                    }
+                }
+            });
+            renderCameraGrid();
+        }
+
+        /* --- CAMERA & GRID MANAGEMENT --- */
+        async function loadCameras() {
+            try {
+                const res = await fetch('/api/v1/cameras');
+                if (!res.ok) return;
+                camerasList = await res.json();
+                renderCameraGrid();
+                renderCameraTable();
+                populateCameraFilterDropdown();
+            } catch (e) {
+                console.error("Error loading cameras:", e);
+            }
+        }
+
+        function renderCameraGrid() {
+            stopAllGridStreams();
+            const grid = document.getElementById('camera-grid');
+            if (!grid) return;
+
+            const funcFilter = document.getElementById('dashboard-func-filter') ? document.getElementById('dashboard-func-filter').value : 'ALL';
+
+            let filtered = camerasList;
+            if (currentDashboardZone !== 'ALL') {
+                filtered = filtered.filter(c => (c.zone_code || 'TRUONGLAI') === currentDashboardZone);
+            }
+            if (funcFilter !== 'ALL') {
+                filtered = filtered.filter(c => (c.camera_function || 'ANPR') === funcFilter);
+            }
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full p-8 text-center glass-panel rounded-2xl text-slate-400 text-sm">Không có camera nào phù hợp với bộ lọc hiện tại.</div>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(cam => {
+                const zoneBadge = cam.zone_code === 'KHO_BAI' 
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">📦 Kho Bãi</span>`
+                    : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">🚗 Trường Lái</span>`;
+
+                const funcBadge = cam.camera_function === 'SURVEILLANCE'
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">👁️ Quan Sát</span>`
+                    : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">📸 Đọc Biển Số</span>`;
+
+                const isAdmin = currentUser && currentUser.role === 'admin';
+
+                return `
+                    <div class="glass-panel rounded-2xl overflow-hidden border border-slate-700/80 shadow-xl flex flex-col">
+                        <div class="p-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center space-x-2 truncate">
+                                <span class="w-2 h-2 rounded-full ${cam.is_active ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}"></span>
+                                <h3 class="font-bold text-xs sm:text-sm text-white truncate" title="${cam.camera_name}">${cam.camera_name}</h3>
+                            </div>
+                            <div class="flex items-center space-x-1.5 flex-shrink-0">
+                                ${zoneBadge}
+                                ${funcBadge}
+                                ${isAdmin ? `
+                                    <button onclick="openEditCameraModal(${cam.id})" class="p-1 px-2 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 text-xs font-semibold" title="Chỉnh sửa Camera">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="relative bg-slate-950 aspect-video flex items-center justify-center overflow-hidden group cursor-pointer" onclick="openZoomModal(${cam.id})">
+                            <img id="grid-cam-img-${cam.id}" src="/api/v1/cameras/${cam.id}/snapshot?_t=${Date.now()}" class="w-full h-full object-cover" alt="${cam.camera_name}">
+                            <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span class="px-3 py-1.5 rounded-xl bg-slate-900/90 text-white text-xs font-semibold border border-slate-700 shadow flex items-center space-x-1.5">
+                                    <i class="fa-solid fa-expand text-blue-400"></i>
+                                    <span>Xem Toàn Màn Hình</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="p-2.5 bg-slate-900/60 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+                            <span class="truncate"><i class="fa-solid fa-diagram-project mr-1 text-amber-400"></i>${cam.action_group_name || 'Không gán webhook'}</span>
+                            <span class="font-mono text-slate-400 flex-shrink-0">${cam.target_fps} FPS</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Khởi chạy snapshot loop cho từng camera active trong grid
+            filtered.forEach(cam => {
+                if (cam.is_active) {
+                    const imgEl = document.getElementById(`grid-cam-img-${cam.id}`);
+                    if (imgEl) startCameraGridStream(cam.id, imgEl);
+                }
+            });
+        }
+
+        function renderCameraTable() {
+            const tbody = document.getElementById('camera-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = camerasList.map(cam => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="p-3 sm:p-4 font-mono text-slate-400">#${cam.id}</td>
+                    <td class="p-3 sm:p-4 font-bold text-white">${cam.camera_name}</td>
+                    <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${cam.zone_code === 'KHO_BAI' ? 'bg-amber-500/20 text-amber-300' : 'bg-cyan-500/20 text-cyan-300'}">${cam.zone_name || cam.zone_code}</span></td>
+                    <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${cam.camera_function === 'SURVEILLANCE' ? 'bg-purple-500/20 text-purple-300' : 'bg-emerald-500/20 text-emerald-300'}">${cam.camera_function === 'SURVEILLANCE' ? 'Quan Sát' : 'Đọc Biển Số'}</span></td>
+                    <td class="p-3 sm:p-4 text-slate-300">${cam.action_group_name || '-'}</td>
+                    <td class="p-3 sm:p-4 font-mono">${cam.target_fps}</td>
+                    <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded-full text-[10px] ${cam.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${cam.is_active ? 'Đang Bật' : 'Tắt'}</span></td>
+                    <td class="p-3 sm:p-4 text-right space-x-1">
+                        <button onclick="openEditCameraModal(${cam.id})" class="px-2.5 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs">
+                            <i class="fa-solid fa-pen mr-1"></i>Sửa
+                        </button>
+                        <button onclick="deleteCamera(${cam.id}, '${cam.camera_name.replace(/'/g, "\\'")}')" class="px-2.5 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 rounded-lg text-xs">
+                            <i class="fa-solid fa-trash mr-1"></i>Xóa
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function populateCameraFilterDropdown() {
+            const select = document.getElementById('filter-camera');
+            if (!select) return;
+            select.innerHTML = `<option value="">-- Tất cả Camera --</option>` + camerasList.map(c => `
+                <option value="${c.id}">${c.camera_name} (${c.zone_name || c.zone_code})</option>
+            `).join('');
+        }
+
+        /* --- ADD / EDIT CAMERA MODAL --- */
+        async function openAddCameraModal() {
+            document.getElementById('camera-modal-title').innerText = 'Thêm Camera Mới';
+            document.getElementById('cam-form-id').value = '';
+            document.getElementById('cam-form-name').value = '';
+            document.getElementById('cam-form-url').value = '';
+            document.getElementById('cam-form-fps').value = '6';
+            document.getElementById('cam-form-zone').value = 'TRUONGLAI';
+            document.getElementById('cam-form-function').value = 'ANPR';
+            document.getElementById('cam-form-active').value = 'true';
+            
+            const alertBox = document.getElementById('cam-form-alert');
+            if (alertBox) {
+                alertBox.classList.add('hidden');
+                alertBox.innerHTML = '';
+            }
+            const submitBtn = document.getElementById('cam-form-submit-btn');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.className = "px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/30 flex items-center space-x-1.5 transition-all";
+                submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i><span>Lưu Camera</span>';
+            }
+
+            if (!actionGroupsList || actionGroupsList.length === 0) {
+                await loadActionGroupsList();
+            }
+            populateActionGroupOptions(null);
+            document.getElementById('camera-form-modal').classList.remove('hidden');
+        }
+
+        async function openEditCameraModal(camId) {
+            const cam = camerasList.find(c => c.id === parseInt(camId, 10));
+            if (!cam) {
+                showToast("Không tìm thấy dữ liệu Camera #" + camId, "error");
+                return;
+            }
+
+            const alertBox = document.getElementById('cam-form-alert');
+            if (alertBox) {
+                alertBox.classList.add('hidden');
+                alertBox.innerHTML = '';
+            }
+            const submitBtn = document.getElementById('cam-form-submit-btn');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.className = "px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/30 flex items-center space-x-1.5 transition-all";
+                submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i><span>Lưu Camera</span>';
+            }
+
+            if (!actionGroupsList || actionGroupsList.length === 0) {
+                await loadActionGroupsList();
+            }
+
+            document.getElementById('camera-modal-title').innerText = `Sửa Camera: ${cam.camera_name}`;
+            document.getElementById('cam-form-id').value = cam.id;
+            document.getElementById('cam-form-name').value = cam.camera_name || '';
+            document.getElementById('cam-form-url').value = cam.rtsp_url || '';
+            document.getElementById('cam-form-fps').value = cam.target_fps || 6;
+            document.getElementById('cam-form-zone').value = cam.zone_code || 'TRUONGLAI';
+            document.getElementById('cam-form-function').value = cam.camera_function || 'ANPR';
+            document.getElementById('cam-form-active').value = cam.is_active ? 'true' : 'false';
+            
+            populateActionGroupOptions(cam.action_group_id);
+            document.getElementById('camera-form-modal').classList.remove('hidden');
+        }
+
+        function closeAddCameraModal() {
+            document.getElementById('camera-form-modal').classList.add('hidden');
+        }
+
+        function populateActionGroupOptions(selectedId = null) {
+            const select = document.getElementById('cam-form-action-group');
+            if (!select) return;
+            const selInt = selectedId ? parseInt(selectedId, 10) : null;
+            select.innerHTML = `<option value="">-- Mặc Định / Không Gán Nhóm --</option>` + actionGroupsList.map(ag => `
+                <option value="${ag.id}" ${ag.id === selInt ? 'selected' : ''}>${ag.name} (${ag.code})</option>
+            `).join('');
+        }
+
+        async function handleCameraFormSubmit(e) {
+            e.preventDefault();
+            const camId = document.getElementById('cam-form-id').value;
+            const isEdit = !!camId;
+            const zoneCode = document.getElementById('cam-form-zone').value;
+            let zoneName = "Trường Lái";
+            if (zoneCode === 'KHO_BAI') zoneName = "Kho Bãi";
+            else if (zoneCode === 'TRU_SO') zoneName = "Trụ Sở";
+            else if (zoneCode === 'KHO_XE') zoneName = "Bãi Xe";
+
+            const agVal = document.getElementById('cam-form-action-group').value;
+            const submitBtn = document.getElementById('cam-form-submit-btn');
+            const alertBox = document.getElementById('cam-form-alert');
+
+            const payload = {
+                camera_name: document.getElementById('cam-form-name').value.trim(),
+                rtsp_url: document.getElementById('cam-form-url').value.trim(),
+                target_fps: parseInt(document.getElementById('cam-form-fps').value, 10) || 6,
+                zone_code: zoneCode,
+                zone_name: zoneName,
+                camera_function: document.getElementById('cam-form-function').value,
+                action_group_id: agVal ? parseInt(agVal, 10) : null,
+                is_active: document.getElementById('cam-form-active').value === 'true'
+            };
+
+            // Loading state
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i><span>Đang Lưu...</span>';
+            }
+            if (alertBox) {
+                alertBox.className = 'p-3 rounded-xl text-xs flex items-center space-x-2 font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30';
+                alertBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-blue-400 text-sm flex-shrink-0"></i><span>Đang gửi thông tin cấu hình lên máy chủ...</span>';
+                alertBox.classList.remove('hidden');
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            try {
+                const url = isEdit ? `/api/v1/cameras/${camId}` : '/api/v1/cameras';
+                const method = isEdit ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                if (res.ok) {
+                    const savedCam = await res.json();
+                    
+                    if (submitBtn) {
+                        submitBtn.className = "px-5 py-2 bg-emerald-600 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-lg shadow-emerald-600/30 flex items-center space-x-1.5 transition-all";
+                        submitBtn.innerHTML = '<i class="fa-solid fa-check"></i><span>Đã Lưu Xong!</span>';
+                    }
+
+                    if (alertBox) {
+                        alertBox.className = 'p-3 rounded-xl text-xs flex items-center space-x-2 font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                        alertBox.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-base flex-shrink-0"></i><span>✅ Đã lưu cấu hình Camera [${savedCam.camera_name || payload.camera_name}] thành công!</span>`;
+                        alertBox.classList.remove('hidden');
+                    }
+
+                    showToast(`✅ Đã lưu cấu hình Camera [${savedCam.camera_name || payload.camera_name}] thành công!`, "success", 4500);
+
+                    setTimeout(async () => {
+                        closeAddCameraModal();
+                        await loadCameras();
+                    }, 600);
+                } else {
+                    const err = await res.json();
+                    const errMsg = err.detail || JSON.stringify(err);
+                    
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i><span>Thử Lưu Lại</span>';
+                    }
+                    if (alertBox) {
+                        alertBox.className = 'p-3 rounded-xl text-xs flex items-center space-x-2 font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30';
+                        alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation text-rose-400 text-base flex-shrink-0"></i><span>❌ Lỗi khi lưu: ${errMsg}</span>`;
+                        alertBox.classList.remove('hidden');
+                    }
+                    showToast("❌ Lỗi khi lưu Camera: " + errMsg, "error", 5000);
+                }
+            } catch (err) {
+                clearTimeout(timeoutId);
+                const isTimeout = err.name === 'AbortError';
+                const msg = isTimeout ? 'Hết thời gian chờ phản hồi từ máy chủ (Timeout)' : err.toString();
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i><span>Thử Lưu Lại</span>';
+                }
+                if (alertBox) {
+                    alertBox.className = 'p-3 rounded-xl text-xs flex items-center space-x-2 font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30';
+                    alertBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400 text-base flex-shrink-0"></i><span>❌ Lỗi kết nối: ${msg}</span>`;
+                    alertBox.classList.remove('hidden');
+                }
+                showToast("❌ Lỗi kết nối: " + msg, "error", 5000);
+            }
+        }
+
+        async function deleteCamera(camId, camName) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa Camera [${camName}] không?`)) return;
+            try {
+                const res = await fetch(`/api/v1/cameras/${camId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadCameras();
+                    showToast(`Đã xóa Camera [${camName}] thành công!`, "success");
+                }
+            } catch (err) {
+                showToast("Lỗi khi xóa: " + err, "error");
+            }
+        }
+
+        /* --- ACTION GROUPS (WEBHOOK) MANAGEMENT --- */
+        async function loadActionGroupsList() {
+            try {
+                const res = await fetch('/api/v1/action-groups');
+                if (res.ok) {
+                    actionGroupsList = await res.json();
+                    renderActionGroupsTable();
+                }
+            } catch (e) { }
+        }
+
+        function openActionGroupsModal() {
+            document.getElementById('action-groups-modal').classList.remove('hidden');
+            closeActionGroupForm();
+            loadActionGroupsList();
+        }
+
+        function closeActionGroupsModal() {
+            document.getElementById('action-groups-modal').classList.add('hidden');
+        }
+
+        function renderActionGroupsTable() {
+            const tbody = document.getElementById('action-groups-table-body');
+            if (!tbody) return;
+            tbody.innerHTML = actionGroupsList.map(ag => `
+                <tr class="hover:bg-slate-800/40">
+                    <td class="p-3 font-mono text-slate-400">#${ag.id}</td>
+                    <td class="p-3 font-bold text-white">${ag.name}</td>
+                    <td class="p-3 font-mono text-amber-400">${ag.code}</td>
+                    <td class="p-3 text-slate-300 font-mono truncate max-w-[200px]" title="${ag.api_url}">${ag.api_url}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${ag.http_method === 'GET' ? 'bg-blue-500/20 text-blue-300' : 'bg-emerald-500/20 text-emerald-300'}">${ag.http_method}</span></td>
+                    <td class="p-3 text-right space-x-1 whitespace-nowrap">
+                        <button onclick="testActionGroup(${ag.id})" class="px-2.5 py-1 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded-lg text-xs" title="Kiểm tra gọi API">
+                            <i class="fa-solid fa-vial mr-1"></i>Test
+                        </button>
+                        <button onclick="editActionGroupRow(${ag.id})" class="px-2 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs">
+                            <i class="fa-solid fa-pen mr-1"></i>Sửa
+                        </button>
+                        <button onclick="deleteActionGroupRow(${ag.id}, '${ag.name.replace(/'/g, "\\'")}')" class="px-2 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 rounded-lg text-xs">
+                            <i class="fa-solid fa-trash mr-1"></i>Xóa
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openCreateActionGroupForm() {
+            document.getElementById('ag-form-title').innerText = 'Thêm Nhóm Hành Động Mới';
+            document.getElementById('ag-form-id').value = '';
+            document.getElementById('ag-form-name').value = '';
+            document.getElementById('ag-form-code').value = '';
+            document.getElementById('ag-form-url').value = '';
+            document.getElementById('ag-form-method').value = 'POST';
+            document.getElementById('ag-form-desc').value = '';
+            document.getElementById('ag-form-container').classList.remove('hidden');
+        }
+
+        function editActionGroupRow(agId) {
+            const ag = actionGroupsList.find(a => a.id === parseInt(agId, 10));
+            if (!ag) return;
+            document.getElementById('ag-form-title').innerText = `Sửa Nhóm: ${ag.name}`;
+            document.getElementById('ag-form-id').value = ag.id;
+            document.getElementById('ag-form-name').value = ag.name || '';
+            document.getElementById('ag-form-code').value = ag.code || '';
+            document.getElementById('ag-form-url').value = ag.api_url || '';
+            document.getElementById('ag-form-method').value = ag.http_method || 'POST';
+            document.getElementById('ag-form-desc').value = ag.description || '';
+            document.getElementById('ag-form-container').classList.remove('hidden');
+        }
+
+        function closeActionGroupForm() {
+            document.getElementById('ag-form-container').classList.add('hidden');
+        }
+
+        async function handleActionGroupSubmit(e) {
+            e.preventDefault();
+            const agId = document.getElementById('ag-form-id').value;
+            const isEdit = !!agId;
+            const payload = {
+                name: document.getElementById('ag-form-name').value.trim(),
+                code: document.getElementById('ag-form-code').value.trim().toUpperCase(),
+                api_url: document.getElementById('ag-form-url').value.trim(),
+                http_method: document.getElementById('ag-form-method').value,
+                description: document.getElementById('ag-form-desc').value.trim(),
+                is_active: true
+            };
+
+            try {
+                const url = isEdit ? `/api/v1/action-groups/${agId}` : '/api/v1/action-groups';
+                const method = isEdit ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    closeActionGroupForm();
+                    loadActionGroupsList();
+                    loadCameras();
+                    showToast("Đã lưu nhóm hành động thành công!", "success");
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối: " + err, "error");
+            }
+        }
+
+        async function deleteActionGroupRow(agId, agName) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa nhóm hành động [${agName}] không?`)) return;
+            try {
+                const res = await fetch(`/api/v1/action-groups/${agId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadActionGroupsList();
+                    loadCameras();
+                    showToast(`Đã xóa nhóm [${agName}] thành công!`, "success");
+                }
+            } catch (err) {
+                showToast("Lỗi khi xóa: " + err, "error");
+            }
+        }
+
+        async function testActionGroup(agId) {
+            showToast("Đang gửi yêu cầu kiểm tra tới API Webhook...", "info");
+            try {
+                const res = await fetch(`/api/v1/action-groups/${agId}/test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plate_number: '51A-88888', vehicle_view: 'front' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ KIỂM TRA WEBHOOK THÀNH CÔNG!\n\n- Trạng thái: ${data.normalized_status}\n- Tóm tắt: ${data.summary || data.message || 'Hợp lệ'}\n- Cảnh báo: ${data.alert_level}\n\nPhản hồi gốc:\n${data.raw_response}`);
+                } else {
+                    alert(`⚠️ KẾT QUẢ TEST:\n\n- Trạng thái: ${data.normalized_status}\n- Lỗi/Chi tiết: ${data.message}\n\nPhản hồi gốc:\n${data.raw_response}`);
+                }
+            } catch (err) {
+                showToast("Lỗi khi test webhook: " + err, "error");
+            }
+        }
+
+        /* --- USER MANAGEMENT & CAMERA PERMISSION CHECKLIST --- */
+        async function openUsersManagementModal() {
+            document.getElementById('user-dropdown-menu').classList.add('hidden');
+            document.getElementById('users-modal').classList.remove('hidden');
+            closeUserForm();
+            loadUsersList();
+        }
+
+        function closeUsersManagementModal() {
+            document.getElementById('users-modal').classList.add('hidden');
+        }
+
+        function renderCameraChecklist(assignedIds = []) {
+            const container = document.getElementById('user-camera-checklist');
+            if (!container) return;
+            container.innerHTML = camerasList.map(cam => {
+                const isChecked = assignedIds.includes(cam.id);
+                return `
+                    <label class="flex items-center space-x-2 p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500 cursor-pointer text-xs">
+                        <input type="checkbox" name="user_assigned_cameras" value="${cam.id}" ${isChecked ? 'checked' : ''} class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 bg-slate-950 border-slate-700">
+                        <span class="font-medium text-slate-200">${cam.camera_name}</span>
+                        <span class="text-[10px] text-slate-400 font-mono">(${cam.zone_code})</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function toggleCameraChecklistVisibility() {
+            const role = document.getElementById('admin-user-role').value;
+            const section = document.getElementById('user-camera-permission-section');
+            if (section) section.classList.toggle('hidden', role === 'admin');
+        }
+
+        let usersListCache = [];
+
+        async function loadUsersList() {
+            try {
+                const res = await fetch('/api/v1/users');
+                if (!res.ok) return;
+                usersListCache = await res.json();
+                const tbody = document.getElementById('users-table-body');
+                tbody.innerHTML = usersListCache.map(u => {
+                    let roleBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300">User</span>`;
+                    if (u.role === 'admin') {
+                        roleBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-300">👑 Admin</span>`;
+                    } else if (u.role === 'quan_ly') {
+                        roleBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300">🛡️ Quản Lý</span>`;
+                    }
+
+                    let camAccessText = u.role === 'admin' ? '<span class="text-blue-400 font-semibold">Toàn quyền (100% Cam)</span>' : `${u.assigned_camera_ids ? u.assigned_camera_ids.length : 0} Camera được cấp`;
+
+                    return `
+                        <tr class="hover:bg-slate-800/40">
+                            <td class="p-3 font-mono text-slate-400">#${u.id}</td>
+                            <td class="p-3 font-bold text-white">${u.username}</td>
+                            <td class="p-3 text-slate-300">${u.full_name || '-'}</td>
+                            <td class="p-3">${roleBadge}</td>
+                            <td class="p-3 text-xs">${camAccessText}</td>
+                            <td class="p-3">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] ${u.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+                                    ${u.is_active ? 'Hoạt động' : 'Khóa'}
+                                </span>
+                            </td>
+                            <td class="p-3 text-right space-x-1">
+                                <button onclick="editUserRow(${u.id})" class="px-2 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs">
+                                    <i class="fa-solid fa-pen mr-1"></i>Sửa
+                                </button>
+                                ${u.id !== currentUser.id ? `
+                                    <button onclick="deleteUserRow(${u.id}, '${u.username}')" class="px-2 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 rounded-lg text-xs">
+                                        <i class="fa-solid fa-trash mr-1"></i>Xóa
+                                    </button>
+                                ` : ''}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) { }
+        }
+
+        function openCreateUserForm() {
+            document.getElementById('user-form-title').innerText = 'Tạo Tài Khoản Mới';
+            document.getElementById('admin-user-id').value = '';
+            document.getElementById('admin-user-username').value = '';
+            document.getElementById('admin-user-username').disabled = false;
+            document.getElementById('admin-user-fullname').value = '';
+            document.getElementById('admin-user-password').value = '';
+            document.getElementById('admin-user-password').required = true;
+            document.getElementById('admin-user-role').value = 'user';
+            document.getElementById('admin-user-active').value = 'true';
+            renderCameraChecklist([]);
+            toggleCameraChecklistVisibility();
+            document.getElementById('user-form-container').classList.remove('hidden');
+        }
+
+        function editUserRow(userId) {
+            const u = usersListCache.find(user => user.id === parseInt(userId, 10));
+            if (!u) return;
+            document.getElementById('user-form-title').innerText = `Sửa Tài Khoản: ${u.username}`;
+            document.getElementById('admin-user-id').value = u.id;
+            document.getElementById('admin-user-username').value = u.username;
+            document.getElementById('admin-user-username').disabled = true;
+            document.getElementById('admin-user-fullname').value = u.full_name || '';
+            document.getElementById('admin-user-password').value = '';
+            document.getElementById('admin-user-password').required = false;
+            document.getElementById('admin-user-role').value = u.role;
+            document.getElementById('admin-user-active').value = u.is_active ? 'true' : 'false';
+            renderCameraChecklist(u.assigned_camera_ids || []);
+            toggleCameraChecklistVisibility();
+            document.getElementById('user-form-container').classList.remove('hidden');
+        }
+
+        function closeUserForm() {
+            document.getElementById('user-form-container').classList.add('hidden');
+        }
+
+        async function handleUserAdminSubmit(e) {
+            e.preventDefault();
+            const userId = document.getElementById('admin-user-id').value;
+            const isEdit = !!userId;
+            const selectedCamBoxes = document.querySelectorAll('input[name="user_assigned_cameras"]:checked');
+            const assignedIds = Array.from(selectedCamBoxes).map(cb => parseInt(cb.value, 10));
+
+            const payload = {
+                full_name: document.getElementById('admin-user-fullname').value.trim(),
+                role: document.getElementById('admin-user-role').value,
+                is_active: document.getElementById('admin-user-active').value === 'true',
+                assigned_camera_ids: assignedIds
+            };
+
+            const pwd = document.getElementById('admin-user-password').value;
+            if (pwd && pwd.trim()) payload.password = pwd.trim();
+            if (!isEdit) payload.username = document.getElementById('admin-user-username').value.trim().toLowerCase();
+
+            try {
+                const url = isEdit ? `/api/v1/users/${userId}` : '/api/v1/users';
+                const method = isEdit ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    closeUserForm();
+                    loadUsersList();
+                    showToast("Đã lưu thông tin tài khoản và phân quyền camera!", "success");
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối: " + err, "error");
+            }
+        }
+
+        async function deleteUserRow(userId, username) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản [${username}] không?`)) return;
+            try {
+                const res = await fetch(`/api/v1/users/${userId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadUsersList();
+                    showToast(`Đã xóa tài khoản [${username}] thành công!`, "success");
+                }
+            } catch (err) {
+                showToast("Lỗi khi xóa: " + err, "error");
+            }
+        }
+
+        /* --- SETTINGS & FIREBASE FCM --- */
+        async function loadSettingsValues() {
+            try {
+                const res = await fetch('/api/v1/settings');
+                if (res.ok) {
+                    const data = await res.json();
+                    const engine = data.ocr_engine_type || 'yolo_local';
+                    const radio = document.querySelector(`input[name="ocr_engine"][value="${engine}"]`);
+                    if (radio) radio.checked = true;
+                    toggleEngineFields(engine);
+
+                    document.getElementById('input-openai-key').value = data.openai_api_key || '';
+                    document.getElementById('input-openai-model').value = data.openai_model_name || 'gpt-4o-mini';
+                    document.getElementById('input-gemini-key').value = data.gemini_api_key || '';
+                    document.getElementById('input-gemini-model').value = data.gemini_model_name || 'gemini-2.0-flash';
+                    document.getElementById('input-fcm-key').value = data.fcm_server_key || '';
+                    document.getElementById('input-fcm-project').value = data.fcm_project_id || '';
+                }
+            } catch (e) { }
+        }
+
+        function toggleEngineFields(engine) {
+            document.getElementById('openai-fields').classList.toggle('hidden', engine !== 'openai_api');
+            document.getElementById('gemini-fields').classList.toggle('hidden', engine !== 'gemini_api');
+        }
+
+        async function saveSystemSettings() {
+            const engine = document.querySelector('input[name="ocr_engine"]:checked').value;
+            const payload = {
+                ocr_engine_type: engine,
+                openai_api_key: document.getElementById('input-openai-key').value.trim(),
+                openai_model_name: document.getElementById('input-openai-model').value.trim(),
+                gemini_api_key: document.getElementById('input-gemini-key').value.trim(),
+                gemini_model_name: document.getElementById('input-gemini-model').value.trim(),
+                fcm_server_key: document.getElementById('input-fcm-key').value.trim(),
+                fcm_project_id: document.getElementById('input-fcm-project').value.trim()
+            };
+
+            try {
+                const res = await fetch('/api/v1/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    showToast("Đã lưu cấu hình OCR và Firebase FCM thành công!", "success");
+                }
+            } catch (err) {
+                showToast("Lỗi khi lưu cấu hình: " + err, "error");
+            }
+        }
+
+        async function sendTestPushNotification() {
+            showToast("Đang gửi thông báo thử nghiệm Firebase FCM...", "info");
+            try {
+                const res = await fetch('/api/v1/devices/test-push', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: "🚗 THỬ NGHIỆM ANPR PUSH",
+                        body: "Kết nối Firebase FCM Push Notification hoạt động hoàn hảo!"
+                    })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(`Đã gửi thông báo thành công tới ${data.target_tokens_count} thiết bị!`, "success");
+                } else {
+                    showToast("Kết quả: " + (data.detail || JSON.stringify(data)), "warning");
+                }
+            } catch (err) {
+                showToast("Lỗi khi test push: " + err, "error");
+            }
+        }
+
+        /* --- HISTORY & EVENT DETAIL --- */
+        async function fetchHistoryLogs(page = 1) {
+            const plate = document.getElementById('filter-plate').value.trim();
+            const zone = document.getElementById('filter-zone').value;
+            const camId = document.getElementById('filter-camera').value;
+            const status = document.getElementById('filter-action-status').value;
+
+            let url = `/api/v1/vehicle-logs?page=${page}&page_size=20`;
+            if (plate) url += `&plate_number=${encodeURIComponent(plate)}`;
+            if (zone) url += `&zone_code=${encodeURIComponent(zone)}`;
+            if (camId) url += `&camera_id=${encodeURIComponent(camId)}`;
+            if (status) url += `&action_status=${encodeURIComponent(status)}`;
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+                renderHistoryTable(data.items);
+                renderPagination(data.page, data.total, data.page_size);
+            } catch (err) { }
+        }
+
+        function renderHistoryTable(items) {
+            const tbody = document.getElementById('history-table-body');
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">Không tìm thấy bản ghi nhận dạng nào.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = items.map(item => {
+                const statusBadge = renderActionStatusBadge(item.action_status, item.summary);
+                const zoneBadge = item.zone_code === 'KHO_BAI' 
+                    ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">Kho Bãi</span>`
+                    : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300">Trường Lái</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-3 font-mono text-slate-400">#${item.id}</td>
+                        <td class="p-3 text-xs text-slate-300 whitespace-nowrap">${item.detected_at}</td>
+                        <td class="p-3">
+                            <div class="font-medium text-white">${item.camera_name}</div>
+                            <div class="mt-0.5">${zoneBadge}</div>
+                        </td>
+                        <td class="p-3">
+                            <div class="font-mono font-bold text-amber-400 text-sm sm:text-base">${item.plate_number}</div>
+                        </td>
+                        <td class="p-3">${statusBadge}</td>
+                        <td class="p-3">${renderVehicleViewBadge(item.vehicle_view)}</td>
+                        <td class="p-3">
+                            <img src="${item.image_plate_path}" onclick="openImageViewer('${item.image_plate_path}', 'Biển số: ${item.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform">
+                        </td>
+                        <td class="p-3 text-right space-x-1 whitespace-nowrap">
+                            <button onclick="openImageModal('${item.image_plate_path}', '${item.image_full_path}', '${item.plate_number}', '${item.summary || ''}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                            ${currentUser && (currentUser.role === 'admin' || currentUser.role === 'quan_ly') ? `
+                                <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.summary || ''}')" class="px-2 py-1 text-xs bg-amber-600/20 text-amber-400 rounded-lg"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <button onclick="deleteVehicleLog(${item.id}, '${item.plate_number}')" class="px-2 py-1 text-xs bg-rose-600/20 text-rose-400 rounded-lg"><i class="fa-solid fa-trash-can"></i></button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderActionStatusBadge(status, summary) {
+            const st = (status || 'INFO').toUpperCase();
+            if (st === 'UNPLANNED') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${summary || 'Không Kế Hoạch'}</span>`;
+            } else if (st === 'APPROVED') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"><i class="fa-solid fa-circle-check mr-1"></i>${summary || 'Hợp Lệ'}</span>`;
+            } else if (st === 'REJECTED') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600/30 text-rose-200 border border-rose-600/40"><i class="fa-solid fa-circle-xmark mr-1"></i>${summary || 'Từ Chối'}</span>`;
+            } else if (st === 'WARNING') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30"><i class="fa-solid fa-bolt mr-1"></i>${summary || 'Cảnh Báo'}</span>`;
+            }
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20">${summary || 'Ghi nhận'}</span>`;
+        }
+
+        function renderVehicleViewBadge(view) {
+            const v = (view || 'unknown').toLowerCase();
+            if (v === 'front') return `<span class="text-xs text-blue-400">🚗 Mặt trước</span>`;
+            if (v === 'rear') return `<span class="text-xs text-purple-400">🚙 Mặt sau</span>`;
+            return `<span class="text-xs text-slate-400">❓ Không rõ</span>`;
+        }
+
+        function renderPagination(currentPage, total, pageSize) {
+            const totalPages = Math.ceil(total / pageSize);
+            document.getElementById('pagination-info').innerText = `Hiển thị trang ${currentPage} / ${totalPages || 1} (Tổng: ${total} bản ghi)`;
+            const btns = document.getElementById('pagination-btns');
+            btns.innerHTML = `
+                <button onclick="fetchHistoryLogs(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs disabled:opacity-40">Trước</button>
+                <button onclick="fetchHistoryLogs(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs disabled:opacity-40">Sau</button>
+            `;
+        }
+
+        async function loadRecentDashboardLogs() {
+            try {
+                const res = await fetch('/api/v1/vehicle-logs?page=1&page_size=10');
+                if (!res.ok) return;
+                const data = await res.json();
+                const tbody = document.getElementById('realtime-log-body');
+                if (data.items.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">Chưa có sự kiện nào.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = data.items.map(d => `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-2.5 sm:p-3 text-xs text-slate-300 whitespace-nowrap">${d.detected_at}</td>
+                        <td class="p-2.5 sm:p-3 whitespace-nowrap font-medium">${d.camera_name}</td>
+                        <td class="p-2.5 sm:p-3 whitespace-nowrap font-mono font-bold text-amber-400">${d.plate_number}</td>
+                        <td class="p-2.5 sm:p-3">${renderActionStatusBadge(d.action_status, d.summary)}</td>
+                        <td class="p-2.5 sm:p-3">${renderVehicleViewBadge(d.vehicle_view)}</td>
+                        <td class="p-2.5 sm:p-3 text-xs text-slate-400 font-mono">${(d.confidence_score * 100).toFixed(1)}%</td>
+                        <td class="p-2.5 sm:p-3"><img src="${d.image_plate_path}" onclick="openImageViewer('${d.image_plate_path}', 'Biển số: ${d.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform"></td>
+                        <td class="p-2.5 sm:p-3 text-right whitespace-nowrap">
+                            <button onclick="openImageModal('${d.image_plate_path}', '${d.image_full_path}', '${d.plate_number}', '${d.summary || ''}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) { }
+        }
+
+        /* --- MODALS HANDLERS --- */
+        function openImageModal(platePath, fullPath, plateNum, summary) {
+            document.getElementById('modal-title').innerText = `Chi Tiết Sự Kiện - Biển Số: ${plateNum}`;
+            document.getElementById('modal-plate-img').src = platePath;
+            document.getElementById('modal-full-img').src = fullPath;
+            const summaryBox = document.getElementById('modal-summary-box');
+            if (summary) {
+                document.getElementById('modal-summary-text').innerText = summary;
+                summaryBox.classList.remove('hidden');
+            } else {
+                summaryBox.classList.add('hidden');
+            }
+            document.getElementById('image-modal').classList.remove('hidden');
+        }
+
+        function closeImageModal() {
+            document.getElementById('image-modal').classList.add('hidden');
+        }
+
+        function openImageViewer(imgSrc, title) {
+            document.getElementById('viewer-title').innerText = title || 'Xem Chi Tiết Ảnh';
+            document.getElementById('viewer-img').src = imgSrc;
+            document.getElementById('image-viewer-modal').classList.remove('hidden');
+        }
+
+        function closeImageViewer() {
+            document.getElementById('image-viewer-modal').classList.add('hidden');
+        }
+
+        function openZoomModal(camId) {
+            const cam = camerasList.find(c => c.id === camId);
+            document.getElementById('zoom-modal-title').innerText = `LIVE FULLVIEW - ${cam ? cam.camera_name : ('Camera #' + camId)}`;
+            document.getElementById('zoom-modal-img').src = `/api/v1/cameras/${camId}/stream`;
+            document.getElementById('camera-zoom-modal').classList.remove('hidden');
+        }
+
+        function closeZoomModal() {
+            document.getElementById('camera-zoom-modal').classList.add('hidden');
+            document.getElementById('zoom-modal-img').src = '';
+        }
+
+        function openChangePasswordModal() {
+            document.getElementById('user-dropdown-menu').classList.add('hidden');
+            document.getElementById('change-pwd-modal').classList.remove('hidden');
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('change-pwd-modal').classList.add('hidden');
+        }
+
+        async function handleChangePasswordSubmit(e) {
+            e.preventDefault();
+            const oldPassword = document.getElementById('change-pwd-old').value;
+            const newPassword = document.getElementById('change-pwd-new').value;
+            const msgBox = document.getElementById('change-pwd-msg');
+            const msgText = document.getElementById('change-pwd-msg-text');
+
+            try {
+                const res = await fetch('/api/v1/auth/change-password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    msgBox.className = 'p-2.5 rounded-xl text-xs bg-emerald-500/15 text-emerald-300 border border-emerald-500/30';
+                    msgText.innerText = 'Đổi mật khẩu thành công!';
+                    msgBox.classList.remove('hidden');
+                    setTimeout(() => closeChangePasswordModal(), 1500);
+                } else {
+                    msgBox.className = 'p-2.5 rounded-xl text-xs bg-rose-500/15 text-rose-300 border border-rose-500/30';
+                    msgText.innerText = data.detail || 'Đổi mật khẩu thất bại.';
+                    msgBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                msgBox.className = 'p-2.5 rounded-xl text-xs bg-rose-500/15 text-rose-300 border border-rose-500/30';
+                msgText.innerText = 'Lỗi kết nối: ' + err;
+                msgBox.classList.remove('hidden');
+            }
+        }
+
+        function openEditLogModal(logId, currentPlate, currentView, currentSummary) {
+            document.getElementById('edit-log-id').value = logId;
+            document.getElementById('edit-log-plate').value = currentPlate || '';
+            document.getElementById('edit-log-view').value = (currentView || 'unknown').toLowerCase();
+            document.getElementById('edit-log-summary').value = currentSummary || '';
+            document.getElementById('edit-log-modal').classList.remove('hidden');
+        }
+
+        function closeEditLogModal() {
+            document.getElementById('edit-log-modal').classList.add('hidden');
+        }
+
+        async function handleEditLogSubmit(e) {
+            e.preventDefault();
+            const logId = document.getElementById('edit-log-id').value;
+            const payload = {
+                plate_number: document.getElementById('edit-log-plate').value.trim().toUpperCase(),
+                vehicle_view: document.getElementById('edit-log-view').value,
+                summary: document.getElementById('edit-log-summary').value.trim()
+            };
+
+            try {
+                const res = await fetch(`/api/v1/vehicle-logs/${logId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    closeEditLogModal();
+                    loadRecentDashboardLogs();
+                    if (currentTab === 'history') fetchHistoryLogs(1);
+                    showToast("Đã cập nhật sự kiện biển số xe thành công!", "success");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối: " + err, "error");
+            }
+        }
+
+        async function deleteVehicleLog(logId, plateNumber) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa sự kiện biển số [${plateNumber}] không?`)) return;
+            try {
+                const res = await fetch(`/api/v1/vehicle-logs/${logId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadRecentDashboardLogs();
+                    if (currentTab === 'history') fetchHistoryLogs(1);
+                    showToast("Đã xóa sự kiện thành công!", "success");
+                }
+            } catch (err) {
+                showToast("Lỗi khi xóa: " + err, "error");
+            }
+        }
+
+        /* --- REAL-TIME VOICE / SPEECH ALERT --- */
+        let voiceAlertEnabled = true;
+
+        function toggleVoiceAlert() {
+            voiceAlertEnabled = !voiceAlertEnabled;
+            const btn = document.getElementById('voice-toggle-btn');
+            const icon = document.getElementById('voice-icon');
+            const text = document.getElementById('voice-status-text');
+            if (voiceAlertEnabled) {
+                btn.className = 'flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all font-medium cursor-pointer shadow-sm';
+                icon.className = 'fa-solid fa-volume-high text-xs sm:text-sm';
+                text.innerText = 'Âm thanh: BẬT';
+            } else {
+                btn.className = 'flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-all font-medium cursor-pointer shadow-sm';
+                icon.className = 'fa-solid fa-volume-xmark text-xs sm:text-sm';
+                text.innerText = 'Âm thanh: TẮT';
+            }
+        }
+
+        function speakText(text) {
+            if (!voiceAlertEnabled || !text) return;
+            try {
+                const ttsUrl = `/api/v1/tts?text=${encodeURIComponent(text)}`;
+                const audio = new Audio(ttsUrl);
+                audio.playbackRate = 0.95;
+                audio.play().catch(e => {});
+            } catch (e) { }
+        }
+
+        /* --- WEBSOCKET REAL-TIME DISPATCHER --- */
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const ws = new WebSocket(`${protocol}//${window.location.host}/ws/events`);
+
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (msg.event === 'vehicle_detected') {
+                    const data = msg.data;
+
+                    // Phân quyền: Nếu không phải Admin, kiểm tra xem user có quyền với camera này không
+                    if (currentUser && currentUser.role !== 'admin') {
+                        const allowedIds = currentUser.assigned_camera_ids || [];
+                        if (!allowedIds.includes(data.camera_id)) {
+                            return; // Bỏ qua sự kiện không thuộc camera được cấp quyền
+                        }
+                    }
+
+                    const logBody = document.getElementById('realtime-log-body');
+                    if (logBody.querySelector('td[colspan]')) {
+                        logBody.innerHTML = '';
+                    }
+
+                    const statusBadge = renderActionStatusBadge(data.action_status, data.summary);
+                    const newRow = `
+                        <tr class="bg-blue-500/10 transition-all duration-500">
+                            <td class="p-2.5 sm:p-3 text-xs text-slate-300 whitespace-nowrap">${data.detected_at}</td>
+                            <td class="p-2.5 sm:p-3 whitespace-nowrap font-medium">${data.camera_name} <span class="text-[10px] text-slate-400 font-mono">(${data.zone_name || data.zone_code})</span></td>
+                            <td class="p-2.5 sm:p-3 whitespace-nowrap font-mono font-bold text-amber-400 text-sm sm:text-base">${data.plate_number}</td>
+                            <td class="p-2.5 sm:p-3">${statusBadge}</td>
+                            <td class="p-2.5 sm:p-3">${renderVehicleViewBadge(data.vehicle_view)}</td>
+                            <td class="p-2.5 sm:p-3 text-xs text-slate-400 font-mono">${(data.confidence_score * 100).toFixed(1)}%</td>
+                            <td class="p-2.5 sm:p-3">
+                                <img src="${data.image_plate_path}" onclick="openImageViewer('${data.image_plate_path}', 'Biển số: ${data.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform">
+                            </td>
+                            <td class="p-2.5 sm:p-3 text-right whitespace-nowrap">
+                                <button onclick="openImageModal('${data.image_plate_path}', '${data.image_full_path}', '${data.plate_number}', '${data.summary || ''}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                            </td>
+                        </tr>
+                    `;
+                    logBody.insertAdjacentHTML('afterbegin', newRow);
+
+                    // Toast & Voice Alert
+                    if (data.alert_level === 'warning' || data.action_status === 'UNPLANNED') {
+                        showToast(`⚠️ Cảnh báo: Xe ${data.plate_number} đi không kế hoạch (${data.camera_name})`, "warning", 5000);
+                        if (data.voice_message) speakText(data.voice_message);
+                    } else if (data.alert_level === 'danger' || data.action_status === 'REJECTED') {
+                        showToast(`🚨 Cảnh báo từ chối: Xe ${data.plate_number} (${data.camera_name})`, "error", 6000);
+                        if (data.voice_message) speakText(data.voice_message);
+                    } else {
+                        showToast(`🚗 Đã phát hiện xe: ${data.plate_number} tại ${data.camera_name}`, "info", 3500);
+                    }
+                }
+            };
+        }
+
+        // Khởi tạo ứng dụng
+        checkAuthStatus().then(isAuthenticated => {
+            if (isAuthenticated) {
+                loadActionGroupsList();
+                loadCameras();
+                loadRecentDashboardLogs();
+                initWebSocket();
+            }
+        });
+    </script>
+</body>
+</html>
