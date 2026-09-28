@@ -13,7 +13,63 @@ from database import SessionLocal
 from models import VideoRecording, Camera
 from settings_manager import settings_manager
 
+import subprocess
+
 logger = logging.getLogger(__name__)
+
+def _async_convert_to_h264_faststart(file_path: str, recording_id: Optional[int], camera_name: str):
+    """Chuyển đổi ngầm sang định dạng H.264 AVC (yuv420p + faststart) để trình duyệt xem lại tức thì"""
+    def _worker():
+        if not file_path or not os.path.exists(file_path):
+            return
+        try:
+            import imageio_ffmpeg
+            ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception:
+            ffmpeg_exe = "ffmpeg"
+
+        temp_path = file_path.replace(".mp4", "_h264tmp.mp4")
+        cmd = [
+            ffmpeg_exe, "-y",
+            "-i", file_path,
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
+            temp_path
+        ]
+        try:
+            res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if res.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+                os.replace(temp_path, file_path)
+                new_size_mb = round(os.path.getsize(file_path) / (1024 * 1024), 2)
+                if recording_id:
+                    db = SessionLocal()
+                    try:
+                        rec = db.query(VideoRecording).filter(VideoRecording.id == recording_id).first()
+                        if rec:
+                            rec.file_size_mb = new_size_mb
+                            db.commit()
+                    except Exception:
+                        db.rollback()
+                    finally:
+                        db.close()
+                logger.info(f"[{camera_name}] Optimized video segment to H.264 (+faststart): {file_path}")
+            else:
+                if os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.warning(f"[{camera_name}] Background H.264 conversion note: {e}")
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
+
+    threading.Thread(target=_worker, daemon=True, name=f"H264Transcode-{os.path.basename(file_path)}").start()
 
 class CameraVideoRecorder:
     """
@@ -152,11 +208,14 @@ class CameraVideoRecorder:
                 logger.warning(f"[{self.camera_name}] Error releasing VideoWriter: {e}")
             self.writer = None
 
-        if self.current_recording_id and self.current_file_path and self.segment_start_time:
+        closed_file_path = self.current_file_path
+        closed_rec_id = self.current_recording_id
+
+        if closed_rec_id and closed_file_path and self.segment_start_time:
             now = datetime.now()
             file_size_mb = 0.0
-            if os.path.exists(self.current_file_path):
-                file_size_mb = round(os.path.getsize(self.current_file_path) / (1024 * 1024), 2)
+            if os.path.exists(closed_file_path):
+                file_size_mb = round(os.path.getsize(closed_file_path) / (1024 * 1024), 2)
             
             duration_sec = int((now - self.segment_start_time).total_seconds())
             if duration_sec <= 0 and self.frame_count > 0:
@@ -164,19 +223,22 @@ class CameraVideoRecorder:
 
             db = SessionLocal()
             try:
-                rec = db.query(VideoRecording).filter(VideoRecording.id == self.current_recording_id).first()
+                rec = db.query(VideoRecording).filter(VideoRecording.id == closed_rec_id).first()
                 if rec:
                     rec.end_time = now
                     rec.file_size_mb = file_size_mb
                     rec.duration_seconds = duration_sec
                     rec.status = "completed"
                     db.commit()
-                    logger.info(f"[{self.camera_name}] Closed video segment ID {self.current_recording_id}: {duration_sec}s, {file_size_mb} MB")
+                    logger.info(f"[{self.camera_name}] Closed video segment ID {closed_rec_id}: {duration_sec}s, {file_size_mb} MB")
             except Exception as e:
                 logger.error(f"[{self.camera_name}] Error updating VideoRecording record: {e}")
                 db.rollback()
             finally:
                 db.close()
+
+            # Tự động nén chuẩn H.264 faststart cho trình duyệt HTML5
+            _async_convert_to_h264_faststart(closed_file_path, closed_rec_id, self.camera_name)
 
         self.current_recording_id = None
         self.current_file_path = None

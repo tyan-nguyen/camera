@@ -2633,11 +2633,14 @@
                 const data = await res.json();
                 playbackState.timelineData = data;
 
+                const recCount = (data.blocks ? data.blocks.length : 0);
+                const evtCount = (data.events ? data.events.length : 0);
+
                 const recBadge = document.getElementById('playback-rec-count-badge');
-                if (recBadge) recBadge.innerHTML = `<i class="fa-solid fa-film"></i><span>${data.total_recordings_count || data.blocks.length} đoạn video</span>`;
+                if (recBadge) recBadge.innerHTML = `<i class="fa-solid fa-film"></i><span>${data.total_recordings !== undefined ? data.total_recordings : recCount} đoạn video</span>`;
 
                 const evtBadge = document.getElementById('playback-evt-count-badge');
-                if (evtBadge) evtBadge.innerHTML = `<i class="fa-solid fa-car"></i><span>${data.total_events_count || data.events.length} sự kiện xe</span>`;
+                if (evtBadge) evtBadge.innerHTML = `<i class="fa-solid fa-car"></i><span>${data.total_events !== undefined ? data.total_events : evtCount} sự kiện xe</span>`;
 
                 renderPlaybackTimeline(data);
             } catch (err) {
@@ -2655,14 +2658,17 @@
                 blocksLayer.innerHTML = '';
             } else {
                 blocksLayer.innerHTML = data.blocks.map(b => {
-                    const leftPercent = (b.start_second / 86400) * 100;
-                    const widthPercent = Math.max(0.15, ((b.end_second - b.start_second) / 86400) * 100);
-                    const startTimeShort = b.start_time.split(' ')[1];
-                    const endTimeShort = b.end_time.split(' ')[1];
+                    const startSec = (b.start_seconds !== undefined) ? b.start_seconds : (b.start_second || 0);
+                    const endSec = (b.end_seconds !== undefined) ? b.end_seconds : (b.end_second || (startSec + (b.duration_seconds || 60)));
+                    const leftPercent = Math.max(0, Math.min(100, (startSec / 86400) * 100));
+                    const widthPercent = Math.max(0.2, Math.min(100 - leftPercent, ((endSec - startSec) / 86400) * 100));
+                    const startTimeShort = b.start_time ? b.start_time.split(' ')[1] : '';
+                    const endTimeShort = b.end_time ? b.end_time.split(' ')[1] : '';
                     return `
-                        <div class="absolute top-1 bottom-1 rounded bg-emerald-500/80 hover:bg-emerald-400 border-x border-slate-900/50 shadow-sm transition-colors cursor-pointer"
+                        <div class="absolute top-1 bottom-1 rounded bg-emerald-500/90 hover:bg-emerald-400 border-x border-slate-900/50 shadow-sm transition-colors cursor-pointer pointer-events-auto"
                             style="left: ${leftPercent}%; width: ${widthPercent}%;"
-                            title="Đoạn ghi: ${startTimeShort} - ${endTimeShort} (${Math.round(b.duration_seconds)}s)">
+                            onclick="event.stopPropagation(); locateAndPlayTimestamp(${data.camera_id}, '${b.start_time}')"
+                            title="Đoạn ghi: ${startTimeShort} - ${endTimeShort} (${Math.round(b.duration_seconds || 0)}s)">
                         </div>
                     `;
                 }).join('');
@@ -2673,8 +2679,9 @@
                 eventsLayer.innerHTML = '';
             } else {
                 eventsLayer.innerHTML = data.events.map(evt => {
-                    const leftPercent = (evt.second_of_day / 86400) * 100;
-                    const timeShort = evt.detected_at.split(' ')[1];
+                    const sec = (evt.seconds_in_day !== undefined) ? evt.seconds_in_day : (evt.second_of_day || 0);
+                    const leftPercent = Math.max(0, Math.min(100, (sec / 86400) * 100));
+                    const timeShort = evt.detected_at ? evt.detected_at.split(' ')[1] : '';
                     return `
                         <div class="absolute top-0 bottom-0 w-3 -ml-1.5 flex items-center justify-center group/evt cursor-pointer pointer-events-auto"
                             style="left: ${leftPercent}%;"
@@ -2737,8 +2744,10 @@
             try {
                 const res = await fetch(`/api/v1/playback/locate?camera_id=${cameraId}&timestamp=${encodeURIComponent(timestampStr)}`);
                 const data = await res.json();
-                if (res.ok && data.recording) {
-                    playVideoRecording(data.recording, data.seek_offset_seconds);
+                if (res.ok && data.recording_id) {
+                    playVideoRecording(data, data.seek_offset_seconds || 0);
+                } else if (res.ok && data.recording) {
+                    playVideoRecording(data.recording, data.seek_offset_seconds || 0);
                 } else {
                     showToast(`Không có video được lưu tại thời điểm [${timestampStr}]`, "warning", 3500);
                 }
@@ -2748,21 +2757,31 @@
         }
 
         function playVideoRecording(recording, seekOffset = 0) {
-            playbackState.currentRecording = recording;
+            const recId = recording.recording_id || recording.id;
+            playbackState.currentRecording = {
+                ...recording,
+                id: recId
+            };
             const video = document.getElementById('playback-video-element');
             const emptyState = document.getElementById('playback-empty-state');
             if (emptyState) emptyState.classList.add('hidden');
 
-            const streamUrl = `/api/v1/playback/stream/${recording.id}`;
+            const streamUrl = `/api/v1/playback/stream/${recId}`;
             video.src = streamUrl;
-            video.playbackRate = playbackState.currentSpeed;
+            video.playbackRate = playbackState.currentSpeed || 1;
+
+            video.onerror = () => {
+                showToast("Không thể tải luồng video đoạn này.", "error", 4000);
+            };
 
             const onLoaded = () => {
                 video.removeEventListener('loadedmetadata', onLoaded);
                 if (seekOffset > 0 && seekOffset < (video.duration || 9999)) {
                     video.currentTime = seekOffset;
                 }
-                video.play().catch(e => {});
+                video.play().catch(e => {
+                    console.log("Auto-play prevented:", e);
+                });
             };
             video.addEventListener('loadedmetadata', onLoaded);
             video.load();
