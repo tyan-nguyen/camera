@@ -26,7 +26,11 @@ class DynamicSettingsManager:
             "gemini_api_key": "",
             "gemini_model_name": "gemini-2.0-flash",
             "fcm_server_key": "",
-            "fcm_project_id": ""
+            "fcm_project_id": "",
+            "video_storage_path": "storage/recordings",
+            "video_segment_minutes": 5,
+            "video_retention_days": 15,
+            "auto_cleanup_disk": True
         }
         self.reload_from_db()
 
@@ -45,7 +49,11 @@ class DynamicSettingsManager:
                         gemini_api_key="",
                         gemini_model_name="gemini-2.0-flash",
                         fcm_server_key="",
-                        fcm_project_id=""
+                        fcm_project_id="",
+                        video_storage_path="storage/recordings",
+                        video_segment_minutes=5,
+                        video_retention_days=15,
+                        auto_cleanup_disk=True
                     )
                     db.add(settings_obj)
                     db.commit()
@@ -59,7 +67,11 @@ class DynamicSettingsManager:
                         "gemini_api_key": settings_obj.gemini_api_key or "",
                         "gemini_model_name": settings_obj.gemini_model_name or "gemini-2.0-flash",
                         "fcm_server_key": settings_obj.fcm_server_key or "",
-                        "fcm_project_id": settings_obj.fcm_project_id or ""
+                        "fcm_project_id": settings_obj.fcm_project_id or "",
+                        "video_storage_path": settings_obj.video_storage_path or "storage/recordings",
+                        "video_segment_minutes": settings_obj.video_segment_minutes if settings_obj.video_segment_minutes is not None else 5,
+                        "video_retention_days": settings_obj.video_retention_days if settings_obj.video_retention_days is not None else 15,
+                        "auto_cleanup_disk": settings_obj.auto_cleanup_disk if settings_obj.auto_cleanup_disk is not None else True
                     }
                 logger.info(f"System settings loaded. Active OCR Engine: [{self.cache['ocr_engine_type']}]")
             except Exception as inner_e:
@@ -95,6 +107,14 @@ class DynamicSettingsManager:
                 settings_obj.fcm_server_key = new_settings["fcm_server_key"]
             if "fcm_project_id" in new_settings and new_settings["fcm_project_id"] is not None:
                 settings_obj.fcm_project_id = new_settings["fcm_project_id"]
+            if "video_storage_path" in new_settings and new_settings["video_storage_path"] is not None:
+                settings_obj.video_storage_path = new_settings["video_storage_path"]
+            if "video_segment_minutes" in new_settings and new_settings["video_segment_minutes"] is not None:
+                settings_obj.video_segment_minutes = int(new_settings["video_segment_minutes"])
+            if "video_retention_days" in new_settings and new_settings["video_retention_days"] is not None:
+                settings_obj.video_retention_days = int(new_settings["video_retention_days"])
+            if "auto_cleanup_disk" in new_settings and new_settings["auto_cleanup_disk"] is not None:
+                settings_obj.auto_cleanup_disk = bool(new_settings["auto_cleanup_disk"])
 
             db.commit()
             db.refresh(settings_obj)
@@ -107,9 +127,13 @@ class DynamicSettingsManager:
                     "gemini_api_key": settings_obj.gemini_api_key or "",
                     "gemini_model_name": settings_obj.gemini_model_name or "gemini-2.0-flash",
                     "fcm_server_key": settings_obj.fcm_server_key or "",
-                    "fcm_project_id": settings_obj.fcm_project_id or ""
+                    "fcm_project_id": settings_obj.fcm_project_id or "",
+                    "video_storage_path": settings_obj.video_storage_path or "storage/recordings",
+                    "video_segment_minutes": settings_obj.video_segment_minutes if settings_obj.video_segment_minutes is not None else 5,
+                    "video_retention_days": settings_obj.video_retention_days if settings_obj.video_retention_days is not None else 15,
+                    "auto_cleanup_disk": settings_obj.auto_cleanup_disk if settings_obj.auto_cleanup_disk is not None else True
                 }
-            logger.info(f"System settings updated (Hot-reloaded). Active OCR: [{self.cache['ocr_engine_type']}]")
+            logger.info(f"System settings updated (Hot-reloaded). Active OCR: [{self.cache['ocr_engine_type']}], Video Path: [{self.cache['video_storage_path']}]")
             return self.cache.copy()
         except Exception as e:
             db.rollback()

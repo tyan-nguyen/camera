@@ -55,6 +55,7 @@ class CameraBase(BaseModel):
     rtsp_url: str
     target_fps: int = 6
     is_active: bool = True
+    is_recording: bool = False             # Bật/Tắt lưu video cho camera này
     zone_code: str = "TRUONGLAI"           # TRUONGLAI, KHO_BAI, TRU_SO...
     zone_name: str = "Trường Lái"
     camera_function: str = "ANPR"          # ANPR (Đọc biển số), SURVEILLANCE (Quan sát)
@@ -69,6 +70,7 @@ class CameraUpdate(BaseModel):
     rtsp_url: Optional[str] = None
     target_fps: Optional[int] = None
     is_active: Optional[bool] = None
+    is_recording: Optional[bool] = None
     zone_code: Optional[str] = None
     zone_name: Optional[str] = None
     camera_function: Optional[str] = None
@@ -159,6 +161,10 @@ class SystemSettingsBase(BaseModel):
     gemini_model_name: Optional[str] = "gemini-2.0-flash"
     fcm_server_key: Optional[str] = ""
     fcm_project_id: Optional[str] = ""
+    video_storage_path: Optional[str] = "storage/recordings"
+    video_segment_minutes: Optional[int] = 5
+    video_retention_days: Optional[int] = 15
+    auto_cleanup_disk: Optional[bool] = True
 
 class SystemSettingsUpdate(BaseModel):
     ocr_engine_type: Optional[str] = None
@@ -168,10 +174,79 @@ class SystemSettingsUpdate(BaseModel):
     gemini_model_name: Optional[str] = None
     fcm_server_key: Optional[str] = None
     fcm_project_id: Optional[str] = None
+    video_storage_path: Optional[str] = None
+    video_segment_minutes: Optional[int] = None
+    video_retention_days: Optional[int] = None
+    auto_cleanup_disk: Optional[bool] = None
 
 class SystemSettingsResponse(SystemSettingsBase):
     id: int
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+# ==========================================
+# 6. Video Recording & Playback Schemas
+# ==========================================
+class VideoRecordingResponse(BaseModel):
+    id: int
+    camera_id: int
+    camera_name: Optional[str] = None
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    file_path: str
+    file_size_mb: float
+    duration_seconds: int
+    status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class TimelineBlock(BaseModel):
+    id: int
+    start_time: str
+    end_time: str
+    start_seconds: float     # Số giây tính từ 00:00:00 của ngày được chọn
+    end_seconds: float
+    duration_seconds: int
+    file_size_mb: float
+
+class TimelineEvent(BaseModel):
+    id: int
+    detected_at: str
+    seconds_in_day: float    # Vị trí giây trong ngày
+    plate_number: str
+    action_status: Optional[str] = None
+    alert_level: str = "normal"
+    image_full_url: str
+
+class PlaybackTimelineResponse(BaseModel):
+    camera_id: int
+    camera_name: str
+    date: str                # YYYY-MM-DD
+    total_recordings: int
+    total_events: int
+    blocks: List[TimelineBlock]
+    events: List[TimelineEvent]
+
+class VideoExportRequest(BaseModel):
+    camera_id: int
+    start_time: str          # YYYY-MM-DD HH:MM:SS
+    end_time: str            # YYYY-MM-DD HH:MM:SS
+    title: Optional[str] = None
+
+class VideoExportResponse(BaseModel):
+    id: int
+    camera_id: int
+    title: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    output_file_path: str
+    download_url: str
+    file_size_mb: float
+    duration_seconds: int
+    status: str
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 

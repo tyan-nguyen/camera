@@ -82,13 +82,14 @@ def init_db():
     # Auto-migration columns check
     try:
         with engine.connect() as conn:
-            # 1. Bảng cameras: detection_zone, zone_code, zone_name, camera_function, action_group_id
+            # 1. Bảng cameras: detection_zone, zone_code, zone_name, camera_function, action_group_id, is_recording
             for col, col_type in [
                 ("detection_zone", "TEXT NULL"),
                 ("zone_code", "VARCHAR(50) DEFAULT 'TRUONGLAI'"),
                 ("zone_name", "VARCHAR(100) DEFAULT 'Trường Lái'"),
                 ("camera_function", "VARCHAR(50) DEFAULT 'ANPR'"),
-                ("action_group_id", "INT NULL")
+                ("action_group_id", "INT NULL"),
+                ("is_recording", "BOOLEAN DEFAULT FALSE")
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE cameras ADD COLUMN {col} {col_type};"))
@@ -114,10 +115,14 @@ def init_db():
                 except Exception:
                     pass
 
-            # 3. Bảng system_settings: fcm_server_key, fcm_project_id
+            # 3. Bảng system_settings: fcm_server_key, fcm_project_id, video_storage_path, video_segment_minutes, video_retention_days, auto_cleanup_disk
             for col, col_type in [
                 ("fcm_server_key", "VARCHAR(500) NULL"),
-                ("fcm_project_id", "VARCHAR(100) NULL")
+                ("fcm_project_id", "VARCHAR(100) NULL"),
+                ("video_storage_path", "VARCHAR(500) DEFAULT 'storage/recordings'"),
+                ("video_segment_minutes", "INT DEFAULT 5"),
+                ("video_retention_days", "INT DEFAULT 15"),
+                ("auto_cleanup_disk", "BOOLEAN DEFAULT TRUE")
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE system_settings ADD COLUMN {col} {col_type};"))
@@ -134,7 +139,7 @@ def init_db():
         try:
             with engine.connect() as conn:
                 conn.execute(text(f"ALTER DATABASE `{settings.DB_NAME}` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;"))
-                for table_name in ["cameras", "vehicle_logs", "system_settings", "users", "action_groups", "user_camera_permissions", "device_tokens"]:
+                for table_name in ["cameras", "vehicle_logs", "system_settings", "users", "action_groups", "user_camera_permissions", "device_tokens", "video_recordings", "video_export_jobs"]:
                     try:
                         conn.execute(text(f"ALTER TABLE `{table_name}` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"))
                     except Exception:

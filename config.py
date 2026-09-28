@@ -27,6 +27,8 @@ class Settings:
     BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
     STORAGE_DIR: str = os.path.join(BASE_DIR, "storage")
     CAPTURES_DIR: str = os.path.join(STORAGE_DIR, "captures")
+    RECORDINGS_DIR: str = os.path.join(STORAGE_DIR, "recordings")
+    EXPORTS_DIR: str = os.path.join(STORAGE_DIR, "exports")
 
     # AI Pipeline Settings
     YOLO_MODEL_PATH: str = os.path.join(BASE_DIR, "weights", "yolov8n_multitask.pt")
@@ -36,3 +38,5 @@ class Settings:
 settings = Settings()
 
 os.makedirs(settings.CAPTURES_DIR, exist_ok=True)
+os.makedirs(settings.RECORDINGS_DIR, exist_ok=True)
+os.makedirs(settings.EXPORTS_DIR, exist_ok=True)

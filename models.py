@@ -50,6 +50,7 @@ class Camera(Base):
     rtsp_url = Column(String(500), nullable=False)
     target_fps = Column(Integer, default=6)
     is_active = Column(Boolean, default=True)
+    is_recording = Column(Boolean, default=False)  # Bật/Tắt lưu video riêng cho camera này
     
     # 1. Nhóm theo vùng (TRUONGLAI, KHO_BAI, TRU_SO...)
     zone_code = Column(String(50), default="TRUONGLAI", index=True)
@@ -68,6 +69,44 @@ class Camera(Base):
     action_group = relationship("ActionGroup", back_populates="cameras")
     logs = relationship("VehicleLog", back_populates="camera", cascade="all, delete-orphan")
     users = relationship("User", secondary=user_camera_permissions, back_populates="allowed_cameras")
+    recordings = relationship("VideoRecording", back_populates="camera", cascade="all, delete-orphan")
+    export_jobs = relationship("VideoExportJob", back_populates="camera", cascade="all, delete-orphan")
+
+class VideoRecording(Base):
+    """Lưu trữ metadata của các đoạn video phân đoạn (Continuous / Segmented Video Recording)"""
+    __tablename__ = "video_recordings"
+    __table_args__ = {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci'}
+
+    id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
+    camera_id = Column(Integer, ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True)
+    start_time = Column(DateTime, nullable=False, index=True)
+    end_time = Column(DateTime, nullable=True, index=True)
+    file_path = Column(String(500), nullable=False)                    # Đường dẫn file MP4 tương đối hoặc tuyệt đối
+    file_size_mb = Column(Float, default=0.0)                          # Dung lượng MB
+    duration_seconds = Column(Integer, default=0)                      # Thời lượng thực tế tính theo giây
+    status = Column(String(30), default="completed", index=True)       # recording, completed, error
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    camera = relationship("Camera", back_populates="recordings")
+
+class VideoExportJob(Base):
+    """Lưu trữ lịch sử các đoạn video clip được trích xuất (Cắt video MP4 theo yêu cầu)"""
+    __tablename__ = "video_export_jobs"
+    __table_args__ = {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci'}
+
+    id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
+    camera_id = Column(Integer, ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=True)                         # Tiêu đề hoặc ghi chú đoạn video trích xuất
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+    output_file_path = Column(String(500), nullable=False)             # File MP4 kết quả
+    file_size_mb = Column(Float, default=0.0)
+    duration_seconds = Column(Integer, default=0)
+    status = Column(String(30), default="completed", index=True)       # pending, processing, completed, failed
+    error_message = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    camera = relationship("Camera", back_populates="export_jobs")
 
 class VehicleLog(Base):
     __tablename__ = "vehicle_logs"
@@ -124,6 +163,12 @@ class SystemSettings(Base):
     # Cấu hình Firebase Cloud Messaging (FCM Push Notification)
     fcm_server_key = Column(String(500), default="", nullable=True)
     fcm_project_id = Column(String(100), default="", nullable=True)
+
+    # Cấu hình Lưu trữ Video & Playback
+    video_storage_path = Column(String(500), default="storage/recordings", nullable=True)
+    video_segment_minutes = Column(Integer, default=5, nullable=True)      # Thời lượng phân đoạn video (5, 10, 15 phút)
+    video_retention_days = Column(Integer, default=15, nullable=True)      # Tự động dọn dẹp sau N ngày
+    auto_cleanup_disk = Column(Boolean, default=True, nullable=True)       # Tự động dọn dẹp khi ổ đĩa đầy
 
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

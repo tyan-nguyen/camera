@@ -27,6 +27,7 @@ def build_camera_response(cam: Camera) -> CameraResponse:
         rtsp_url=cam.rtsp_url,
         target_fps=cam.target_fps,
         is_active=cam.is_active,
+        is_recording=bool(cam.is_recording),
         zone_code=cam.zone_code or "TRUONGLAI",
         zone_name=cam.zone_name or "Trường Lái",
         camera_function=cam.camera_function or "ANPR",
@@ -120,6 +121,7 @@ def create_camera(cam_in: CameraCreate, db: Session = Depends(get_db), current_u
         rtsp_url=cam_in.rtsp_url.strip(),
         target_fps=cam_in.target_fps,
         is_active=cam_in.is_active,
+        is_recording=bool(cam_in.is_recording),
         zone_code=zone_code,
         zone_name=zone_name,
         camera_function=camera_function,
@@ -140,7 +142,8 @@ def create_camera(cam_in: CameraCreate, db: Session = Depends(get_db), current_u
                 rtsp_url=new_cam.rtsp_url,
                 target_fps=new_cam.target_fps,
                 detection_zone=new_cam.detection_zone,
-                camera_function=new_cam.camera_function
+                camera_function=new_cam.camera_function,
+                is_recording=new_cam.is_recording
             ),
             daemon=True
         ).start()
@@ -161,6 +164,8 @@ def update_camera(camera_id: int, cam_in: CameraUpdate, db: Session = Depends(ge
         cam.target_fps = cam_in.target_fps
     if cam_in.is_active is not None:
         cam.is_active = cam_in.is_active
+    if cam_in.is_recording is not None:
+        cam.is_recording = bool(cam_in.is_recording)
     if cam_in.zone_code is not None:
         cam.zone_code = cam_in.zone_code.strip().upper()
     if cam_in.zone_name is not None:
@@ -190,8 +195,25 @@ def update_camera(camera_id: int, cam_in: CameraUpdate, db: Session = Depends(ge
             target_fps=cam.target_fps,
             detection_zone=cam.detection_zone,
             camera_function=cam.camera_function,
-            is_active=cam.is_active
+            is_active=cam.is_active,
+            is_recording=cam.is_recording
         )
+
+    return build_camera_response(cam)
+
+@router.post("/{camera_id}/toggle-recording", response_model=CameraResponse)
+def toggle_camera_recording(camera_id: int, db: Session = Depends(get_db), current_user=Depends(admin_only)):
+    """Bật hoặc Tắt nhanh tính năng lưu video cho 1 camera"""
+    cam = db.query(Camera).filter(Camera.id == camera_id).first()
+    if not cam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy Camera.")
+
+    cam.is_recording = not bool(cam.is_recording)
+    db.commit()
+    db.refresh(cam)
+
+    if stream_manager_ref:
+        stream_manager_ref.set_camera_recording(camera_id, cam.is_recording)
 
     return build_camera_response(cam)
 

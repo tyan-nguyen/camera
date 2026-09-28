@@ -18,7 +18,7 @@ from disk_worker import AsyncDiskWorker
 from stream_manager import DynamicStreamManager
 from websocket_manager import websocket_manager
 from notification_service import notification_service
-from routes import camera, history, settings as settings_route, tts, auth, users, action_groups, devices
+from routes import camera, history, settings as settings_route, tts, auth, users, action_groups, devices, playback
 from settings_manager import settings_manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -132,8 +132,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Mount static file directory for captures
+# Mount static file directories
 app.mount("/static/captures", StaticFiles(directory=settings.CAPTURES_DIR), name="captures")
+app.mount("/static/recordings", StaticFiles(directory=settings.RECORDINGS_DIR), name="recordings")
+app.mount("/static/exports", StaticFiles(directory=settings.EXPORTS_DIR), name="exports")
 
 # Setup Jinja2 templates
 templates = Jinja2Templates(directory=os.path.join(settings.BASE_DIR, "templates"))
@@ -145,6 +147,7 @@ app.include_router(camera.router)
 app.include_router(action_groups.router)
 app.include_router(devices.router)
 app.include_router(history.router)
+app.include_router(playback.router)
 app.include_router(settings_route.router)
 app.include_router(tts.router)
 

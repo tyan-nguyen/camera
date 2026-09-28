@@ -20,6 +20,10 @@ def get_system_settings():
         gemini_model_name=current.get("gemini_model_name", "gemini-2.0-flash"),
         fcm_server_key=current.get("fcm_server_key", ""),
         fcm_project_id=current.get("fcm_project_id", ""),
+        video_storage_path=current.get("video_storage_path", "storage/recordings"),
+        video_segment_minutes=current.get("video_segment_minutes", 5),
+        video_retention_days=current.get("video_retention_days", 15),
+        auto_cleanup_disk=current.get("auto_cleanup_disk", True),
         updated_at="2026-08-19T00:00:00"
     )
 
@@ -36,5 +40,9 @@ def update_system_settings(settings_in: SystemSettingsUpdate, current_user=Depen
         gemini_model_name=updated.get("gemini_model_name", "gemini-2.0-flash"),
         fcm_server_key=updated.get("fcm_server_key", ""),
         fcm_project_id=updated.get("fcm_project_id", ""),
+        video_storage_path=updated.get("video_storage_path", "storage/recordings"),
+        video_segment_minutes=updated.get("video_segment_minutes", 5),
+        video_retention_days=updated.get("video_retention_days", 15),
+        auto_cleanup_disk=updated.get("auto_cleanup_disk", True),
         updated_at="2026-08-19T00:00:00"
     )

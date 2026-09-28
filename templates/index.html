@@ -170,6 +170,10 @@
                     class="tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-md flex items-center">
                     <i class="fa-solid fa-gauge-high mr-2"></i>Live Dashboard
                 </button>
+                <button onclick="switchTab('playback')" id="tab-playback"
+                    class="tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all duration-200 flex items-center">
+                    <i class="fa-solid fa-film mr-2"></i>Xem Lại Video
+                </button>
                 <button onclick="switchTab('history')" id="tab-history"
                     class="tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all duration-200 flex items-center">
                     <i class="fa-solid fa-clock-rotate-left mr-2"></i>Tra Cứu Lịch Sử
@@ -250,6 +254,11 @@
                     class="mob-tab-btn flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-md transition-all">
                     <i class="fa-solid fa-gauge-high text-sm"></i>
                     <span>Dashboard</span>
+                </button>
+                <button onclick="switchTabMobile('playback')" id="mob-tab-playback"
+                    class="mob-tab-btn flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900/80 border border-slate-800 hover:text-white transition-all">
+                    <i class="fa-solid fa-film text-sm"></i>
+                    <span>Xem Lại</span>
                 </button>
                 <button onclick="switchTabMobile('history')" id="mob-tab-history"
                     class="mob-tab-btn flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900/80 border border-slate-800 hover:text-white transition-all">
@@ -429,7 +438,278 @@
             </div>
         </div>
 
-        <!-- TAB 3: CAMERA MANAGEMENT (Admin Only) -->
+        <!-- TAB 3: VIDEO PLAYBACK & NVR TIMELINE -->
+        <div id="page-playback" class="hidden space-y-4 sm:space-y-6">
+            <!-- Filter & Controls Header Bar -->
+            <div class="glass-panel rounded-2xl p-3.5 sm:p-5 flex flex-wrap items-center justify-between gap-3 border border-slate-800">
+                <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                    <div class="w-full sm:w-64">
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Chọn Camera:</label>
+                        <select id="playback-camera-select" onchange="onPlaybackCameraOrDateChange()"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="w-full sm:w-44">
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Chọn Ngày:</label>
+                        <input type="date" id="playback-date-select" onchange="onPlaybackCameraOrDateChange()"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                    </div>
+
+                    <div class="pt-4 flex items-center space-x-2">
+                        <button onclick="loadPlaybackTimeline()"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center space-x-1.5 shadow-lg shadow-blue-600/30 transition-all">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Tải Dữ Liệu</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Badges -->
+                <div class="flex items-center space-x-2 text-xs">
+                    <span class="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium flex items-center gap-1.5" id="playback-rec-count-badge">
+                        <i class="fa-solid fa-film"></i>
+                        <span>0 đoạn video</span>
+                    </span>
+                    <span class="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium flex items-center gap-1.5" id="playback-evt-count-badge">
+                        <i class="fa-solid fa-car"></i>
+                        <span>0 sự kiện xe</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Video Player & Playback Area -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+                
+                <!-- Left: Video Viewport + Controls (8 Cols) -->
+                <div class="lg:col-span-8 space-y-3">
+                    <div class="glass-panel rounded-2xl p-3 sm:p-4 border border-slate-800 shadow-2xl relative">
+                        <!-- Video Viewport Container -->
+                        <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-inner flex items-center justify-center group" id="playback-player-container">
+                            <video id="playback-video-element" class="w-full h-full object-contain" playsinline preload="auto"
+                                ontimeupdate="onPlaybackVideoTimeUpdate()" onended="onPlaybackVideoEnded()" onplay="updatePlayPauseIcon(true)" onpause="updatePlayPauseIcon(false)">
+                                Trình duyệt của bạn không hỗ trợ phát Video MP4.
+                            </video>
+
+                            <!-- Video OSD Overlay: Top Left -->
+                            <div class="absolute top-3 left-3 flex items-center space-x-2 pointer-events-none z-10">
+                                <span class="px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-white font-mono text-xs font-bold border border-white/10" id="playback-osd-cam-name">
+                                    Camera Chưa Chọn
+                                </span>
+                                <span class="px-2.5 py-1 rounded-lg bg-blue-600/80 backdrop-blur-md text-white font-mono text-xs font-bold border border-white/10" id="playback-osd-time">
+                                    --:--:--
+                                </span>
+                            </div>
+
+                            <!-- Video OSD Overlay: Top Right Speed Badge -->
+                            <div class="absolute top-3 right-3 flex items-center space-x-2 pointer-events-none z-10">
+                                <span class="px-2.5 py-1 rounded-lg bg-amber-500/80 text-black font-bold text-xs font-mono shadow-md" id="playback-osd-speed">
+                                    1.0x SPEED
+                                </span>
+                            </div>
+
+                            <!-- Empty / Placeholder Overlay when no video is selected -->
+                            <div id="playback-empty-state" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 z-20 text-center p-6 space-y-3">
+                                <div class="w-16 h-16 rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center text-2xl shadow-xl">
+                                    <i class="fa-solid fa-play"></i>
+                                </div>
+                                <h3 class="text-base font-bold text-white">Chưa chọn thời điểm xem lại</h3>
+                                <p class="text-xs text-slate-400 max-w-sm">Click vào dải màu xanh trên thanh Timeline bên dưới hoặc chọn một sự kiện để bắt đầu phát video.</p>
+                            </div>
+                        </div>
+
+                        <!-- Player Custom Controls Bar -->
+                        <div class="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+                            <!-- Playback Control Buttons -->
+                            <div class="flex items-center space-x-1.5 sm:space-x-2">
+                                <button onclick="togglePlaybackPlayPause()" id="playback-btn-play"
+                                    class="w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/30 transition-all">
+                                    <i class="fa-solid fa-play" id="playback-icon-play"></i>
+                                </button>
+                                <button onclick="seekPlaybackRelative(-10)" title="Tua lùi 10 giây"
+                                    class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                    <span class="font-mono text-[11px]">-10s</span>
+                                </button>
+                                <button onclick="seekPlaybackRelative(10)" title="Tua tới 10 giây"
+                                    class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
+                                    <span class="font-mono text-[11px]">+10s</span>
+                                    <i class="fa-solid fa-rotate-right"></i>
+                                </button>
+                                <div class="px-3 py-1.5 rounded-xl bg-slate-950 font-mono text-slate-300 text-xs border border-slate-800">
+                                    <span id="playback-current-time-text">00:00:00</span>
+                                    <span class="text-slate-600">/</span>
+                                    <span id="playback-duration-text" class="text-slate-500">00:00:00</span>
+                                </div>
+                            </div>
+
+                            <!-- Speed Selector Controls (1x, 2x, 4x, 8x) -->
+                            <div class="flex items-center space-x-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-400 font-bold px-1.5">TUA NHANH:</span>
+                                <button onclick="setPlaybackSpeed(1)" id="speed-btn-1"
+                                    class="speed-btn px-2.5 py-1 rounded-lg font-bold font-mono text-xs bg-blue-600 text-white shadow transition-all">
+                                    1x
+                                </button>
+                                <button onclick="setPlaybackSpeed(2)" id="speed-btn-2"
+                                    class="speed-btn px-2.5 py-1 rounded-lg font-bold font-mono text-xs text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                                    2x
+                                </button>
+                                <button onclick="setPlaybackSpeed(4)" id="speed-btn-4"
+                                    class="speed-btn px-2.5 py-1 rounded-lg font-bold font-mono text-xs text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                                    4x
+                                </button>
+                                <button onclick="setPlaybackSpeed(8)" id="speed-btn-8"
+                                    class="speed-btn px-2.5 py-1 rounded-lg font-bold font-mono text-xs text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+                                    8x
+                                </button>
+                            </div>
+
+                            <!-- Right Tools -->
+                            <div class="flex items-center space-x-1.5">
+                                <button onclick="setExportMarkersFromCurrentTime()" title="Đặt mốc thời gian này vào bộ cắt video"
+                                    class="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl font-semibold flex items-center gap-1.5 transition-all">
+                                    <i class="fa-solid fa-scissors"></i>
+                                    <span class="hidden sm:inline">Cắt Đoạn Này</span>
+                                </button>
+                                <button onclick="togglePlaybackFullscreen()" title="Toàn màn hình"
+                                    class="p-2 rounded-xl bg-slate-900 border border-slate-700 hover:text-white text-slate-400 transition-all">
+                                    <i class="fa-solid fa-expand"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 24-Hour Interactive Timeline Ruler Component -->
+                    <div class="glass-panel rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-2 select-none">
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center space-x-3">
+                                <span class="font-bold text-white flex items-center gap-1.5">
+                                    <i class="fa-solid fa-timeline text-blue-400"></i>
+                                    <span>Timeline 24 Giờ:</span>
+                                </span>
+                                <span class="text-slate-400 text-[11px]" id="timeline-hover-time">Rê chuột để xem giờ</span>
+                            </div>
+                            <div class="flex items-center space-x-3 text-[11px]">
+                                <span class="flex items-center gap-1 text-slate-300">
+                                    <span class="w-3 h-2 rounded bg-emerald-500/80 inline-block"></span> Có Video
+                                </span>
+                                <span class="flex items-center gap-1 text-slate-300">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Xe Vào/Ra
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 24H Ruler Scale Marks (00:00 -> 24:00) -->
+                        <div class="relative w-full h-4 text-[9px] font-mono text-slate-500 flex justify-between px-0.5 pointer-events-none">
+                            <span>00:00</span>
+                            <span>03:00</span>
+                            <span>06:00</span>
+                            <span>09:00</span>
+                            <span>12:00</span>
+                            <span>15:00</span>
+                            <span>18:00</span>
+                            <span>21:00</span>
+                            <span>24:00</span>
+                        </div>
+
+                        <!-- Timeline Interactive Track Canvas / Container -->
+                        <div class="relative w-full h-12 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden cursor-pointer"
+                            id="timeline-track-container" onclick="handleTimelineClick(event)" onmousemove="handleTimelineMouseMove(event)" onmouseleave="handleTimelineMouseLeave()">
+                            
+                            <!-- 1. Grid Background Ruler Lines -->
+                            <div class="absolute inset-0 grid grid-cols-8 divide-x divide-slate-800/60 pointer-events-none">
+                                <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                            </div>
+
+                            <!-- 2. Video Recording Segments Layer (Green/Cyan bars) -->
+                            <div id="timeline-recording-blocks-layer" class="absolute inset-0 pointer-events-none"></div>
+
+                            <!-- 3. License Plate Event Markers Layer (Orange/Red Dots) -->
+                            <div id="timeline-events-layer" class="absolute inset-0 pointer-events-none z-10"></div>
+
+                            <!-- 4. Hover Indicator Line (White dashed) -->
+                            <div id="timeline-hover-line" class="hidden absolute top-0 bottom-0 w-[1px] bg-white/80 pointer-events-none z-20"></div>
+
+                            <!-- 5. Red Playhead Cursor (Current Time Cursor) -->
+                            <div id="timeline-playhead" class="absolute top-0 bottom-0 w-0.5 bg-rose-500 shadow-[0_0_10px_#f43f5e] pointer-events-none z-30 transition-none" style="left: 0%;">
+                                <div class="w-2.5 h-2.5 bg-rose-500 rounded-full -ml-1 -mt-0.5 shadow-md"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Clip Export Tool & Recent Exported Clips (4 Cols) -->
+                <div class="lg:col-span-4 space-y-4">
+                    
+                    <!-- Clip Export Box -->
+                    <div class="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3.5">
+                        <div class="flex items-center space-x-2 text-amber-400 font-bold text-sm">
+                            <i class="fa-solid fa-file-video text-base"></i>
+                            <span>Trích Xuất & Cắt Video Ra MP4</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">
+                            Chọn khoảng thời gian bắt đầu và kết thúc để hệ thống tự động cắt và đóng gói thành file video MP4 tải về máy.
+                        </p>
+
+                        <form id="clip-export-form" onsubmit="handleExportClipSubmit(event)" class="space-y-3">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-[11px] font-semibold text-slate-300">Bắt Đầu (Start Time):</label>
+                                    <button type="button" onclick="setExportTimeCurrent('start')" class="text-[10px] text-blue-400 hover:text-blue-300 font-mono">
+                                        [Lấy giờ video]
+                                    </button>
+                                </div>
+                                <input type="text" id="export-input-start" required placeholder="YYYY-MM-DD HH:MM:SS"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 focus:border-blue-500">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-[11px] font-semibold text-slate-300">Kết Thúc (End Time):</label>
+                                    <button type="button" onclick="setExportTimeCurrent('end')" class="text-[10px] text-blue-400 hover:text-blue-300 font-mono">
+                                        [Lấy giờ video]
+                                    </button>
+                                </div>
+                                <input type="text" id="export-input-end" required placeholder="YYYY-MM-DD HH:MM:SS"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 focus:border-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-300 mb-1">Tiêu Đề / Ghi Chú Clip (Tùy chọn):</label>
+                                <input type="text" id="export-input-title" placeholder="Ví dụ: Xe vi phạm vượt cổng..."
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-blue-500">
+                            </div>
+
+                            <button type="submit" id="btn-submit-export"
+                                class="w-full py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center space-x-2 transition-all">
+                                <i class="fa-solid fa-download"></i>
+                                <span>Cắt & Xuất File MP4</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Recent Exported Clips List -->
+                    <div class="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                <i class="fa-solid fa-clock-rotate-left text-blue-400"></i>
+                                <span>Clip Đã Xuất Gần Đây</span>
+                            </span>
+                            <button onclick="loadExportedClips()" class="text-[11px] text-slate-400 hover:text-white">
+                                <i class="fa-solid fa-rotate"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-2 max-h-60 overflow-y-auto pr-1" id="exported-clips-list-container">
+                            <div class="text-center py-4 text-xs text-slate-500">Đang tải danh sách clip...</div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
         <div id="page-cameras" class="hidden space-y-4 sm:space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
@@ -459,6 +739,7 @@
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Tên Camera</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Phân Loại Vùng</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Chức Năng</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Lưu Video (REC)</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Nhóm Hành Động (API)</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">FPS</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Trạng Thái</th>
@@ -600,6 +881,55 @@
                             <i class="fa-solid fa-paper-plane"></i>
                             <span>Gửi Thử Nghiệm Thông Báo Đến Điện Thoại</span>
                         </button>
+                    </div>
+                </div>
+
+                <!-- 3. Video Storage & NVR Recording Section -->
+                <div class="p-3.5 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs sm:text-sm font-semibold text-cyan-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-hard-drive text-cyan-400"></i>
+                            <span>3. Cấu Hình Lưu Trữ Video & Phân Đoạn Ghi Hình (NVR Storage)</span>
+                        </h3>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">MP4 Continuous</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400">Tùy chỉnh thư mục ổ đĩa lưu video, thời lượng phân đoạn từng file MP4 và tự động dọn dẹp file cũ.</p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Thư Mục Ổ Đĩa Lưu Video:</label>
+                            <input type="text" id="input-video-path" placeholder="storage/recordings hoặc D:\Recordings..."
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-cyan-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Thời Lượng Mỗi File (Phút):</label>
+                            <select id="input-video-segment" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-cyan-500">
+                                <option value="3">3 Phút / file</option>
+                                <option value="5">5 Phút / file (Khuyên dùng)</option>
+                                <option value="10">10 Phút / file</option>
+                                <option value="15">15 Phút / file</option>
+                                <option value="30">30 Phút / file</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Thời Gian Lưu Trữ Tối Đa (Ngày):</label>
+                            <select id="input-video-retention" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-cyan-500">
+                                <option value="7">7 Ngày</option>
+                                <option value="15">15 Ngày (Khuyên dùng)</option>
+                                <option value="30">30 Ngày (1 Tháng)</option>
+                                <option value="60">60 Ngày (2 Tháng)</option>
+                                <option value="90">90 Ngày (3 Tháng)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center pt-5">
+                            <label class="flex items-center space-x-2.5 cursor-pointer">
+                                <input type="checkbox" id="input-auto-cleanup" class="w-4 h-4 rounded text-cyan-600 focus:ring-cyan-500 bg-slate-950 border-slate-700">
+                                <span class="text-xs text-slate-300 font-medium">Tự động xóa video cũ nhất khi ổ đĩa gần đầy (< 10% trống)</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -878,12 +1208,26 @@
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Trạng Thái:</label>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Trạng Thái Kết Nối:</label>
                         <select id="cam-form-active" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
                             <option value="true">Đang Bật</option>
                             <option value="false">Tắt</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+                            <i class="fa-solid fa-film text-emerald-400"></i>
+                            <span>Ghi Hình / Lưu Video Ổ Đĩa:</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Chỉ camera nào bật tính năng này mới ghi video phân đoạn MP4</p>
+                    </div>
+                    <select id="cam-form-recording" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 font-semibold focus:border-emerald-500">
+                        <option value="false">⚪ Tắt Lưu Video</option>
+                        <option value="true">🔴 BẬT LƯU VIDEO (REC)</option>
+                    </select>
                 </div>
 
                 <div class="pt-3 flex justify-end space-x-2">
@@ -1086,9 +1430,20 @@
         }
 
         /* --- AUTHENTICATION & RBAC --- */
+        function getAuthHeaders() {
+            const token = localStorage.getItem('anpr_access_token');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
         async function checkAuthStatus() {
             try {
-                const res = await fetch('/api/v1/auth/me');
+                const token = localStorage.getItem('anpr_access_token');
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                const res = await fetch('/api/v1/auth/me', { headers });
                 if (res.ok) {
                     currentUser = await res.json();
                     document.getElementById('login-modal').classList.add('hidden');
@@ -1096,6 +1451,7 @@
                     return true;
                 } else {
                     currentUser = null;
+                    localStorage.removeItem('anpr_access_token');
                     document.getElementById('login-modal').classList.remove('hidden');
                     return false;
                 }
@@ -1127,12 +1483,25 @@
                 const data = await res.json();
                 if (res.ok) {
                     currentUser = data.user;
+                    if (data.access_token) {
+                        localStorage.setItem('anpr_access_token', data.access_token);
+                    }
                     document.getElementById('login-modal').classList.add('hidden');
                     applyUserPermissions();
-                    await loadActionGroupsList();
-                    await loadCameras();
-                    loadRecentDashboardLogs();
-                    initWebSocket();
+                    showToast(`Đăng nhập thành công với vai trò: ${currentUser.role}`, "success", 3000);
+                    
+                    try {
+                        await loadActionGroupsList();
+                    } catch (err) { console.error(err); }
+                    try {
+                        await loadCameras();
+                    } catch (err) { console.error(err); }
+                    try {
+                        loadRecentDashboardLogs();
+                    } catch (err) { console.error(err); }
+                    try {
+                        initWebSocket();
+                    } catch (err) { console.error(err); }
                 } else {
                     errorText.innerText = data.detail || 'Đăng nhập thất bại.';
                     errorBox.classList.remove('hidden');
@@ -1150,9 +1519,12 @@
             try {
                 const controller = new AbortController();
                 const tid = setTimeout(() => controller.abort(), 3000);
-                await fetch('/api/v1/auth/logout', { method: 'POST', signal: controller.signal });
+                const token = localStorage.getItem('anpr_access_token');
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                await fetch('/api/v1/auth/logout', { method: 'POST', headers, signal: controller.signal });
                 clearTimeout(tid);
             } catch (e) { }
+            localStorage.removeItem('anpr_access_token');
             currentUser = null;
             document.getElementById('user-dropdown-menu').classList.add('hidden');
             document.getElementById('login-modal').classList.remove('hidden');
@@ -1246,15 +1618,23 @@
 
         function switchTab(tabId) {
             currentTab = tabId;
-            ['dashboard', 'history', 'cameras', 'settings'].forEach(t => {
+            ['dashboard', 'playback', 'history', 'cameras', 'settings'].forEach(t => {
                 const page = document.getElementById(`page-${t}`);
                 const btn = document.getElementById(`tab-${t}`);
+                const mobBtn = document.getElementById(`mob-tab-${t}`);
                 if (page) page.classList.toggle('hidden', t !== tabId);
                 if (btn) {
                     if (t === tabId) {
                         btn.className = 'tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg transition-all bg-blue-600 text-white shadow-md flex items-center';
                     } else {
                         btn.className = 'tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all flex items-center';
+                    }
+                }
+                if (mobBtn) {
+                    if (t === tabId) {
+                        mobBtn.className = 'mob-tab-btn flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-md transition-all';
+                    } else {
+                        mobBtn.className = 'mob-tab-btn flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900/80 border border-slate-800 hover:text-white transition-all';
                     }
                 }
             });
@@ -1265,6 +1645,10 @@
                 renderCameraGrid();
             }
 
+            if (tabId === 'playback') {
+                loadPlaybackCameras();
+                loadExportedClips();
+            }
             if (tabId === 'history') fetchHistoryLogs(1);
             if (tabId === 'settings') loadSettingsValues();
         }
@@ -1304,6 +1688,7 @@
                 renderCameraGrid();
                 renderCameraTable();
                 populateCameraFilterDropdown();
+                populatePlaybackCameraDropdown();
             } catch (e) {
                 console.error("Error loading cameras:", e);
             }
@@ -1338,6 +1723,10 @@
                     ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">👁️ Quan Sát</span>`
                     : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">📸 Đọc Biển Số</span>`;
 
+                const recBadge = cam.is_recording
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>REC</span>`
+                    : '';
+
                 const isAdmin = currentUser && currentUser.role === 'admin';
 
                 return `
@@ -1348,6 +1737,7 @@
                                 <h3 class="font-bold text-xs sm:text-sm text-white truncate" title="${cam.camera_name}">${cam.camera_name}</h3>
                             </div>
                             <div class="flex items-center space-x-1.5 flex-shrink-0">
+                                ${recBadge}
                                 ${zoneBadge}
                                 ${funcBadge}
                                 ${isAdmin ? `
@@ -1359,16 +1749,21 @@
                         </div>
                         <div class="relative bg-slate-950 aspect-video flex items-center justify-center overflow-hidden group cursor-pointer" onclick="openZoomModal(${cam.id})">
                             <img id="grid-cam-img-${cam.id}" src="/api/v1/cameras/${cam.id}/snapshot?_t=${Date.now()}" class="w-full h-full object-cover" alt="${cam.camera_name}">
-                            <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
                                 <span class="px-3 py-1.5 rounded-xl bg-slate-900/90 text-white text-xs font-semibold border border-slate-700 shadow flex items-center space-x-1.5">
                                     <i class="fa-solid fa-expand text-blue-400"></i>
-                                    <span>Xem Toàn Màn Hình</span>
+                                    <span>Toàn Màn Hình</span>
                                 </span>
                             </div>
                         </div>
                         <div class="p-2.5 bg-slate-900/60 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
                             <span class="truncate"><i class="fa-solid fa-diagram-project mr-1 text-amber-400"></i>${cam.action_group_name || 'Không gán webhook'}</span>
-                            <span class="font-mono text-slate-400 flex-shrink-0">${cam.target_fps} FPS</span>
+                            <div class="flex items-center space-x-2 flex-shrink-0">
+                                <button onclick="openPlaybackForEvent(${cam.id}, '')" class="text-blue-400 hover:text-blue-300 font-semibold" title="Xem lại video camera này">
+                                    <i class="fa-solid fa-film mr-1"></i>Xem lại
+                                </button>
+                                <span class="font-mono text-slate-400">${cam.target_fps} FPS</span>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1392,10 +1787,19 @@
                     <td class="p-3 sm:p-4 font-bold text-white">${cam.camera_name}</td>
                     <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${cam.zone_code === 'KHO_BAI' ? 'bg-amber-500/20 text-amber-300' : 'bg-cyan-500/20 text-cyan-300'}">${cam.zone_name || cam.zone_code}</span></td>
                     <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${cam.camera_function === 'SURVEILLANCE' ? 'bg-purple-500/20 text-purple-300' : 'bg-emerald-500/20 text-emerald-300'}">${cam.camera_function === 'SURVEILLANCE' ? 'Quan Sát' : 'Đọc Biển Số'}</span></td>
+                    <td class="p-3 sm:p-4">
+                        <button onclick="toggleCameraRecording(${cam.id})" class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${cam.is_recording ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 shadow-sm shadow-rose-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'} flex items-center gap-1.5 cursor-pointer" title="Nhấn để Bật/Tắt lưu video cho camera này">
+                            <span class="w-2 h-2 rounded-full ${cam.is_recording ? 'bg-rose-500 animate-pulse' : 'bg-slate-600'}"></span>
+                            <span>${cam.is_recording ? 'REC BẬT' : 'Tắt'}</span>
+                        </button>
+                    </td>
                     <td class="p-3 sm:p-4 text-slate-300">${cam.action_group_name || '-'}</td>
                     <td class="p-3 sm:p-4 font-mono">${cam.target_fps}</td>
                     <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded-full text-[10px] ${cam.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${cam.is_active ? 'Đang Bật' : 'Tắt'}</span></td>
-                    <td class="p-3 sm:p-4 text-right space-x-1">
+                    <td class="p-3 sm:p-4 text-right space-x-1 whitespace-nowrap">
+                        <button onclick="openPlaybackForEvent(${cam.id}, '')" class="px-2.5 py-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 rounded-lg text-xs" title="Xem lại video">
+                            <i class="fa-solid fa-film mr-1"></i>Xem lại
+                        </button>
                         <button onclick="openEditCameraModal(${cam.id})" class="px-2.5 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs">
                             <i class="fa-solid fa-pen mr-1"></i>Sửa
                         </button>
@@ -1407,11 +1811,36 @@
             `).join('');
         }
 
+        async function toggleCameraRecording(camId) {
+            try {
+                const res = await fetch(`/api/v1/cameras/${camId}/toggle-recording`, { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    const statusText = data.is_recording ? "BẬT LƯU VIDEO (REC)" : "TẮT LƯU VIDEO";
+                    showToast(`Đã ${statusText} cho Camera #${camId}`, "success", 4000);
+                    await loadCameras();
+                } else {
+                    showToast("Lỗi: " + (data.detail || JSON.stringify(data)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối: " + err, "error");
+            }
+        }
+
         function populateCameraFilterDropdown() {
             const select = document.getElementById('filter-camera');
             if (!select) return;
             select.innerHTML = `<option value="">-- Tất cả Camera --</option>` + camerasList.map(c => `
                 <option value="${c.id}">${c.camera_name} (${c.zone_name || c.zone_code})</option>
+            `).join('');
+        }
+
+        function populatePlaybackCameraDropdown() {
+            const select = document.getElementById('playback-camera-select');
+            if (!select) return;
+            const currentVal = select.value;
+            select.innerHTML = camerasList.map(c => `
+                <option value="${c.id}" ${c.id == currentVal ? 'selected' : ''}>${c.camera_name} ${c.is_recording ? '🔴 [REC]' : ''}</option>
             `).join('');
         }
 
@@ -1425,6 +1854,8 @@
             document.getElementById('cam-form-zone').value = 'TRUONGLAI';
             document.getElementById('cam-form-function').value = 'ANPR';
             document.getElementById('cam-form-active').value = 'true';
+            const recEl = document.getElementById('cam-form-recording');
+            if (recEl) recEl.value = 'false';
             
             const alertBox = document.getElementById('cam-form-alert');
             if (alertBox) {
@@ -1476,6 +1907,8 @@
             document.getElementById('cam-form-zone').value = cam.zone_code || 'TRUONGLAI';
             document.getElementById('cam-form-function').value = cam.camera_function || 'ANPR';
             document.getElementById('cam-form-active').value = cam.is_active ? 'true' : 'false';
+            const recEl = document.getElementById('cam-form-recording');
+            if (recEl) recEl.value = cam.is_recording ? 'true' : 'false';
             
             populateActionGroupOptions(cam.action_group_id);
             document.getElementById('camera-form-modal').classList.remove('hidden');
@@ -1516,7 +1949,8 @@
                 zone_name: zoneName,
                 camera_function: document.getElementById('cam-form-function').value,
                 action_group_id: agVal ? parseInt(agVal, 10) : null,
-                is_active: document.getElementById('cam-form-active').value === 'true'
+                is_active: document.getElementById('cam-form-active').value === 'true',
+                is_recording: document.getElementById('cam-form-recording') ? (document.getElementById('cam-form-recording').value === 'true') : false
             };
 
             // Loading state
@@ -1935,6 +2369,11 @@
                     document.getElementById('input-gemini-model').value = data.gemini_model_name || 'gemini-2.0-flash';
                     document.getElementById('input-fcm-key').value = data.fcm_server_key || '';
                     document.getElementById('input-fcm-project').value = data.fcm_project_id || '';
+
+                    if (document.getElementById('input-video-path')) document.getElementById('input-video-path').value = data.video_storage_path || 'storage/recordings';
+                    if (document.getElementById('input-video-segment')) document.getElementById('input-video-segment').value = data.video_segment_minutes || 5;
+                    if (document.getElementById('input-video-retention')) document.getElementById('input-video-retention').value = data.video_retention_days || 15;
+                    if (document.getElementById('input-auto-cleanup')) document.getElementById('input-auto-cleanup').checked = data.auto_cleanup_disk !== false;
                 }
             } catch (e) { }
         }
@@ -1953,7 +2392,11 @@
                 gemini_api_key: document.getElementById('input-gemini-key').value.trim(),
                 gemini_model_name: document.getElementById('input-gemini-model').value.trim(),
                 fcm_server_key: document.getElementById('input-fcm-key').value.trim(),
-                fcm_project_id: document.getElementById('input-fcm-project').value.trim()
+                fcm_project_id: document.getElementById('input-fcm-project').value.trim(),
+                video_storage_path: document.getElementById('input-video-path') ? document.getElementById('input-video-path').value.trim() : 'storage/recordings',
+                video_segment_minutes: document.getElementById('input-video-segment') ? (parseInt(document.getElementById('input-video-segment').value, 10) || 5) : 5,
+                video_retention_days: document.getElementById('input-video-retention') ? (parseInt(document.getElementById('input-video-retention').value, 10) || 15) : 15,
+                auto_cleanup_disk: document.getElementById('input-auto-cleanup') ? document.getElementById('input-auto-cleanup').checked : true
             };
 
             try {
@@ -1963,7 +2406,7 @@
                     body: JSON.stringify(payload)
                 });
                 if (res.ok) {
-                    showToast("Đã lưu cấu hình OCR và Firebase FCM thành công!", "success");
+                    showToast("Đã lưu cấu hình Hệ Thống & Lưu Trữ Video thành công!", "success");
                 }
             } catch (err) {
                 showToast("Lỗi khi lưu cấu hình: " + err, "error");
@@ -2044,10 +2487,13 @@
                             <img src="${item.image_plate_path}" onclick="openImageViewer('${item.image_plate_path}', 'Biển số: ${item.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform">
                         </td>
                         <td class="p-3 text-right space-x-1 whitespace-nowrap">
+                            <button onclick="openPlaybackForEvent(${item.camera_id}, '${item.detected_at}')" class="px-2.5 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video thời điểm này">
+                                <i class="fa-solid fa-film mr-1"></i>Video
+                            </button>
                             <button onclick="openImageModal('${item.image_plate_path}', '${item.image_full_path}', '${item.plate_number}', '${item.summary || ''}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
                             ${currentUser && (currentUser.role === 'admin' || currentUser.role === 'quan_ly') ? `
-                                <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.summary || ''}')" class="px-2 py-1 text-xs bg-amber-600/20 text-amber-400 rounded-lg"><i class="fa-solid fa-pen-to-square"></i></button>
-                                <button onclick="deleteVehicleLog(${item.id}, '${item.plate_number}')" class="px-2 py-1 text-xs bg-rose-600/20 text-rose-400 rounded-lg"><i class="fa-solid fa-trash-can"></i></button>
+                                <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.summary || ''}')" class="px-2 py-1 text-xs bg-amber-600/20 text-amber-400 rounded-lg" title="Chỉnh sửa"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <button onclick="deleteVehicleLog(${item.id}, '${item.plate_number}')" class="px-2 py-1 text-xs bg-rose-600/20 text-rose-400 rounded-lg" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
                             ` : ''}
                         </td>
                     </tr>
@@ -2105,12 +2551,482 @@
                         <td class="p-2.5 sm:p-3">${renderVehicleViewBadge(d.vehicle_view)}</td>
                         <td class="p-2.5 sm:p-3 text-xs text-slate-400 font-mono">${(d.confidence_score * 100).toFixed(1)}%</td>
                         <td class="p-2.5 sm:p-3"><img src="${d.image_plate_path}" onclick="openImageViewer('${d.image_plate_path}', 'Biển số: ${d.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform"></td>
-                        <td class="p-2.5 sm:p-3 text-right whitespace-nowrap">
+                        <td class="p-2.5 sm:p-3 text-right whitespace-nowrap space-x-1">
+                            <button onclick="openPlaybackForEvent(${d.camera_id}, '${d.detected_at}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video">
+                                <i class="fa-solid fa-film mr-1"></i>Video
+                            </button>
                             <button onclick="openImageModal('${d.image_plate_path}', '${d.image_full_path}', '${d.plate_number}', '${d.summary || ''}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
                         </td>
                     </tr>
                 `).join('');
+            } catch (e) {
+                console.error("Lỗi tải danh sách logs gần đây:", e);
+            }
+        }
+
+        /* --- VIDEO PLAYBACK, 24H TIMELINE & CLIP EXPORT ENGINE --- */
+        let playbackState = {
+            selectedCameraId: null,
+            selectedDate: '',
+            timelineData: { blocks: [], events: [], date: '', camera_id: null },
+            currentRecording: null,
+            currentSpeed: 1,
+            currentAbsTimeSec: 0
+        };
+
+        async function loadPlaybackCameras() {
+            if (!camerasList || camerasList.length === 0) {
+                await loadCameras();
+            }
+            populatePlaybackCameraDropdown();
+
+            const camSelect = document.getElementById('playback-camera-select');
+            const dateSelect = document.getElementById('playback-date-select');
+
+            if (!playbackState.selectedCameraId && camSelect.options.length > 0) {
+                playbackState.selectedCameraId = parseInt(camSelect.value, 10);
+            } else if (playbackState.selectedCameraId) {
+                camSelect.value = playbackState.selectedCameraId;
+            }
+
+            if (!dateSelect.value) {
+                const today = new Date().toISOString().split('T')[0];
+                dateSelect.value = today;
+                playbackState.selectedDate = today;
+            } else {
+                playbackState.selectedDate = dateSelect.value;
+            }
+
+            await loadPlaybackTimeline();
+        }
+
+        function onPlaybackCameraOrDateChange() {
+            const camSelect = document.getElementById('playback-camera-select');
+            const dateSelect = document.getElementById('playback-date-select');
+            if (camSelect && camSelect.value) {
+                playbackState.selectedCameraId = parseInt(camSelect.value, 10);
+            }
+            if (dateSelect && dateSelect.value) {
+                playbackState.selectedDate = dateSelect.value;
+            }
+            loadPlaybackTimeline();
+        }
+
+        async function loadPlaybackTimeline() {
+            const camSelect = document.getElementById('playback-camera-select');
+            const dateSelect = document.getElementById('playback-date-select');
+            const camId = camSelect ? parseInt(camSelect.value, 10) : playbackState.selectedCameraId;
+            const dateStr = dateSelect ? dateSelect.value : playbackState.selectedDate;
+
+            if (!camId || !dateStr) return;
+
+            playbackState.selectedCameraId = camId;
+            playbackState.selectedDate = dateStr;
+
+            const selectedCam = camerasList.find(c => c.id === camId);
+            const osdCamName = document.getElementById('playback-osd-cam-name');
+            if (osdCamName) osdCamName.innerText = selectedCam ? selectedCam.camera_name : `Camera #${camId}`;
+
+            try {
+                const res = await fetch(`/api/v1/playback/timeline?camera_id=${camId}&date=${dateStr}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                playbackState.timelineData = data;
+
+                const recBadge = document.getElementById('playback-rec-count-badge');
+                if (recBadge) recBadge.innerHTML = `<i class="fa-solid fa-film"></i><span>${data.total_recordings_count || data.blocks.length} đoạn video</span>`;
+
+                const evtBadge = document.getElementById('playback-evt-count-badge');
+                if (evtBadge) evtBadge.innerHTML = `<i class="fa-solid fa-car"></i><span>${data.total_events_count || data.events.length} sự kiện xe</span>`;
+
+                renderPlaybackTimeline(data);
+            } catch (err) {
+                console.error("Error loading timeline:", err);
+            }
+        }
+
+        function renderPlaybackTimeline(data) {
+            const blocksLayer = document.getElementById('timeline-recording-blocks-layer');
+            const eventsLayer = document.getElementById('timeline-events-layer');
+            if (!blocksLayer || !eventsLayer) return;
+
+            // 1. Render Video Recording Blocks (Green Bars)
+            if (!data.blocks || data.blocks.length === 0) {
+                blocksLayer.innerHTML = '';
+            } else {
+                blocksLayer.innerHTML = data.blocks.map(b => {
+                    const leftPercent = (b.start_second / 86400) * 100;
+                    const widthPercent = Math.max(0.15, ((b.end_second - b.start_second) / 86400) * 100);
+                    const startTimeShort = b.start_time.split(' ')[1];
+                    const endTimeShort = b.end_time.split(' ')[1];
+                    return `
+                        <div class="absolute top-1 bottom-1 rounded bg-emerald-500/80 hover:bg-emerald-400 border-x border-slate-900/50 shadow-sm transition-colors cursor-pointer"
+                            style="left: ${leftPercent}%; width: ${widthPercent}%;"
+                            title="Đoạn ghi: ${startTimeShort} - ${endTimeShort} (${Math.round(b.duration_seconds)}s)">
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 2. Render Vehicle Event Markers (Orange/Amber Points)
+            if (!data.events || data.events.length === 0) {
+                eventsLayer.innerHTML = '';
+            } else {
+                eventsLayer.innerHTML = data.events.map(evt => {
+                    const leftPercent = (evt.second_of_day / 86400) * 100;
+                    const timeShort = evt.detected_at.split(' ')[1];
+                    return `
+                        <div class="absolute top-0 bottom-0 w-3 -ml-1.5 flex items-center justify-center group/evt cursor-pointer pointer-events-auto"
+                            style="left: ${leftPercent}%;"
+                            onclick="event.stopPropagation(); locateAndPlayTimestamp(${data.camera_id}, '${evt.detected_at}')">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 group-hover/evt:scale-150 group-hover/evt:bg-amber-300 shadow-md shadow-amber-400/80 border border-slate-950 transition-all"></span>
+                            <div class="hidden group-hover/evt:block absolute bottom-full mb-1 bg-slate-900/95 text-amber-300 text-[10px] font-bold font-mono px-2 py-0.5 rounded-lg border border-slate-700 shadow-xl pointer-events-none whitespace-nowrap z-40">
+                                🚗 ${evt.plate_number} (${timeShort})
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function handleTimelineClick(e) {
+            const container = document.getElementById('timeline-track-container');
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
+            const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const secondOfDay = Math.floor(clickRatio * 86400);
+
+            const h = String(Math.floor(secondOfDay / 3600)).padStart(2, '0');
+            const m = String(Math.floor((secondOfDay % 3600) / 60)).padStart(2, '0');
+            const s = String(secondOfDay % 60).padStart(2, '0');
+            const timestampStr = `${playbackState.selectedDate} ${h}:${m}:${s}`;
+
+            locateAndPlayTimestamp(playbackState.selectedCameraId, timestampStr);
+        }
+
+        function handleTimelineMouseMove(e) {
+            const container = document.getElementById('timeline-track-container');
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
+            const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const secondOfDay = Math.floor(ratio * 86400);
+
+            const h = String(Math.floor(secondOfDay / 3600)).padStart(2, '0');
+            const m = String(Math.floor((secondOfDay % 3600) / 60)).padStart(2, '0');
+            const s = String(secondOfDay % 60).padStart(2, '0');
+
+            const line = document.getElementById('timeline-hover-line');
+            if (line) {
+                line.style.left = (ratio * 100) + '%';
+                line.classList.remove('hidden');
+            }
+
+            const hoverTime = document.getElementById('timeline-hover-time');
+            if (hoverTime) hoverTime.innerText = `Thời gian: ${h}:${m}:${s}`;
+        }
+
+        function handleTimelineMouseLeave() {
+            const line = document.getElementById('timeline-hover-line');
+            if (line) line.classList.add('hidden');
+            const hoverTime = document.getElementById('timeline-hover-time');
+            if (hoverTime) hoverTime.innerText = 'Rê chuột để xem giờ';
+        }
+
+        async function locateAndPlayTimestamp(cameraId, timestampStr) {
+            if (!cameraId || !timestampStr) return;
+            try {
+                const res = await fetch(`/api/v1/playback/locate?camera_id=${cameraId}&timestamp=${encodeURIComponent(timestampStr)}`);
+                const data = await res.json();
+                if (res.ok && data.recording) {
+                    playVideoRecording(data.recording, data.seek_offset_seconds);
+                } else {
+                    showToast(`Không có video được lưu tại thời điểm [${timestampStr}]`, "warning", 3500);
+                }
+            } catch (e) {
+                showToast("Lỗi khi tìm đoạn video: " + e, "error");
+            }
+        }
+
+        function playVideoRecording(recording, seekOffset = 0) {
+            playbackState.currentRecording = recording;
+            const video = document.getElementById('playback-video-element');
+            const emptyState = document.getElementById('playback-empty-state');
+            if (emptyState) emptyState.classList.add('hidden');
+
+            const streamUrl = `/api/v1/playback/stream/${recording.id}`;
+            video.src = streamUrl;
+            video.playbackRate = playbackState.currentSpeed;
+
+            const onLoaded = () => {
+                video.removeEventListener('loadedmetadata', onLoaded);
+                if (seekOffset > 0 && seekOffset < (video.duration || 9999)) {
+                    video.currentTime = seekOffset;
+                }
+                video.play().catch(e => {});
+            };
+            video.addEventListener('loadedmetadata', onLoaded);
+            video.load();
+        }
+
+        function setPlaybackSpeed(speed) {
+            playbackState.currentSpeed = speed;
+            const video = document.getElementById('playback-video-element');
+            if (video) video.playbackRate = speed;
+
+            [1, 2, 4, 8].forEach(s => {
+                const btn = document.getElementById(`speed-btn-${s}`);
+                if (btn) {
+                    if (s === speed) {
+                        btn.className = 'speed-btn px-2.5 py-1 rounded-lg font-bold font-mono text-xs bg-blue-600 text-white shadow transition-all';
+                    } else {
+                        btn.className = 'speed-btn px-2.5 py-1 rounded-lg font-bold font-mono text-xs text-slate-400 hover:text-white hover:bg-slate-800 transition-all';
+                    }
+                }
+            });
+
+            const osdSpeed = document.getElementById('playback-osd-speed');
+            if (osdSpeed) osdSpeed.innerText = `${speed}.0x SPEED`;
+        }
+
+        function togglePlaybackPlayPause() {
+            const video = document.getElementById('playback-video-element');
+            if (!video || !video.src) return;
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        }
+
+        function seekPlaybackRelative(sec) {
+            const video = document.getElementById('playback-video-element');
+            if (!video) return;
+            video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + sec));
+        }
+
+        function updatePlayPauseIcon(isPlaying) {
+            const icon = document.getElementById('playback-icon-play');
+            if (icon) {
+                icon.className = isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+            }
+        }
+
+        function onPlaybackVideoTimeUpdate() {
+            const video = document.getElementById('playback-video-element');
+            if (!video || !playbackState.currentRecording) return;
+
+            const cur = video.currentTime || 0;
+            const dur = video.duration || 0;
+
+            const curH = String(Math.floor(cur / 3600)).padStart(2, '0');
+            const curM = String(Math.floor((cur % 3600) / 60)).padStart(2, '0');
+            const curS = String(Math.floor(cur % 60)).padStart(2, '0');
+
+            const durH = String(Math.floor(dur / 3600)).padStart(2, '0');
+            const durM = String(Math.floor((dur % 3600) / 60)).padStart(2, '0');
+            const durS = String(Math.floor(dur % 60)).padStart(2, '0');
+
+            const curTimeEl = document.getElementById('playback-current-time-text');
+            if (curTimeEl) curTimeEl.innerText = `${curH}:${curM}:${curS}`;
+
+            const durTimeEl = document.getElementById('playback-duration-text');
+            if (durTimeEl) durTimeEl.innerText = `${durH}:${durM}:${durS}`;
+
+            // Absolute timestamp sync on timeline
+            try {
+                const recStartParts = playbackState.currentRecording.start_time.split(' ');
+                const timeParts = recStartParts[1].split(':');
+                const baseSec = parseInt(timeParts[0], 10) * 3600 + parseInt(timeParts[1], 10) * 60 + parseFloat(timeParts[2]);
+                const currentAbsSec = baseSec + cur;
+                playbackState.currentAbsTimeSec = currentAbsSec;
+
+                const absH = String(Math.floor(currentAbsSec / 3600) % 24).padStart(2, '0');
+                const absM = String(Math.floor((currentAbsSec % 3600) / 60)).padStart(2, '0');
+                const absS = String(Math.floor(currentAbsSec % 60)).padStart(2, '0');
+
+                const osdTime = document.getElementById('playback-osd-time');
+                if (osdTime) osdTime.innerText = `${recStartParts[0]} ${absH}:${absM}:${absS}`;
+
+                const playhead = document.getElementById('timeline-playhead');
+                if (playhead) {
+                    const playheadPercent = Math.max(0, Math.min(100, (currentAbsSec / 86400) * 100));
+                    playhead.style.left = `${playheadPercent}%`;
+                }
             } catch (e) { }
+        }
+
+        function onPlaybackVideoEnded() {
+            if (!playbackState.currentRecording || !playbackState.timelineData.blocks) return;
+            const blocks = playbackState.timelineData.blocks;
+            const curIdx = blocks.findIndex(b => b.recording_id === playbackState.currentRecording.id);
+            if (curIdx !== -1 && curIdx + 1 < blocks.length) {
+                const nextBlock = blocks[curIdx + 1];
+                locateAndPlayTimestamp(playbackState.selectedCameraId, nextBlock.start_time);
+            } else {
+                showToast("Đã xem hết đoạn video đã ghi trong danh sách.", "info");
+            }
+        }
+
+        function togglePlaybackFullscreen() {
+            const container = document.getElementById('playback-player-container');
+            if (!container) return;
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().catch(err => { });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function setExportTimeCurrent(which) {
+            const osdTime = document.getElementById('playback-osd-time');
+            if (osdTime && osdTime.innerText && osdTime.innerText !== '--:--:--') {
+                const field = document.getElementById(`export-input-${which}`);
+                if (field) field.value = osdTime.innerText.trim();
+            } else {
+                showToast("Chưa có video đang phát để lấy thời điểm.", "warning");
+            }
+        }
+
+        function setExportMarkersFromCurrentTime() {
+            if (!playbackState.currentRecording) {
+                showToast("Chưa có video đang phát để đặt mốc thời gian.", "warning");
+                return;
+            }
+            const video = document.getElementById('playback-video-element');
+            const cur = video ? (video.currentTime || 0) : 0;
+            const recStartParts = playbackState.currentRecording.start_time.split(' ');
+            const timeParts = recStartParts[1].split(':');
+            const baseSec = parseInt(timeParts[0], 10) * 3600 + parseInt(timeParts[1], 10) * 60 + parseFloat(timeParts[2]);
+
+            const startSec = Math.max(0, baseSec + cur - 30);
+            const endSec = Math.min(86400, baseSec + cur + 30);
+
+            const sH = String(Math.floor(startSec / 3600) % 24).padStart(2, '0');
+            const sM = String(Math.floor((startSec % 3600) / 60)).padStart(2, '0');
+            const sS = String(Math.floor(startSec % 60)).padStart(2, '0');
+
+            const eH = String(Math.floor(endSec / 3600) % 24).padStart(2, '0');
+            const eM = String(Math.floor((endSec % 3600) / 60)).padStart(2, '0');
+            const eS = String(Math.floor(endSec % 60)).padStart(2, '0');
+
+            document.getElementById('export-input-start').value = `${recStartParts[0]} ${sH}:${sM}:${sS}`;
+            document.getElementById('export-input-end').value = `${recStartParts[0]} ${eH}:${eM}:${eS}`;
+            showToast("Đã thiết lập khoảng cắt clip: -30s đến +30s", "info", 3000);
+        }
+
+        async function handleExportClipSubmit(e) {
+            e.preventDefault();
+            const cameraId = playbackState.selectedCameraId;
+            const startTime = document.getElementById('export-input-start').value.trim();
+            const endTime = document.getElementById('export-input-end').value.trim();
+            const title = document.getElementById('export-input-title').value.trim();
+            const btn = document.getElementById('btn-submit-export');
+
+            if (!cameraId) {
+                showToast("Vui lòng chọn Camera trước khi xuất clip.", "warning");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang Cắt & Xuất MP4...</span>';
+
+            try {
+                const res = await fetch('/api/v1/playback/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        camera_id: cameraId,
+                        start_time: startTime,
+                        end_time: endTime,
+                        title: title
+                    })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    const mb = (data.file_size_bytes / (1024 * 1024)).toFixed(2);
+                    showToast(`✅ Đã xuất đoạn video thành công (${mb} MB)!`, "success", 5000);
+                    loadExportedClips();
+                } else {
+                    showToast("❌ Lỗi xuất clip: " + (data.detail || data.message || JSON.stringify(data)), "error", 5000);
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối máy chủ: " + err, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-download"></i><span>Cắt & Xuất File MP4</span>';
+            }
+        }
+
+        async function loadExportedClips() {
+            try {
+                const res = await fetch('/api/v1/playback/exports');
+                if (!res.ok) return;
+                const items = await res.json();
+                const container = document.getElementById('exported-clips-list-container');
+                if (!container) return;
+
+                if (items.length === 0) {
+                    container.innerHTML = `<div class="text-center py-4 text-xs text-slate-500">Chưa có clip nào được xuất.</div>`;
+                    return;
+                }
+
+                container.innerHTML = items.map(c => `
+                    <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 flex items-center justify-between text-xs transition-all">
+                        <div class="truncate mr-2">
+                            <div class="font-bold text-white truncate">${c.title || c.file_name}</div>
+                            <div class="text-[10px] text-slate-400 font-mono mt-0.5">${c.start_time} ➔ ${c.end_time.split(' ')[1]}</div>
+                            <div class="text-[10px] text-slate-500 font-mono">${(c.file_size_bytes / (1024 * 1024)).toFixed(1)} MB • ${Math.round(c.duration_seconds)}s</div>
+                        </div>
+                        <div class="flex items-center space-x-1 flex-shrink-0">
+                            <a href="/api/v1/playback/download/${c.id}" download class="p-1.5 px-2 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 font-semibold" title="Tải file MP4">
+                                <i class="fa-solid fa-download"></i>
+                            </a>
+                            <button onclick="deleteExportedClip(${c.id})" class="p-1.5 px-2 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600/30" title="Xóa clip">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { }
+        }
+
+        async function deleteExportedClip(exportId) {
+            if (!confirm("Bạn có chắc chắn muốn xóa clip này khỏi danh sách không?")) return;
+            try {
+                const res = await fetch(`/api/v1/playback/exports/${exportId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast("Đã xóa clip thành công!", "success");
+                    loadExportedClips();
+                }
+            } catch (e) {
+                showToast("Lỗi khi xóa clip: " + e, "error");
+            }
+        }
+
+        function openPlaybackForEvent(cameraId, detectedAt) {
+            switchTab('playback');
+            setTimeout(async () => {
+                if (!camerasList || camerasList.length === 0) await loadCameras();
+                await loadPlaybackCameras();
+
+                if (cameraId) {
+                    const selectCam = document.getElementById('playback-camera-select');
+                    if (selectCam) selectCam.value = cameraId;
+                    playbackState.selectedCameraId = parseInt(cameraId, 10);
+                }
+
+                if (detectedAt) {
+                    const datePart = detectedAt.split(' ')[0];
+                    const selectDate = document.getElementById('playback-date-select');
+                    if (selectDate) selectDate.value = datePart;
+                    playbackState.selectedDate = datePart;
+
+                    await loadPlaybackTimeline();
+                    locateAndPlayTimestamp(cameraId, detectedAt);
+                } else {
+                    await loadPlaybackTimeline();
+                }
+            }, 250);
         }
 
         /* --- MODALS HANDLERS --- */
@@ -2310,7 +3226,10 @@
                             <td class="p-2.5 sm:p-3">
                                 <img src="${data.image_plate_path}" onclick="openImageViewer('${data.image_plate_path}', 'Biển số: ${data.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform">
                             </td>
-                            <td class="p-2.5 sm:p-3 text-right whitespace-nowrap">
+                            <td class="p-2.5 sm:p-3 text-right whitespace-nowrap space-x-1">
+                                <button onclick="openPlaybackForEvent(${data.camera_id}, '${data.detected_at}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video">
+                                    <i class="fa-solid fa-film mr-1"></i>Video
+                                </button>
                                 <button onclick="openImageModal('${data.image_plate_path}', '${data.image_full_path}', '${data.plate_number}', '${data.summary || ''}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
                             </td>
                         </tr>
