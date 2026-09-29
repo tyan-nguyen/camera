@@ -130,12 +130,58 @@ def get_playback_timeline(
         events=events
     )
 
+import subprocess
+
 def open_video_file_absolute(file_path: str) -> str:
     """Chuẩn hóa đường dẫn file video tuyệt đối trên ổ đĩa"""
     if os.path.isabs(file_path):
         abs_path = file_path
     else:
         abs_path = os.path.join(settings.BASE_DIR, file_path)
+    return abs_path
+
+def ensure_h264_playable(abs_path: str) -> str:
+    """Tự động chuyển đổi file MP4 sang chuẩn H.264 (+faststart) nếu file chưa tương thích trình duyệt"""
+    if not os.path.exists(abs_path):
+        return abs_path
+
+    try:
+        import imageio_ffmpeg
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        ffmpeg_exe = "ffmpeg"
+
+    try:
+        cap = cv2.VideoCapture(abs_path)
+        fourcc_int = int(cap.get(cv2.CAP_PROP_FOURCC)) if cap.isOpened() else 0
+        fourcc_str = ''.join([chr((fourcc_int >> 8 * i) & 0xFF) for i in range(4)]).lower()
+        cap.release()
+        
+        # Nếu là FMP4 / mp4v không xem được trên web
+        if fourcc_str in ['fmp4', 'mp4v', 'xvid', 'divx', '']:
+            temp_path = abs_path.replace(".mp4", "_h264tmp.mp4")
+            cmd = [
+                ffmpeg_exe, "-y",
+                "-i", abs_path,
+                "-c:v", "libx264",
+                "-preset", "veryfast",
+                "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart",
+                temp_path
+            ]
+            res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if res.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+                os.replace(temp_path, abs_path)
+                logger.info(f"Auto-transcoded on-demand to H.264 (+faststart): {abs_path}")
+            else:
+                if os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except Exception:
+                        pass
+    except Exception as e:
+        logger.warning(f"ensure_h264_playable note for {abs_path}: {e}")
+
     return abs_path
 
 @router.get("/stream/{recording_id}")
@@ -156,10 +202,11 @@ def stream_recording_video(
     if not check_camera_access(rec.camera_id, current_user):
         raise HTTPException(status_code=403, detail="Tài khoản không có quyền xem video camera này.")
 
-    abs_path = open_video_file_absolute(rec.file_path)
-    if not os.path.exists(abs_path):
+    raw_path = open_video_file_absolute(rec.file_path)
+    if not os.path.exists(raw_path):
         raise HTTPException(status_code=404, detail="File video không tồn tại trên ổ đĩa.")
 
+    abs_path = ensure_h264_playable(raw_path)
     file_size = os.path.getsize(abs_path)
     range_header = request.headers.get("range", "").strip()
 
