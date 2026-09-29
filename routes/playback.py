@@ -235,38 +235,52 @@ def locate_recording_by_time(
     except ValueError:
         raise HTTPException(status_code=400, detail="Thời gian timestamp không đúng định dạng.")
 
-    # Tìm file bao trùm target_dt
+    # 1. Tìm file đã hoàn tất (status='completed') bao trùm target_dt
     rec = db.query(VideoRecording).filter(
         VideoRecording.camera_id == camera_id,
+        VideoRecording.status == "completed",
         VideoRecording.start_time <= target_dt,
-        or_(VideoRecording.end_time >= target_dt, VideoRecording.end_time.is_(None))
+        VideoRecording.end_time >= target_dt
     ).order_by(VideoRecording.start_time.desc()).first()
 
-    # Nếu không thấy đoạn bao trùm, tìm đoạn gần nhất trước target_dt
+    # 2. Nếu không thấy, tìm file completed gần nhất trước target_dt
+    if not rec:
+        rec = db.query(VideoRecording).filter(
+            VideoRecording.camera_id == camera_id,
+            VideoRecording.status == "completed",
+            VideoRecording.start_time <= target_dt
+        ).order_by(VideoRecording.start_time.desc()).first()
+
+    # 3. Nếu vẫn không thấy, tìm file completed gần nhất sau target_dt
+    if not rec:
+        rec = db.query(VideoRecording).filter(
+            VideoRecording.camera_id == camera_id,
+            VideoRecording.status == "completed",
+            VideoRecording.start_time >= target_dt
+        ).order_by(VideoRecording.start_time.asc()).first()
+
+    # 4. Fallback cuối cùng nếu không có completed nào
     if not rec:
         rec = db.query(VideoRecording).filter(
             VideoRecording.camera_id == camera_id,
             VideoRecording.start_time <= target_dt
         ).order_by(VideoRecording.start_time.desc()).first()
 
-    # Nếu vẫn không thấy, tìm đoạn gần nhất sau target_dt
-    if not rec:
-        rec = db.query(VideoRecording).filter(
-            VideoRecording.camera_id == camera_id,
-            VideoRecording.start_time >= target_dt
-        ).order_by(VideoRecording.start_time.asc()).first()
-
     if not rec:
         raise HTTPException(status_code=404, detail="Không tìm thấy video nào tại mốc thời gian này.")
 
-    seek_offset_seconds = max(0.0, (target_dt - rec.start_time).total_seconds())
+    # Lùi lại 3 giây (pre-roll) để người dùng xem được xe từ lúc bắt đầu tiến vào khung hình
+    raw_offset = (target_dt - rec.start_time).total_seconds()
+    seek_offset_seconds = max(0.0, raw_offset - 3.0)
+    if rec.duration_seconds and seek_offset_seconds >= rec.duration_seconds:
+        seek_offset_seconds = max(0.0, float(rec.duration_seconds - 5.0))
 
     return {
         "recording_id": rec.id,
         "camera_id": rec.camera_id,
         "start_time": rec.start_time.strftime("%Y-%m-%d %H:%M:%S"),
         "end_time": rec.end_time.strftime("%Y-%m-%d %H:%M:%S") if rec.end_time else None,
-        "duration_seconds": rec.duration_seconds,
+        "duration_seconds": rec.duration_seconds or 0,
         "stream_url": f"/api/v1/playback/stream/{rec.id}",
         "seek_offset_seconds": round(seek_offset_seconds, 2)
     }

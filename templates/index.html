@@ -637,6 +637,33 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- 3. Table of Saved Video Segments -->
+                    <div class="glass-panel rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                <i class="fa-solid fa-list-check text-emerald-400"></i>
+                                <span>Danh Sách Phân Đoạn Video Đã Ghi:</span>
+                            </span>
+                            <span class="text-[11px] text-emerald-400 font-mono font-semibold" id="recordings-table-count">0 đoạn</span>
+                        </div>
+                        <div class="overflow-x-auto max-h-56 overflow-y-auto pr-1">
+                            <table class="w-full text-left text-xs">
+                                <thead class="text-[10px] text-slate-400 bg-slate-900/80 uppercase font-semibold sticky top-0">
+                                    <tr>
+                                        <th class="p-2">Đoạn</th>
+                                        <th class="p-2">Khung Giờ Ghi</th>
+                                        <th class="p-2">Thời Lượng</th>
+                                        <th class="p-2">Dung Lượng</th>
+                                        <th class="p-2 text-right">Thao Tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="playback-recordings-table-body" class="divide-y divide-slate-800/60 text-slate-300">
+                                    <tr><td colspan="5" class="p-3 text-center text-slate-500">Chưa có video nào cho ngày đã chọn.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right: Clip Export Tool & Recent Exported Clips (4 Cols) -->
@@ -2651,49 +2678,122 @@
         function renderPlaybackTimeline(data) {
             const blocksLayer = document.getElementById('timeline-recording-blocks-layer');
             const eventsLayer = document.getElementById('timeline-events-layer');
-            if (!blocksLayer || !eventsLayer) return;
+            const tableBody = document.getElementById('playback-recordings-table-body');
+            const tableCount = document.getElementById('recordings-table-count');
 
-            // 1. Render Video Recording Blocks (Green Bars)
-            if (!data.blocks || data.blocks.length === 0) {
-                blocksLayer.innerHTML = '';
-            } else {
-                blocksLayer.innerHTML = data.blocks.map(b => {
-                    const startSec = (b.start_seconds !== undefined) ? b.start_seconds : (b.start_second || 0);
-                    const endSec = (b.end_seconds !== undefined) ? b.end_seconds : (b.end_second || (startSec + (b.duration_seconds || 60)));
-                    const leftPercent = Math.max(0, Math.min(100, (startSec / 86400) * 100));
-                    const widthPercent = Math.max(0.2, Math.min(100 - leftPercent, ((endSec - startSec) / 86400) * 100));
-                    const startTimeShort = b.start_time ? b.start_time.split(' ')[1] : '';
-                    const endTimeShort = b.end_time ? b.end_time.split(' ')[1] : '';
-                    return `
-                        <div class="absolute top-1 bottom-1 rounded bg-emerald-500/90 hover:bg-emerald-400 border-x border-slate-900/50 shadow-sm transition-colors cursor-pointer pointer-events-auto"
-                            style="left: ${leftPercent}%; width: ${widthPercent}%;"
-                            onclick="event.stopPropagation(); locateAndPlayTimestamp(${data.camera_id}, '${b.start_time}')"
-                            title="Đoạn ghi: ${startTimeShort} - ${endTimeShort} (${Math.round(b.duration_seconds || 0)}s)">
-                        </div>
-                    `;
-                }).join('');
+            // 1. Render Video Recording Blocks (Green Bars on 24H Ruler)
+            if (blocksLayer) {
+                if (!data.blocks || data.blocks.length === 0) {
+                    blocksLayer.innerHTML = '';
+                } else {
+                    blocksLayer.innerHTML = data.blocks.map(b => {
+                        const startSec = (b.start_seconds !== undefined) ? b.start_seconds : (b.start_second || 0);
+                        const endSec = (b.end_seconds !== undefined) ? b.end_seconds : (b.end_second || (startSec + (b.duration_seconds || 60)));
+                        const leftPercent = Math.max(0, Math.min(100, (startSec / 86400) * 100));
+                        const widthPercent = Math.max(0.25, Math.min(100 - leftPercent, ((endSec - startSec) / 86400) * 100));
+                        const startTimeShort = b.start_time ? b.start_time.split(' ')[1] : '';
+                        const endTimeShort = b.end_time ? b.end_time.split(' ')[1] : '';
+                        return `
+                            <div class="absolute top-1 bottom-1 rounded bg-emerald-500/90 hover:bg-emerald-400 border-x border-slate-900/50 shadow-sm transition-colors cursor-pointer pointer-events-auto"
+                                style="left: ${leftPercent}%; width: ${widthPercent}%;"
+                                onclick="event.stopPropagation(); playVideoRecordingById(${b.id})"
+                                title="Đoạn ghi #${b.id}: ${startTimeShort} - ${endTimeShort} (${Math.round(b.duration_seconds || 0)}s)">
+                            </div>
+                        `;
+                    }).join('');
+                }
             }
 
             // 2. Render Vehicle Event Markers (Orange/Amber Points)
-            if (!data.events || data.events.length === 0) {
-                eventsLayer.innerHTML = '';
-            } else {
-                eventsLayer.innerHTML = data.events.map(evt => {
-                    const sec = (evt.seconds_in_day !== undefined) ? evt.seconds_in_day : (evt.second_of_day || 0);
-                    const leftPercent = Math.max(0, Math.min(100, (sec / 86400) * 100));
-                    const timeShort = evt.detected_at ? evt.detected_at.split(' ')[1] : '';
-                    return `
-                        <div class="absolute top-0 bottom-0 w-3 -ml-1.5 flex items-center justify-center group/evt cursor-pointer pointer-events-auto"
-                            style="left: ${leftPercent}%;"
-                            onclick="event.stopPropagation(); locateAndPlayTimestamp(${data.camera_id}, '${evt.detected_at}')">
-                            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 group-hover/evt:scale-150 group-hover/evt:bg-amber-300 shadow-md shadow-amber-400/80 border border-slate-950 transition-all"></span>
-                            <div class="hidden group-hover/evt:block absolute bottom-full mb-1 bg-slate-900/95 text-amber-300 text-[10px] font-bold font-mono px-2 py-0.5 rounded-lg border border-slate-700 shadow-xl pointer-events-none whitespace-nowrap z-40">
-                                🚗 ${evt.plate_number} (${timeShort})
+            if (eventsLayer) {
+                if (!data.events || data.events.length === 0) {
+                    eventsLayer.innerHTML = '';
+                } else {
+                    eventsLayer.innerHTML = data.events.map(evt => {
+                        const sec = (evt.seconds_in_day !== undefined) ? evt.seconds_in_day : (evt.second_of_day || 0);
+                        const leftPercent = Math.max(0, Math.min(100, (sec / 86400) * 100));
+                        const timeShort = evt.detected_at ? evt.detected_at.split(' ')[1] : '';
+                        return `
+                            <div class="absolute top-0 bottom-0 w-3 -ml-1.5 flex items-center justify-center group/evt cursor-pointer pointer-events-auto"
+                                style="left: ${leftPercent}%;"
+                                onclick="event.stopPropagation(); locateAndPlayTimestamp(${data.camera_id}, '${evt.detected_at}')">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 group-hover/evt:scale-150 group-hover/evt:bg-amber-300 shadow-md shadow-amber-400/80 border border-slate-950 transition-all"></span>
+                                <div class="hidden group-hover/evt:block absolute bottom-full mb-1 bg-slate-900/95 text-amber-300 text-[10px] font-bold font-mono px-2 py-0.5 rounded-lg border border-slate-700 shadow-xl pointer-events-none whitespace-nowrap z-40">
+                                    🚗 ${evt.plate_number} (${timeShort})
+                                </div>
                             </div>
-                        </div>
-                    `;
-                }).join('');
+                        `;
+                    }).join('');
+                }
             }
+
+            // 3. Render Table of Video Segments (Danh Sách Phân Đoạn Video)
+            if (tableBody) {
+                if (!data.blocks || data.blocks.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">Không có đoạn video nào được ghi cho ngày ${data.date}.</td></tr>`;
+                    if (tableCount) tableCount.innerText = '0 đoạn';
+                } else {
+                    if (tableCount) tableCount.innerText = `${data.blocks.length} đoạn video`;
+                    tableBody.innerHTML = data.blocks.map((b, idx) => {
+                        const startParts = b.start_time.split(' ');
+                        const endParts = b.end_time.split(' ');
+                        const dur = b.duration_seconds || 0;
+                        const durFormatted = dur >= 60 ? `${Math.floor(dur / 60)}p ${Math.floor(dur % 60)}s` : `${dur}s`;
+                        const activeClass = (playbackState.currentRecording && playbackState.currentRecording.id === b.id) ? 'bg-blue-600/20 border-l-4 border-l-blue-500 font-semibold' : 'hover:bg-slate-800/40';
+
+                        return `
+                            <tr id="rec-row-${b.id}" class="${activeClass} transition-colors">
+                                <td class="p-2.5 font-mono text-slate-400">#${idx + 1}</td>
+                                <td class="p-2.5 whitespace-nowrap font-mono text-slate-200">
+                                    <span class="text-emerald-400 font-bold">${startParts[1]}</span>
+                                    <span class="text-slate-500 mx-1">➔</span>
+                                    <span class="text-slate-300">${endParts[1]}</span>
+                                </td>
+                                <td class="p-2.5 whitespace-nowrap font-mono text-slate-300">${durFormatted}</td>
+                                <td class="p-2.5 whitespace-nowrap font-mono text-slate-400">${b.file_size_mb} MB</td>
+                                <td class="p-2.5 text-right whitespace-nowrap space-x-1">
+                                    <button onclick="playVideoRecordingById(${b.id})" class="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 rounded-lg text-xs font-semibold shadow-sm transition-all" title="Xem ngay đoạn này">
+                                        <i class="fa-solid fa-play mr-1"></i>Xem
+                                    </button>
+                                    <button onclick="setExportRange('${b.start_time}', '${b.end_time}')" class="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-xs" title="Điền khung giờ vào bộ cắt video">
+                                        <i class="fa-solid fa-scissors mr-1"></i>Cắt
+                                    </button>
+                                    <a href="/api/v1/playback/stream/${b.id}" download="cam_${data.camera_id}_${b.start_time.replace(/[: -]/g, '_')}.mp4" class="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 rounded-lg text-xs inline-block" title="Tải file MP4">
+                                        <i class="fa-solid fa-download"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            }
+        }
+
+        function playVideoRecordingById(recId) {
+            if (!playbackState.timelineData || !playbackState.timelineData.blocks) return;
+            const block = playbackState.timelineData.blocks.find(b => b.id === recId);
+            if (block) {
+                playVideoRecording({
+                    id: block.id,
+                    recording_id: block.id,
+                    camera_id: playbackState.selectedCameraId,
+                    start_time: block.start_time,
+                    end_time: block.end_time,
+                    duration_seconds: block.duration_seconds
+                }, 0);
+                const player = document.getElementById('playback-player-container');
+                if (player) player.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function setExportRange(startStr, endStr) {
+            const startEl = document.getElementById('export-input-start');
+            const endEl = document.getElementById('export-input-end');
+            if (startEl) startEl.value = startStr;
+            if (endEl) endEl.value = endStr;
+            const form = document.getElementById('clip-export-form');
+            if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            showToast(`Đã chọn khung giờ cắt: ${startStr.split(' ')[1]} ➔ ${endStr.split(' ')[1]}`, "info", 3500);
         }
 
         function handleTimelineClick(e) {
@@ -2746,8 +2846,12 @@
                 const data = await res.json();
                 if (res.ok && data.recording_id) {
                     playVideoRecording(data, data.seek_offset_seconds || 0);
+                    const player = document.getElementById('playback-player-container');
+                    if (player) player.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 } else if (res.ok && data.recording) {
                     playVideoRecording(data.recording, data.seek_offset_seconds || 0);
+                    const player = document.getElementById('playback-player-container');
+                    if (player) player.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 } else {
                     showToast(`Không có video được lưu tại thời điểm [${timestampStr}]`, "warning", 3500);
                 }
@@ -2765,6 +2869,15 @@
             const video = document.getElementById('playback-video-element');
             const emptyState = document.getElementById('playback-empty-state');
             if (emptyState) emptyState.classList.add('hidden');
+
+            // Highlight row in recordings table
+            document.querySelectorAll('#playback-recordings-table-body tr').forEach(row => {
+                row.classList.remove('bg-blue-600/20', 'border-l-4', 'border-l-blue-500', 'font-semibold');
+            });
+            const activeRow = document.getElementById(`rec-row-${recId}`);
+            if (activeRow) {
+                activeRow.classList.add('bg-blue-600/20', 'border-l-4', 'border-l-blue-500', 'font-semibold');
+            }
 
             const streamUrl = `/api/v1/playback/stream/${recId}`;
             video.src = streamUrl;
@@ -3022,30 +3135,32 @@
             }
         }
 
-        function openPlaybackForEvent(cameraId, detectedAt) {
+        async function openPlaybackForEvent(cameraId, detectedAt) {
             switchTab('playback');
-            setTimeout(async () => {
-                if (!camerasList || camerasList.length === 0) await loadCameras();
-                await loadPlaybackCameras();
+            if (!camerasList || camerasList.length === 0) await loadCameras();
+            
+            if (cameraId) {
+                const selectCam = document.getElementById('playback-camera-select');
+                if (selectCam) selectCam.value = cameraId;
+                playbackState.selectedCameraId = parseInt(cameraId, 10);
+            }
 
-                if (cameraId) {
-                    const selectCam = document.getElementById('playback-camera-select');
-                    if (selectCam) selectCam.value = cameraId;
-                    playbackState.selectedCameraId = parseInt(cameraId, 10);
-                }
+            if (detectedAt) {
+                const datePart = detectedAt.split(' ')[0];
+                const selectDate = document.getElementById('playback-date-select');
+                if (selectDate) selectDate.value = datePart;
+                playbackState.selectedDate = datePart;
 
-                if (detectedAt) {
-                    const datePart = detectedAt.split(' ')[0];
-                    const selectDate = document.getElementById('playback-date-select');
-                    if (selectDate) selectDate.value = datePart;
-                    playbackState.selectedDate = datePart;
+                await loadPlaybackTimeline();
+                await locateAndPlayTimestamp(cameraId, detectedAt);
+            } else {
+                await loadPlaybackTimeline();
+            }
 
-                    await loadPlaybackTimeline();
-                    locateAndPlayTimestamp(cameraId, detectedAt);
-                } else {
-                    await loadPlaybackTimeline();
-                }
-            }, 250);
+            const player = document.getElementById('playback-player-container');
+            if (player) {
+                player.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
 
         /* --- MODALS HANDLERS --- */
