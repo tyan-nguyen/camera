@@ -299,7 +299,7 @@ class AIPipelineEngine:
 
                             vehicle_view = "front" if cls_id == 2 else ("rear" if cls_id == 3 else "unknown")
 
-                            if ocr_engine_type in ["openai_api", "gemini_api"]:
+                            if ocr_engine_type in ["lmstudio_api", "openai_api", "gemini_api"]:
                                 logger.info(f"[AI PIPELINE] Vehicle in zone: {VEHICLE_CLASSES[cls_id]} (Track #{track_id}). Routing vehicle crop to Vision API [{ocr_engine_type}]...")
                                 return {
                                     "camera_id": camera_id,

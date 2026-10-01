@@ -799,51 +799,115 @@
                 <!-- 1. OCR Engine Section -->
                 <div>
                     <label class="block text-xs sm:text-sm font-semibold text-slate-200 mb-3">1. Mô Hình Nhận Dạng Biển Số Xe (OCR Engine):</label>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                        <label class="relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-blue-500 transition-all">
-                            <input type="radio" name="ocr_engine" value="yolo_local" class="sr-only peer" onchange="toggleEngineFields('yolo_local')">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                        <!-- YOLOv8 Local -->
+                        <label id="ocr-card-yolo_local" onclick="selectOcrEngine('yolo_local')" class="relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-blue-500 transition-all">
+                            <input type="radio" name="ocr_engine" value="yolo_local" class="sr-only" onchange="toggleEngineFields('yolo_local')">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="font-bold text-xs sm:text-sm text-slate-100 flex items-center space-x-2">
                                     <i class="fa-solid fa-microchip text-blue-400"></i>
                                     <span>YOLOv8 Local (GPU)</span>
                                 </span>
-                                <span class="w-4 h-4 rounded-full border-2 border-slate-500 peer-checked:border-blue-500 peer-checked:bg-blue-500 transition-all"></span>
+                                <span id="radio-circle-yolo_local" class="w-4 h-4 rounded-full border-2 border-slate-500 flex items-center justify-center transition-all">
+                                    <span id="radio-dot-yolo_local" class="w-2 h-2 rounded-full bg-blue-500 hidden"></span>
+                                </span>
                             </div>
                             <p class="text-[11px] text-slate-400">Chạy cục bộ siêu tốc ~6ms trên GPU NVIDIA RTX 3050 CUDA.</p>
                         </label>
 
-                        <label class="relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-emerald-500 transition-all">
-                            <input type="radio" name="ocr_engine" value="openai_api" class="sr-only peer" onchange="toggleEngineFields('openai_api')">
+                        <!-- LM Studio Local -->
+                        <label id="ocr-card-lmstudio_api" onclick="selectOcrEngine('lmstudio_api')" class="relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-amber-500 transition-all">
+                            <input type="radio" name="ocr_engine" value="lmstudio_api" class="sr-only" onchange="toggleEngineFields('lmstudio_api')">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-bold text-xs sm:text-sm text-slate-100 flex items-center space-x-2">
+                                    <i class="fa-solid fa-server text-amber-400"></i>
+                                    <span>LM Studio Local (VLM)</span>
+                                </span>
+                                <span id="radio-circle-lmstudio_api" class="w-4 h-4 rounded-full border-2 border-slate-500 flex items-center justify-center transition-all">
+                                    <span id="radio-dot-lmstudio_api" class="w-2 h-2 rounded-full bg-amber-500 hidden"></span>
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Mô hình AI thị giác cục bộ (e.g. Qwen2.5-VL / LLaVA) qua LM Studio.</p>
+                        </label>
+
+                        <!-- OpenAI Vision API -->
+                        <label id="ocr-card-openai_api" onclick="selectOcrEngine('openai_api')" class="relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-emerald-500 transition-all">
+                            <input type="radio" name="ocr_engine" value="openai_api" class="sr-only" onchange="toggleEngineFields('openai_api')">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="font-bold text-xs sm:text-sm text-slate-100 flex items-center space-x-2">
                                     <i class="fa-solid fa-robot text-emerald-400"></i>
                                     <span>OpenAI Vision API</span>
                                 </span>
-                                <span class="w-4 h-4 rounded-full border-2 border-slate-500 peer-checked:border-emerald-500 peer-checked:bg-emerald-500 transition-all"></span>
+                                <span id="radio-circle-openai_api" class="w-4 h-4 rounded-full border-2 border-slate-500 flex items-center justify-center transition-all">
+                                    <span id="radio-dot-openai_api" class="w-2 h-2 rounded-full bg-emerald-500 hidden"></span>
+                                </span>
                             </div>
-                            <p class="text-[11px] text-slate-400">Gửi ảnh xe nhận dạng ngầm bằng OpenAI GPT-4o-mini.</p>
+                            <p class="text-[11px] text-slate-400">Gửi ảnh xe nhận dạng ngầm bằng OpenAI GPT-4o-mini qua Cloud.</p>
                         </label>
 
-                        <label class="relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-purple-500 transition-all">
-                            <input type="radio" name="ocr_engine" value="gemini_api" class="sr-only peer" onchange="toggleEngineFields('gemini_api')">
+                        <!-- Google Gemini API -->
+                        <label id="ocr-card-gemini_api" onclick="selectOcrEngine('gemini_api')" class="relative flex flex-col p-3.5 sm:p-4 rounded-xl border border-slate-700 bg-slate-900/60 cursor-pointer hover:border-purple-500 transition-all">
+                            <input type="radio" name="ocr_engine" value="gemini_api" class="sr-only" onchange="toggleEngineFields('gemini_api')">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="font-bold text-xs sm:text-sm text-slate-100 flex items-center space-x-2">
                                     <i class="fa-solid fa-sparkles text-purple-400"></i>
                                     <span>Google Gemini API</span>
                                 </span>
-                                <span class="w-4 h-4 rounded-full border-2 border-slate-500 peer-checked:border-purple-500 peer-checked:bg-purple-500 transition-all"></span>
+                                <span id="radio-circle-gemini_api" class="w-4 h-4 rounded-full border-2 border-slate-500 flex items-center justify-center transition-all">
+                                    <span id="radio-dot-gemini_api" class="w-2 h-2 rounded-full bg-purple-500 hidden"></span>
+                                </span>
                             </div>
-                            <p class="text-[11px] text-slate-400">Gửi ảnh xe nhận dạng ngầm bằng Gemini 2.0 Flash.</p>
+                            <p class="text-[11px] text-slate-400">Gửi ảnh xe nhận dạng ngầm bằng Gemini 2.0 Flash qua Cloud.</p>
                         </label>
+                    </div>
+                </div>
+
+                <!-- LM Studio Fields -->
+                <div id="lmstudio-fields" class="hidden p-3.5 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 class="text-xs sm:text-sm font-semibold text-amber-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-server"></i>
+                            <span>Cấu Hình LM Studio Local Vision Model (OpenAI-compatible)</span>
+                        </h3>
+                        <button type="button" onclick="testVisionConnection('lmstudio_api')" class="self-start sm:self-auto px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 transition-all flex items-center space-x-1.5">
+                            <i class="fa-solid fa-plug-circle-bolt"></i>
+                            <span>Kiểm tra kết nối</span>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">LM Studio Endpoint URL:</label>
+                            <input type="text" id="input-lmstudio-url" placeholder="http://localhost:1234/v1"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-amber-500">
+                            <span class="text-[10px] text-slate-500 mt-0.5 block">Ví dụ: http://localhost:1234/v1</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Model Name / Identifier:</label>
+                            <input type="text" id="input-lmstudio-model" placeholder="default"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-amber-500">
+                            <span class="text-[10px] text-slate-500 mt-0.5 block">Để 'default' hoặc tên model nạp trong LM Studio</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">API Key (Tùy chọn):</label>
+                            <input type="password" id="input-lmstudio-key" placeholder="Không bắt buộc (để trống)"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-amber-500">
+                            <span class="text-[10px] text-slate-500 mt-0.5 block">Để trống nếu LM Studio chạy local không auth</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- OpenAI Fields -->
                 <div id="openai-fields" class="hidden p-3.5 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
-                    <h3 class="text-xs sm:text-sm font-semibold text-emerald-400 flex items-center space-x-2">
-                        <i class="fa-solid fa-key"></i>
-                        <span>Cấu Hình OpenAI Vision API</span>
-                    </h3>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 class="text-xs sm:text-sm font-semibold text-emerald-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-key"></i>
+                            <span>Cấu Hình OpenAI Vision API</span>
+                        </h3>
+                        <button type="button" onclick="testVisionConnection('openai_api')" class="self-start sm:self-auto px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all flex items-center space-x-1.5">
+                            <i class="fa-solid fa-plug-circle-bolt"></i>
+                            <span>Kiểm tra kết nối</span>
+                        </button>
+                    </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-medium text-slate-400 mb-1">OpenAI API Key:</label>
@@ -860,10 +924,16 @@
 
                 <!-- Gemini Fields -->
                 <div id="gemini-fields" class="hidden p-3.5 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
-                    <h3 class="text-xs sm:text-sm font-semibold text-purple-400 flex items-center space-x-2">
-                        <i class="fa-solid fa-key"></i>
-                        <span>Cấu Hình Google Gemini API</span>
-                    </h3>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 class="text-xs sm:text-sm font-semibold text-purple-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-key"></i>
+                            <span>Cấu Hình Google Gemini API</span>
+                        </h3>
+                        <button type="button" onclick="testVisionConnection('gemini_api')" class="self-start sm:self-auto px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 transition-all flex items-center space-x-1.5">
+                            <i class="fa-solid fa-plug-circle-bolt"></i>
+                            <span>Kiểm tra kết nối</span>
+                        </button>
+                    </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-medium text-slate-400 mb-1">Gemini API Key:</label>
@@ -2380,22 +2450,87 @@
         }
 
         /* --- SETTINGS & FIREBASE FCM --- */
+        function selectOcrEngine(engine) {
+            const radio = document.querySelector(`input[name="ocr_engine"][value="${engine}"]`);
+            if (radio) radio.checked = true;
+            toggleEngineFields(engine);
+        }
+
+        function toggleEngineFields(engine) {
+            // 1. Ẩn/Hiện các panel cấu hình chi tiết
+            const lmPanel = document.getElementById('lmstudio-fields');
+            const openAiPanel = document.getElementById('openai-fields');
+            const geminiPanel = document.getElementById('gemini-fields');
+
+            if (lmPanel) lmPanel.classList.toggle('hidden', engine !== 'lmstudio_api');
+            if (openAiPanel) openAiPanel.classList.toggle('hidden', engine !== 'openai_api');
+            if (geminiPanel) geminiPanel.classList.toggle('hidden', engine !== 'gemini_api');
+
+            // 2. Cập nhật viền, nền sáng và vòng tròn radio được tích chọn
+            const engineConfigs = [
+                { id: 'yolo_local', border: 'border-blue-500', bg: 'bg-blue-500/10', circleBorder: 'border-blue-500', dot: 'bg-blue-500' },
+                { id: 'lmstudio_api', border: 'border-amber-500', bg: 'bg-amber-500/10', circleBorder: 'border-amber-500', dot: 'bg-amber-500' },
+                { id: 'openai_api', border: 'border-emerald-500', bg: 'bg-emerald-500/10', circleBorder: 'border-emerald-500', dot: 'bg-emerald-500' },
+                { id: 'gemini_api', border: 'border-purple-500', bg: 'bg-purple-500/10', circleBorder: 'border-purple-500', dot: 'bg-purple-500' }
+            ];
+
+            engineConfigs.forEach(item => {
+                const card = document.getElementById(`ocr-card-${item.id}`);
+                const circle = document.getElementById(`radio-circle-${item.id}`);
+                const dot = document.getElementById(`radio-dot-${item.id}`);
+                const radio = document.querySelector(`input[name="ocr_engine"][value="${item.id}"]`);
+
+                const isSelected = (item.id === engine);
+                if (radio) radio.checked = isSelected;
+
+                if (card) {
+                    if (isSelected) {
+                        card.classList.remove('border-slate-700', 'bg-slate-900/60');
+                        card.classList.add(item.border, item.bg, 'shadow-lg');
+                    } else {
+                        card.classList.remove('border-blue-500', 'bg-blue-500/10', 'border-amber-500', 'bg-amber-500/10', 'border-emerald-500', 'bg-emerald-500/10', 'border-purple-500', 'bg-purple-500/10', 'shadow-lg');
+                        card.classList.add('border-slate-700', 'bg-slate-900/60');
+                    }
+                }
+
+                if (circle) {
+                    if (isSelected) {
+                        circle.classList.remove('border-slate-500');
+                        circle.classList.add(item.circleBorder);
+                    } else {
+                        circle.classList.remove('border-blue-500', 'border-amber-500', 'border-emerald-500', 'border-purple-500');
+                        circle.classList.add('border-slate-500');
+                    }
+                }
+
+                if (dot) {
+                    if (isSelected) {
+                        dot.className = `w-2 h-2 rounded-full ${item.dot} inline-block`;
+                    } else {
+                        dot.className = `w-2 h-2 rounded-full hidden`;
+                    }
+                }
+            });
+        }
+
         async function loadSettingsValues() {
             try {
                 const res = await fetch('/api/v1/settings');
                 if (res.ok) {
                     const data = await res.json();
                     const engine = data.ocr_engine_type || 'yolo_local';
-                    const radio = document.querySelector(`input[name="ocr_engine"][value="${engine}"]`);
-                    if (radio) radio.checked = true;
                     toggleEngineFields(engine);
 
-                    document.getElementById('input-openai-key').value = data.openai_api_key || '';
-                    document.getElementById('input-openai-model').value = data.openai_model_name || 'gpt-4o-mini';
-                    document.getElementById('input-gemini-key').value = data.gemini_api_key || '';
-                    document.getElementById('input-gemini-model').value = data.gemini_model_name || 'gemini-2.0-flash';
-                    document.getElementById('input-fcm-key').value = data.fcm_server_key || '';
-                    document.getElementById('input-fcm-project').value = data.fcm_project_id || '';
+                    if (document.getElementById('input-lmstudio-url')) document.getElementById('input-lmstudio-url').value = data.lmstudio_base_url || 'http://localhost:1234/v1';
+                    if (document.getElementById('input-lmstudio-model')) document.getElementById('input-lmstudio-model').value = data.lmstudio_model_name || 'default';
+                    if (document.getElementById('input-lmstudio-key')) document.getElementById('input-lmstudio-key').value = data.lmstudio_api_key || '';
+
+                    if (document.getElementById('input-openai-key')) document.getElementById('input-openai-key').value = data.openai_api_key || '';
+                    if (document.getElementById('input-openai-model')) document.getElementById('input-openai-model').value = data.openai_model_name || 'gpt-4o-mini';
+                    if (document.getElementById('input-gemini-key')) document.getElementById('input-gemini-key').value = data.gemini_api_key || '';
+                    if (document.getElementById('input-gemini-model')) document.getElementById('input-gemini-model').value = data.gemini_model_name || 'gemini-2.0-flash';
+                    if (document.getElementById('input-fcm-key')) document.getElementById('input-fcm-key').value = data.fcm_server_key || '';
+                    if (document.getElementById('input-fcm-project')) document.getElementById('input-fcm-project').value = data.fcm_project_id || '';
 
                     if (document.getElementById('input-video-path')) document.getElementById('input-video-path').value = data.video_storage_path || 'storage/recordings';
                     if (document.getElementById('input-video-segment')) document.getElementById('input-video-segment').value = data.video_segment_minutes || 5;
@@ -2405,21 +2540,62 @@
             } catch (e) { }
         }
 
-        function toggleEngineFields(engine) {
-            document.getElementById('openai-fields').classList.toggle('hidden', engine !== 'openai_api');
-            document.getElementById('gemini-fields').classList.toggle('hidden', engine !== 'gemini_api');
+        async function testVisionConnection(engineType) {
+            let baseUrl = '';
+            let modelName = '';
+            let apiKey = '';
+
+            if (engineType === 'lmstudio_api') {
+                baseUrl = document.getElementById('input-lmstudio-url') ? document.getElementById('input-lmstudio-url').value.trim() : 'http://localhost:1234/v1';
+                modelName = document.getElementById('input-lmstudio-model') ? document.getElementById('input-lmstudio-model').value.trim() : 'default';
+                apiKey = document.getElementById('input-lmstudio-key') ? document.getElementById('input-lmstudio-key').value.trim() : '';
+                showToast("Đang kiểm tra kết nối tới LM Studio...", "info");
+            } else if (engineType === 'openai_api') {
+                modelName = document.getElementById('input-openai-model') ? document.getElementById('input-openai-model').value.trim() : 'gpt-4o-mini';
+                apiKey = document.getElementById('input-openai-key') ? document.getElementById('input-openai-key').value.trim() : '';
+                showToast("Đang kiểm tra kết nối tới OpenAI Vision API...", "info");
+            } else if (engineType === 'gemini_api') {
+                modelName = document.getElementById('input-gemini-model') ? document.getElementById('input-gemini-model').value.trim() : 'gemini-2.0-flash';
+                apiKey = document.getElementById('input-gemini-key') ? document.getElementById('input-gemini-key').value.trim() : '';
+                showToast("Đang kiểm tra kết nối tới Google Gemini Vision API...", "info");
+            }
+
+            try {
+                const res = await fetch('/api/v1/settings/test-vision', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        engine_type: engineType,
+                        base_url: baseUrl,
+                        model_name: modelName,
+                        api_key: apiKey
+                    })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(data.message, "success", 5000);
+                } else {
+                    showToast(data.message || (data.detail || "Kiểm tra kết nối thất bại."), "error", 6000);
+                }
+            } catch (err) {
+                showToast("Lỗi khi kiểm tra kết nối: " + err, "error");
+            }
         }
 
         async function saveSystemSettings() {
-            const engine = document.querySelector('input[name="ocr_engine"]:checked').value;
+            const checkedRadio = document.querySelector('input[name="ocr_engine"]:checked');
+            const engine = checkedRadio ? checkedRadio.value : 'yolo_local';
             const payload = {
                 ocr_engine_type: engine,
-                openai_api_key: document.getElementById('input-openai-key').value.trim(),
-                openai_model_name: document.getElementById('input-openai-model').value.trim(),
-                gemini_api_key: document.getElementById('input-gemini-key').value.trim(),
-                gemini_model_name: document.getElementById('input-gemini-model').value.trim(),
-                fcm_server_key: document.getElementById('input-fcm-key').value.trim(),
-                fcm_project_id: document.getElementById('input-fcm-project').value.trim(),
+                lmstudio_base_url: document.getElementById('input-lmstudio-url') ? document.getElementById('input-lmstudio-url').value.trim() : 'http://localhost:1234/v1',
+                lmstudio_model_name: document.getElementById('input-lmstudio-model') ? document.getElementById('input-lmstudio-model').value.trim() : 'default',
+                lmstudio_api_key: document.getElementById('input-lmstudio-key') ? document.getElementById('input-lmstudio-key').value.trim() : '',
+                openai_api_key: document.getElementById('input-openai-key') ? document.getElementById('input-openai-key').value.trim() : '',
+                openai_model_name: document.getElementById('input-openai-model') ? document.getElementById('input-openai-model').value.trim() : 'gpt-4o-mini',
+                gemini_api_key: document.getElementById('input-gemini-key') ? document.getElementById('input-gemini-key').value.trim() : '',
+                gemini_model_name: document.getElementById('input-gemini-model') ? document.getElementById('input-gemini-model').value.trim() : 'gemini-2.0-flash',
+                fcm_server_key: document.getElementById('input-fcm-key') ? document.getElementById('input-fcm-key').value.trim() : '',
+                fcm_project_id: document.getElementById('input-fcm-project') ? document.getElementById('input-fcm-project').value.trim() : '',
                 video_storage_path: document.getElementById('input-video-path') ? document.getElementById('input-video-path').value.trim() : 'storage/recordings',
                 video_segment_minutes: document.getElementById('input-video-segment') ? (parseInt(document.getElementById('input-video-segment').value, 10) || 5) : 5,
                 video_retention_days: document.getElementById('input-video-retention') ? (parseInt(document.getElementById('input-video-retention').value, 10) || 15) : 15,

@@ -21,6 +21,9 @@ class DynamicSettingsManager:
     def _init_cache(self):
         self.cache: Dict = {
             "ocr_engine_type": "yolo_local",
+            "lmstudio_base_url": "http://localhost:1234/v1",
+            "lmstudio_model_name": "default",
+            "lmstudio_api_key": "",
             "openai_api_key": "",
             "openai_model_name": "gpt-4o-mini",
             "gemini_api_key": "",
@@ -44,6 +47,9 @@ class DynamicSettingsManager:
                     settings_obj = SystemSettings(
                         id=1,
                         ocr_engine_type="yolo_local",
+                        lmstudio_base_url="http://localhost:1234/v1",
+                        lmstudio_model_name="default",
+                        lmstudio_api_key="",
                         openai_api_key="",
                         openai_model_name="gpt-4o-mini",
                         gemini_api_key="",
@@ -62,6 +68,9 @@ class DynamicSettingsManager:
                 with self._lock:
                     self.cache = {
                         "ocr_engine_type": settings_obj.ocr_engine_type,
+                        "lmstudio_base_url": getattr(settings_obj, "lmstudio_base_url", None) or "http://localhost:1234/v1",
+                        "lmstudio_model_name": getattr(settings_obj, "lmstudio_model_name", None) or "default",
+                        "lmstudio_api_key": getattr(settings_obj, "lmstudio_api_key", None) or "",
                         "openai_api_key": settings_obj.openai_api_key or "",
                         "openai_model_name": settings_obj.openai_model_name or "gpt-4o-mini",
                         "gemini_api_key": settings_obj.gemini_api_key or "",
@@ -95,6 +104,12 @@ class DynamicSettingsManager:
 
             if "ocr_engine_type" in new_settings and new_settings["ocr_engine_type"]:
                 settings_obj.ocr_engine_type = new_settings["ocr_engine_type"]
+            if "lmstudio_base_url" in new_settings and new_settings["lmstudio_base_url"] is not None:
+                settings_obj.lmstudio_base_url = new_settings["lmstudio_base_url"]
+            if "lmstudio_model_name" in new_settings and new_settings["lmstudio_model_name"] is not None:
+                settings_obj.lmstudio_model_name = new_settings["lmstudio_model_name"]
+            if "lmstudio_api_key" in new_settings and new_settings["lmstudio_api_key"] is not None:
+                settings_obj.lmstudio_api_key = new_settings["lmstudio_api_key"]
             if "openai_api_key" in new_settings and new_settings["openai_api_key"] is not None:
                 settings_obj.openai_api_key = new_settings["openai_api_key"]
             if "openai_model_name" in new_settings and new_settings["openai_model_name"] is not None:
@@ -122,6 +137,9 @@ class DynamicSettingsManager:
             with self._lock:
                 self.cache = {
                     "ocr_engine_type": settings_obj.ocr_engine_type,
+                    "lmstudio_base_url": getattr(settings_obj, "lmstudio_base_url", None) or "http://localhost:1234/v1",
+                    "lmstudio_model_name": getattr(settings_obj, "lmstudio_model_name", None) or "default",
+                    "lmstudio_api_key": getattr(settings_obj, "lmstudio_api_key", None) or "",
                     "openai_api_key": settings_obj.openai_api_key or "",
                     "openai_model_name": settings_obj.openai_model_name or "gpt-4o-mini",
                     "gemini_api_key": settings_obj.gemini_api_key or "",

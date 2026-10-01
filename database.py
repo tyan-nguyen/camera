@@ -115,8 +115,11 @@ def init_db():
                 except Exception:
                     pass
 
-            # 3. Bảng system_settings: fcm_server_key, fcm_project_id, video_storage_path, video_segment_minutes, video_retention_days, auto_cleanup_disk
+            # 3. Bảng system_settings: lmstudio_base_url, lmstudio_model_name, lmstudio_api_key, fcm_server_key, fcm_project_id, video_storage_path, video_segment_minutes, video_retention_days, auto_cleanup_disk
             for col, col_type in [
+                ("lmstudio_base_url", "VARCHAR(500) DEFAULT 'http://localhost:1234/v1'"),
+                ("lmstudio_model_name", "VARCHAR(100) DEFAULT 'default'"),
+                ("lmstudio_api_key", "VARCHAR(500) NULL"),
                 ("fcm_server_key", "VARCHAR(500) NULL"),
                 ("fcm_project_id", "VARCHAR(100) NULL"),
                 ("video_storage_path", "VARCHAR(500) DEFAULT 'storage/recordings'"),

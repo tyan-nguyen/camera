@@ -154,7 +154,10 @@ class DeviceTestPushRequest(BaseModel):
 # 5. System Settings Schemas
 # ==========================================
 class SystemSettingsBase(BaseModel):
-    ocr_engine_type: str = "yolo_local"  # yolo_local, openai_api, gemini_api
+    ocr_engine_type: str = "yolo_local"  # yolo_local, lmstudio_api, openai_api, gemini_api
+    lmstudio_base_url: Optional[str] = "http://localhost:1234/v1"
+    lmstudio_model_name: Optional[str] = "default"
+    lmstudio_api_key: Optional[str] = ""
     openai_api_key: Optional[str] = ""
     openai_model_name: Optional[str] = "gpt-4o-mini"
     gemini_api_key: Optional[str] = ""
@@ -168,6 +171,9 @@ class SystemSettingsBase(BaseModel):
 
 class SystemSettingsUpdate(BaseModel):
     ocr_engine_type: Optional[str] = None
+    lmstudio_base_url: Optional[str] = None
+    lmstudio_model_name: Optional[str] = None
+    lmstudio_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None
     openai_model_name: Optional[str] = None
     gemini_api_key: Optional[str] = None
@@ -184,6 +190,12 @@ class SystemSettingsResponse(SystemSettingsBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class TestVisionRequest(BaseModel):
+    engine_type: str = "lmstudio_api"  # lmstudio_api, openai_api, gemini_api
+    base_url: Optional[str] = "http://localhost:1234/v1"
+    model_name: Optional[str] = "default"
+    api_key: Optional[str] = ""
 
 # ==========================================
 # 6. Video Recording & Playback Schemas

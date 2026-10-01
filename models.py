@@ -154,9 +154,18 @@ class SystemSettings(Base):
     __table_args__ = {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci'}
 
     id = Column(Integer, primary_key=True, default=1)
-    ocr_engine_type = Column(String(50), default="yolo_local")  # yolo_local, openai_api, gemini_api
+    ocr_engine_type = Column(String(50), default="yolo_local")  # yolo_local, lmstudio_api, openai_api, gemini_api
+    
+    # Cấu hình LM Studio Model Local (VLM)
+    lmstudio_base_url = Column(String(500), default="http://localhost:1234/v1")
+    lmstudio_model_name = Column(String(100), default="default")
+    lmstudio_api_key = Column(String(500), default="", nullable=True)
+
+    # Cấu hình OpenAI Vision API
     openai_api_key = Column(String(500), default="")
     openai_model_name = Column(String(100), default="gpt-4o-mini")
+    
+    # Cấu hình Gemini Vision API
     gemini_api_key = Column(String(500), default="")
     gemini_model_name = Column(String(100), default="gemini-2.0-flash")
     

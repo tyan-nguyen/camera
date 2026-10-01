@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from config import settings
 from database import SessionLocal
 from models import VehicleLog, Camera, ActionGroup
-from vision_api import call_openai_vision_api, call_gemini_vision_api
+from vision_api import call_openai_vision_api, call_gemini_vision_api, call_lmstudio_vision_api
 from notification_service import notification_service
 
 logger = logging.getLogger(__name__)
@@ -237,7 +237,12 @@ class AsyncDiskWorker:
             image_to_send = full_frame
 
         logger.info(f"Calling Vision API [{ocr_engine_type}] with vehicle image crop in background thread...")
-        if ocr_engine_type == "openai_api":
+        if ocr_engine_type == "lmstudio_api":
+            base_url = api_settings.get("lmstudio_base_url", "http://localhost:1234/v1")
+            model_name = api_settings.get("lmstudio_model_name", "default")
+            api_key = api_settings.get("lmstudio_api_key", "")
+            res = call_lmstudio_vision_api(image_to_send, base_url=base_url, model_name=model_name, api_key=api_key)
+        elif ocr_engine_type == "openai_api":
             api_key = api_settings.get("openai_api_key", "")
             model_name = api_settings.get("openai_model_name", "gpt-4o-mini")
             res = call_openai_vision_api(image_to_send, api_key=api_key, model_name=model_name)
