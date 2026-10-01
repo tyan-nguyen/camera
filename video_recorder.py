@@ -17,8 +17,8 @@ import subprocess
 
 logger = logging.getLogger(__name__)
 
-def _async_convert_to_h264_faststart(file_path: str, recording_id: Optional[int], camera_name: str):
-    """Chuyển đổi ngầm sang định dạng H.264 AVC (yuv420p + faststart) để trình duyệt xem lại tức thì"""
+def _async_convert_to_h264_faststart(file_path: str, recording_id: Optional[int], camera_name: str, target_fps: int = 6):
+    """Chuyển đổi ngầm sang định dạng H.264 AVC (yuv420p + faststart + GOP ngắn) để trình duyệt tua tức thì và mượt mà"""
     def _worker():
         if not file_path or not os.path.exists(file_path):
             return
@@ -28,12 +28,17 @@ def _async_convert_to_h264_faststart(file_path: str, recording_id: Optional[int]
         except Exception:
             ffmpeg_exe = "ffmpeg"
 
-        temp_path = file_path.replace(".mp4", "_h264tmp.mp4")
+        gop_size = max(6, int(target_fps * 2))  # Keyframe mỗi 2 giây để tua video tức thì
+        temp_path = f"{file_path}.h264tmp_{os.getpid()}_{threading.get_ident()}.mp4"
         cmd = [
             ffmpeg_exe, "-y",
             "-i", file_path,
             "-c:v", "libx264",
             "-preset", "veryfast",
+            "-crf", "23",
+            "-g", str(gop_size),
+            "-keyint_min", str(max(2, int(gop_size / 2))),
+            "-sc_threshold", "0",
             "-pix_fmt", "yuv420p",
             "-movflags", "+faststart",
             temp_path
@@ -54,7 +59,7 @@ def _async_convert_to_h264_faststart(file_path: str, recording_id: Optional[int]
                         db.rollback()
                     finally:
                         db.close()
-                logger.info(f"[{camera_name}] Optimized video segment to H.264 (+faststart): {file_path}")
+                logger.info(f"[{camera_name}] Optimized video segment to H.264 (+faststart, GOP={gop_size}): {file_path}")
             else:
                 if os.path.exists(temp_path):
                     try:
@@ -242,8 +247,8 @@ class CameraVideoRecorder:
             finally:
                 db.close()
 
-            # Tự động nén chuẩn H.264 faststart cho trình duyệt HTML5
-            _async_convert_to_h264_faststart(closed_file_path, closed_rec_id, self.camera_name)
+            # Tự động nén chuẩn H.264 faststart cho trình duyệt HTML5 (GOP tối ưu theo FPS camera)
+            _async_convert_to_h264_faststart(closed_file_path, closed_rec_id, self.camera_name, self.target_fps)
 
         self.current_recording_id = None
         self.current_file_path = None

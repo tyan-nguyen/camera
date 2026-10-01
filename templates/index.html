@@ -106,7 +106,7 @@
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400 text-xs">
                             <i class="fa-solid fa-user"></i>
                         </span>
-                        <input type="text" id="login-username" required placeholder="admin / quanly / user"
+                        <input type="text" id="login-username" required placeholder="Nhập tên đăng nhập"
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 text-slate-200">
                     </div>
                 </div>
@@ -131,15 +131,6 @@
                         <i class="fa-solid fa-right-to-bracket"></i>
                         <span>Đăng Nhập</span>
                     </button>
-                </div>
-
-                <div class="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
-                    <div class="font-semibold text-slate-300">Tài khoản mặc định:</div>
-                    <div class="flex flex-wrap gap-1.5 pt-0.5">
-                        <span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 font-mono">admin / admin123</span>
-                        <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">quanly / quanly123</span>
-                        <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono">user / user123</span>
-                    </div>
                 </div>
             </form>
         </div>
@@ -3096,25 +3087,34 @@
 
             let seekDone = false;
             const applySeekOnce = () => {
-                if (!seekDone && targetOffset > 0) {
-                    try {
-                        video.currentTime = targetOffset;
+                if (!seekDone) {
+                    if (targetOffset > 0) {
+                        try {
+                            video.currentTime = targetOffset;
+                            seekDone = true;
+                        } catch (err) {
+                            console.warn("Seek error:", err);
+                        }
+                    } else {
                         seekDone = true;
-                    } catch (err) {
-                        console.warn("Seek error:", err);
                     }
+                    video.playbackRate = playbackState.currentSpeed || 1;
+                    video.play().catch(e => console.log("Auto-play note:", e));
                 }
             };
 
             video.onloadedmetadata = () => {
                 applySeekOnce();
-                video.playbackRate = playbackState.currentSpeed || 1;
-                video.play().catch(e => console.log("Auto-play note:", e));
             };
 
             video.oncanplay = () => {
-                if (!seekDone && targetOffset > 0) {
-                    applySeekOnce();
+                if (!seekDone || (targetOffset > 0 && Math.abs(video.currentTime - targetOffset) > 2.0 && video.currentTime < 1.0)) {
+                    if (targetOffset > 0) {
+                        try {
+                            video.currentTime = targetOffset;
+                            seekDone = true;
+                        } catch (e) { }
+                    }
                 }
             };
 

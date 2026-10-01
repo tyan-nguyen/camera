@@ -141,7 +141,7 @@ def open_video_file_absolute(file_path: str) -> str:
     return abs_path
 
 def ensure_h264_playable(abs_path: str) -> str:
-    """Tự động chuyển đổi file MP4 sang chuẩn H.264 (+faststart) nếu file chưa tương thích trình duyệt"""
+    """Tự động chuyển đổi file MP4 sang chuẩn H.264 (+faststart + keyframe ngắn) nếu file chưa tương thích trình duyệt"""
     if not os.path.exists(abs_path):
         return abs_path
 
@@ -159,12 +159,17 @@ def ensure_h264_playable(abs_path: str) -> str:
         
         # Nếu là FMP4 / mp4v không xem được trên web
         if fourcc_str in ['fmp4', 'mp4v', 'xvid', 'divx', '']:
-            temp_path = abs_path.replace(".mp4", "_h264tmp.mp4")
+            import threading
+            temp_path = f"{abs_path}.h264tmp_{os.getpid()}_{threading.get_ident()}.mp4"
             cmd = [
                 ffmpeg_exe, "-y",
                 "-i", abs_path,
                 "-c:v", "libx264",
                 "-preset", "veryfast",
+                "-crf", "23",
+                "-g", "12",
+                "-keyint_min", "6",
+                "-sc_threshold", "0",
                 "-pix_fmt", "yuv420p",
                 "-movflags", "+faststart",
                 temp_path
@@ -172,7 +177,7 @@ def ensure_h264_playable(abs_path: str) -> str:
             res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if res.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
                 os.replace(temp_path, abs_path)
-                logger.info(f"Auto-transcoded on-demand to H.264 (+faststart): {abs_path}")
+                logger.info(f"Auto-transcoded on-demand to H.264 (+faststart, GOP=12): {abs_path}")
             else:
                 if os.path.exists(temp_path):
                     try:
@@ -246,7 +251,7 @@ def stream_recording_video(
             f.seek(start)
             bytes_left = chunk_size
             while bytes_left > 0:
-                read_amount = min(bytes_left, 64 * 1024)
+                read_amount = min(bytes_left, 256 * 1024)
                 data = f.read(read_amount)
                 if not data:
                     break
@@ -304,26 +309,38 @@ def locate_recording_by_time(
         except Exception as e:
             logger.warning(f"Error rotating segment on locate: {e}")
 
-    # 2. Nếu không thấy file bao trùm, tìm file gần nhất trước target_dt
+    # 2. Nếu không thấy file bao trùm, so sánh file gần nhất trước và file gần nhất sau để chọn file sát nhất
     if not rec:
-        rec = db.query(VideoRecording).filter(
+        closest_before = db.query(VideoRecording).filter(
             VideoRecording.camera_id == camera_id,
             VideoRecording.start_time <= target_dt
         ).order_by(VideoRecording.start_time.desc()).first()
 
-    # 3. Nếu vẫn không thấy, tìm file gần nhất sau target_dt
-    if not rec:
-        rec = db.query(VideoRecording).filter(
+        closest_after = db.query(VideoRecording).filter(
             VideoRecording.camera_id == camera_id,
             VideoRecording.start_time >= target_dt
         ).order_by(VideoRecording.start_time.asc()).first()
 
+        if closest_before and closest_after:
+            end_b = closest_before.end_time or closest_before.start_time
+            diff_before = abs((target_dt - end_b).total_seconds())
+            diff_after = abs((closest_after.start_time - target_dt).total_seconds())
+            rec = closest_after if diff_after < diff_before else closest_before
+        elif closest_before:
+            rec = closest_before
+        elif closest_after:
+            rec = closest_after
+
     if not rec:
         raise HTTPException(status_code=404, detail="Không tìm thấy video nào tại mốc thời gian này.")
 
-    # Lùi lại 3 giây (pre-roll) để người dùng xem được xe từ lúc bắt đầu tiến vào khung hình
-    raw_offset = max(0.0, (target_dt - rec.start_time).total_seconds())
-    seek_offset_seconds = max(0.0, raw_offset - 3.0)
+    # Tính toán vị trí giây cần tua (seek offset)
+    if target_dt >= rec.start_time:
+        raw_offset = (target_dt - rec.start_time).total_seconds()
+        seek_offset_seconds = max(0.0, raw_offset - 3.0)
+    else:
+        seek_offset_seconds = 0.0
+
     if rec.duration_seconds and rec.duration_seconds > 0:
         if seek_offset_seconds >= rec.duration_seconds:
             seek_offset_seconds = max(0.0, float(rec.duration_seconds - 3.0))
