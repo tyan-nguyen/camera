@@ -194,6 +194,7 @@ class CameraThread(threading.Thread):
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
             logger.info(f"[{self.camera_name}] RTSP Stream connected successfully.")
             last_processed_time = time.time()
+            last_rec_time = time.time()
             last_frame_time = time.time()
 
             while not self.stop_requested.is_set():
@@ -210,10 +211,13 @@ class CameraThread(threading.Thread):
                     continue
 
                 last_frame_time = time.time()
+                current_time = time.time()
 
-                # 1. Ghi hình video phân đoạn nếu camera được BẬT tính năng lưu
+                # 1. Ghi hình video phân đoạn nếu camera được BẬT tính năng lưu (khớp nhịp FPS thiết lập)
                 if self.is_recording:
-                    video_recorder_manager.push_frame(self.camera_id, raw_frame)
+                    if current_time - last_rec_time >= frame_interval - 0.003:
+                        last_rec_time = current_time
+                        video_recorder_manager.push_frame(self.camera_id, raw_frame)
 
                 # 2. Tạo khung hình hiển thị Live Dashboard
                 display_frame = self._draw_zone_overlay(raw_frame.copy())

@@ -2900,7 +2900,7 @@
                         return `
                             <div class="absolute top-0 bottom-0 w-3 -ml-1.5 flex items-center justify-center group/evt cursor-pointer pointer-events-auto"
                                 style="left: ${leftPercent}%;"
-                                onclick="event.stopPropagation(); locateAndPlayTimestamp(${data.camera_id}, '${evt.detected_at}')">
+                                onclick="event.stopPropagation(); locateAndPlayTimestamp(${data.camera_id}, '${evt.detected_at}', '${evt.plate_number}')">
                                 <span class="w-2.5 h-2.5 rounded-full bg-amber-400 group-hover/evt:scale-150 group-hover/evt:bg-amber-300 shadow-md shadow-amber-400/80 border border-slate-950 transition-all"></span>
                                 <div class="hidden group-hover/evt:block absolute bottom-full mb-1 bg-slate-900/95 text-amber-300 text-[10px] font-bold font-mono px-2 py-0.5 rounded-lg border border-slate-700 shadow-xl pointer-events-none whitespace-nowrap z-40">
                                     🚗 ${evt.plate_number} (${timeShort})
@@ -3073,41 +3073,48 @@
             }
 
             const streamUrl = `/api/v1/playback/stream/${recId}`;
-            
-            // Clear previous event listeners
+            const targetOffset = Math.max(0, parseFloat(seekOffset) || 0);
+
+            // Kiểm tra nếu video stream này đã nạp sẵn trong player
+            const currentSrc = video.getAttribute('src') || video.src || '';
+            const isSameVideo = currentSrc.includes(`/api/v1/playback/stream/${recId}`);
+
+            if (isSameVideo && video.readyState >= 1) {
+                try {
+                    video.currentTime = targetOffset;
+                } catch (e) {
+                    console.warn("Direct seek error:", e);
+                }
+                video.playbackRate = playbackState.currentSpeed || 1;
+                video.play().catch(e => console.log("Play note:", e));
+                return;
+            }
+
+            // Nạp luồng stream mới và tua đến đúng giây targetOffset
             video.onloadedmetadata = null;
             video.oncanplay = null;
 
-            let seekApplied = false;
-            const targetOffset = Math.max(0, parseFloat(seekOffset) || 0);
-
-            const applySeekAndPlay = () => {
-                if (!seekApplied && targetOffset > 0) {
+            let seekDone = false;
+            const applySeekOnce = () => {
+                if (!seekDone && targetOffset > 0) {
                     try {
                         video.currentTime = targetOffset;
-                        seekApplied = true;
+                        seekDone = true;
                     } catch (err) {
                         console.warn("Seek error:", err);
                     }
                 }
-                const playPromise = video.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(e => {
-                        console.log("Auto-play note:", e);
-                    });
-                }
             };
 
             video.onloadedmetadata = () => {
-                applySeekAndPlay();
+                applySeekOnce();
+                video.playbackRate = playbackState.currentSpeed || 1;
+                video.play().catch(e => console.log("Auto-play note:", e));
             };
 
             video.oncanplay = () => {
-                if (targetOffset > 0 && (!seekApplied || Math.abs(video.currentTime - targetOffset) > 1.5)) {
-                    try {
-                        video.currentTime = targetOffset;
-                        seekApplied = true;
-                    } catch (err) { }
+                if (!seekDone && targetOffset > 0) {
+                    applySeekOnce();
                 }
             };
 

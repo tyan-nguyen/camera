@@ -83,6 +83,7 @@ class CameraVideoRecorder:
         
         self.frame_queue: queue.Queue = queue.Queue(maxsize=120)  # Bộ đệm tối đa 120 frame (~20 giây)
         self.stop_requested = threading.Event()
+        self.rotate_requested = threading.Event()
         self.worker_thread = threading.Thread(target=self._run_writer_loop, daemon=True)
         
         # State ghi hình
@@ -93,6 +94,10 @@ class CameraVideoRecorder:
         self.frame_size: Optional[Tuple[int, int]] = None  # (width, height)
         self.frame_count: int = 0
         self.is_active: bool = False
+
+    def request_rotation(self):
+        """Kích hoạt chốt file segment hiện tại và mở file mới ngay lập tức"""
+        self.rotate_requested.set()
 
     def start(self):
         self.is_active = True
@@ -218,8 +223,8 @@ class CameraVideoRecorder:
                 file_size_mb = round(os.path.getsize(closed_file_path) / (1024 * 1024), 2)
             
             duration_sec = int((now - self.segment_start_time).total_seconds())
-            if duration_sec <= 0 and self.frame_count > 0:
-                duration_sec = int(self.frame_count / self.target_fps)
+            calc_sec = int(self.frame_count / self.target_fps) if (self.target_fps > 0 and self.frame_count > 0) else 0
+            actual_duration = max(duration_sec, calc_sec) if duration_sec > 0 else calc_sec
 
             db = SessionLocal()
             try:
@@ -227,10 +232,10 @@ class CameraVideoRecorder:
                 if rec:
                     rec.end_time = now
                     rec.file_size_mb = file_size_mb
-                    rec.duration_seconds = duration_sec
+                    rec.duration_seconds = actual_duration
                     rec.status = "completed"
                     db.commit()
-                    logger.info(f"[{self.camera_name}] Closed video segment ID {closed_rec_id}: {duration_sec}s, {file_size_mb} MB")
+                    logger.info(f"[{self.camera_name}] Closed video segment ID {closed_rec_id}: {actual_duration}s, {file_size_mb} MB")
             except Exception as e:
                 logger.error(f"[{self.camera_name}] Error updating VideoRecording record: {e}")
                 db.rollback()
@@ -256,14 +261,16 @@ class CameraVideoRecorder:
             current_time = datetime.now()
             max_segment_sec = self._get_segment_duration_seconds()
 
-            # Kiểm tra nếu cần mở file mới
+            # Kiểm tra nếu cần mở file mới (hoặc có yêu cầu chốt file tức thì)
             need_new_segment = (
                 self.writer is None or 
                 self.frame_size != (w, h) or
+                self.rotate_requested.is_set() or
                 (self.segment_start_time and (current_time - self.segment_start_time).total_seconds() >= max_segment_sec)
             )
 
             if need_new_segment:
+                self.rotate_requested.clear()
                 success = self._open_new_segment(w, h)
                 if not success:
                     time.sleep(0.5)
@@ -318,6 +325,13 @@ class VideoRecorderManager:
             if recorder:
                 recorder.stop()
                 logger.info(f"Stopped video recording for Camera ID: {camera_id}")
+
+    def rotate_camera_segment(self, camera_id: int):
+        """Kích hoạt hoàn tất file video hiện tại và bắt đầu file mới để video có thể xem lại ngay lập tức"""
+        with self.lock:
+            recorder = self.recorders.get(camera_id)
+            if recorder and recorder.is_active:
+                recorder.request_rotation()
 
     def push_frame(self, camera_id: int, frame: np.ndarray):
         recorder = self.recorders.get(camera_id)
