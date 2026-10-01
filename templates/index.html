@@ -3213,12 +3213,13 @@
         function onPlaybackVideoEnded() {
             if (!playbackState.currentRecording || !playbackState.timelineData.blocks) return;
             const blocks = playbackState.timelineData.blocks;
-            const curIdx = blocks.findIndex(b => b.recording_id === playbackState.currentRecording.id);
+            const currentRecId = playbackState.currentRecording.id || playbackState.currentRecording.recording_id;
+            const curIdx = blocks.findIndex(b => (b.id === currentRecId || b.recording_id === currentRecId));
             if (curIdx !== -1 && curIdx + 1 < blocks.length) {
                 const nextBlock = blocks[curIdx + 1];
-                locateAndPlayTimestamp(playbackState.selectedCameraId, nextBlock.start_time);
+                playVideoRecordingById(nextBlock.id);
             } else {
-                showToast("Đã xem hết đoạn video đã ghi trong danh sách.", "info");
+                showToast("Đã phát hết danh sách các đoạn video trong ngày.", "info");
             }
         }
 
