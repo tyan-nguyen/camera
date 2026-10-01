@@ -1385,7 +1385,13 @@
             <button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <h3 class="text-base sm:text-lg font-bold mb-3 text-white" id="modal-title">Chi Tiết Sự Kiện Nhận Dạng</h3>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pr-8">
+                <h3 class="text-base sm:text-lg font-bold text-white" id="modal-title">Chi Tiết Sự Kiện Nhận Dạng</h3>
+                <button id="modal-btn-view-video" onclick="viewVideoFromModal()" class="self-start sm:self-auto px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md flex items-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-film"></i>
+                    <span>Xem Video Thời Điểm Này</span>
+                </button>
+            </div>
             <div id="modal-summary-box" class="hidden mb-4 p-3 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs flex items-center space-x-2 font-medium">
                 <i class="fa-solid fa-info-circle text-blue-400 text-sm flex-shrink-0"></i>
                 <span id="modal-summary-text"></span>
@@ -1713,7 +1719,7 @@
             loadNext();
         }
 
-        function switchTab(tabId) {
+        function switchTab(tabId, skipPlaybackLoad = false) {
             currentTab = tabId;
             ['dashboard', 'playback', 'history', 'cameras', 'settings'].forEach(t => {
                 const page = document.getElementById(`page-${t}`);
@@ -1743,7 +1749,9 @@
             }
 
             if (tabId === 'playback') {
-                loadPlaybackCameras();
+                if (!skipPlaybackLoad) {
+                    loadPlaybackCameras();
+                }
                 loadExportedClips();
             }
             if (tabId === 'history') fetchHistoryLogs(1);
@@ -2690,10 +2698,10 @@
                             <img src="${item.image_plate_path}" onclick="openImageViewer('${item.image_plate_path}', 'Biển số: ${item.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform">
                         </td>
                         <td class="p-3 text-right space-x-1 whitespace-nowrap">
-                            <button onclick="openPlaybackForEvent(${item.camera_id}, '${item.detected_at}')" class="px-2.5 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video thời điểm này">
+                            <button onclick="openPlaybackForEvent(${item.camera_id}, '${item.detected_at}', '${item.plate_number}')" class="px-2.5 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
-                            <button onclick="openImageModal('${item.image_plate_path}', '${item.image_full_path}', '${item.plate_number}', '${item.summary || ''}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                            <button onclick="openImageModal('${item.image_plate_path}', '${item.image_full_path}', '${item.plate_number}', '${item.summary || ''}', ${item.camera_id}, '${item.detected_at}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
                             ${currentUser && (currentUser.role === 'admin' || currentUser.role === 'quan_ly') ? `
                                 <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.summary || ''}')" class="px-2 py-1 text-xs bg-amber-600/20 text-amber-400 rounded-lg" title="Chỉnh sửa"><i class="fa-solid fa-pen-to-square"></i></button>
                                 <button onclick="deleteVehicleLog(${item.id}, '${item.plate_number}')" class="px-2 py-1 text-xs bg-rose-600/20 text-rose-400 rounded-lg" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
@@ -2755,10 +2763,10 @@
                         <td class="p-2.5 sm:p-3 text-xs text-slate-400 font-mono">${(d.confidence_score * 100).toFixed(1)}%</td>
                         <td class="p-2.5 sm:p-3"><img src="${d.image_plate_path}" onclick="openImageViewer('${d.image_plate_path}', 'Biển số: ${d.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform"></td>
                         <td class="p-2.5 sm:p-3 text-right whitespace-nowrap space-x-1">
-                            <button onclick="openPlaybackForEvent(${d.camera_id}, '${d.detected_at}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video">
+                            <button onclick="openPlaybackForEvent(${d.camera_id}, '${d.detected_at}', '${d.plate_number}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
-                            <button onclick="openImageModal('${d.image_plate_path}', '${d.image_full_path}', '${d.plate_number}', '${d.summary || ''}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                            <button onclick="openImageModal('${d.image_plate_path}', '${d.image_full_path}', '${d.plate_number}', '${d.summary || ''}', ${d.camera_id}, '${d.detected_at}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
                         </td>
                     </tr>
                 `).join('');
@@ -3015,7 +3023,7 @@
             if (hoverTime) hoverTime.innerText = 'Rê chuột để xem giờ';
         }
 
-        async function locateAndPlayTimestamp(cameraId, timestampStr) {
+        async function locateAndPlayTimestamp(cameraId, timestampStr, plateNumber = '') {
             if (!cameraId || !timestampStr) return;
             try {
                 const res = await fetch(`/api/v1/playback/locate?camera_id=${cameraId}&timestamp=${encodeURIComponent(timestampStr)}`);
@@ -3024,12 +3032,18 @@
                     playVideoRecording(data, data.seek_offset_seconds || 0);
                     const player = document.getElementById('playback-player-container');
                     if (player) player.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (plateNumber) {
+                        showToast(`🚗 Đang phát video sự kiện [${plateNumber}] lúc ${timestampStr.split(' ')[1] || timestampStr}`, "info", 4000);
+                    }
                 } else if (res.ok && data.recording) {
                     playVideoRecording(data.recording, data.seek_offset_seconds || 0);
                     const player = document.getElementById('playback-player-container');
                     if (player) player.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (plateNumber) {
+                        showToast(`🚗 Đang phát video sự kiện [${plateNumber}] lúc ${timestampStr.split(' ')[1] || timestampStr}`, "info", 4000);
+                    }
                 } else {
-                    showToast(`Không có video được lưu tại thời điểm [${timestampStr}]`, "warning", 3500);
+                    showToast(`Không có đoạn video nào được lưu tại thời điểm [${timestampStr}] (Có thể camera chưa bật tính năng ghi hình).`, "warning", 4500);
                 }
             } catch (e) {
                 showToast("Lỗi khi tìm đoạn video: " + e, "error");
@@ -3043,6 +3057,8 @@
                 id: recId
             };
             const video = document.getElementById('playback-video-element');
+            if (!video) return;
+
             const emptyState = document.getElementById('playback-empty-state');
             if (emptyState) emptyState.classList.add('hidden');
 
@@ -3053,26 +3069,50 @@
             const activeRow = document.getElementById(`rec-row-${recId}`);
             if (activeRow) {
                 activeRow.classList.add('bg-blue-600/20', 'border-l-4', 'border-l-blue-500', 'font-semibold');
+                activeRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
             const streamUrl = `/api/v1/playback/stream/${recId}`;
-            video.src = streamUrl;
-            video.playbackRate = playbackState.currentSpeed || 1;
+            
+            // Clear previous event listeners
+            video.onloadedmetadata = null;
+            video.oncanplay = null;
 
-            video.onerror = () => {
-                showToast("Không thể tải luồng video đoạn này.", "error", 4000);
-            };
+            let seekApplied = false;
+            const targetOffset = Math.max(0, parseFloat(seekOffset) || 0);
 
-            const onLoaded = () => {
-                video.removeEventListener('loadedmetadata', onLoaded);
-                if (seekOffset > 0 && seekOffset < (video.duration || 9999)) {
-                    video.currentTime = seekOffset;
+            const applySeekAndPlay = () => {
+                if (!seekApplied && targetOffset > 0) {
+                    try {
+                        video.currentTime = targetOffset;
+                        seekApplied = true;
+                    } catch (err) {
+                        console.warn("Seek error:", err);
+                    }
                 }
-                video.play().catch(e => {
-                    console.log("Auto-play prevented:", e);
-                });
+                const playPromise = video.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(e => {
+                        console.log("Auto-play note:", e);
+                    });
+                }
             };
-            video.addEventListener('loadedmetadata', onLoaded);
+
+            video.onloadedmetadata = () => {
+                applySeekAndPlay();
+            };
+
+            video.oncanplay = () => {
+                if (targetOffset > 0 && (!seekApplied || Math.abs(video.currentTime - targetOffset) > 1.5)) {
+                    try {
+                        video.currentTime = targetOffset;
+                        seekApplied = true;
+                    } catch (err) { }
+                }
+            };
+
+            video.playbackRate = playbackState.currentSpeed || 1;
+            video.src = streamUrl;
             video.load();
         }
 
@@ -3311,25 +3351,36 @@
             }
         }
 
-        async function openPlaybackForEvent(cameraId, detectedAt) {
-            switchTab('playback');
-            if (!camerasList || camerasList.length === 0) await loadCameras();
+        async function openPlaybackForEvent(cameraId, detectedAt, plateNumber = '') {
+            // 1. Chuyển sang Tab Playback (bỏ qua duplicate load mặc định)
+            switchTab('playback', true);
+
+            if (!camerasList || camerasList.length === 0) {
+                await loadCameras();
+            }
+            populatePlaybackCameraDropdown();
             
+            const selectCam = document.getElementById('playback-camera-select');
+            const selectDate = document.getElementById('playback-date-select');
+
             if (cameraId) {
-                const selectCam = document.getElementById('playback-camera-select');
                 if (selectCam) selectCam.value = cameraId;
                 playbackState.selectedCameraId = parseInt(cameraId, 10);
             }
 
             if (detectedAt) {
                 const datePart = detectedAt.split(' ')[0];
-                const selectDate = document.getElementById('playback-date-select');
                 if (selectDate) selectDate.value = datePart;
                 playbackState.selectedDate = datePart;
 
                 await loadPlaybackTimeline();
-                await locateAndPlayTimestamp(cameraId, detectedAt);
+                await locateAndPlayTimestamp(cameraId, detectedAt, plateNumber);
             } else {
+                if (selectDate && !selectDate.value) {
+                    const today = new Date().toISOString().split('T')[0];
+                    selectDate.value = today;
+                    playbackState.selectedDate = today;
+                }
                 await loadPlaybackTimeline();
             }
 
@@ -3340,7 +3391,15 @@
         }
 
         /* --- MODALS HANDLERS --- */
-        function openImageModal(platePath, fullPath, plateNum, summary) {
+        let currentModalEvent = { cameraId: null, detectedAt: '', plateNumber: '' };
+
+        function openImageModal(platePath, fullPath, plateNum, summary, cameraId = null, detectedAt = '') {
+            currentModalEvent = {
+                cameraId: cameraId,
+                detectedAt: detectedAt,
+                plateNumber: plateNum
+            };
+
             document.getElementById('modal-title').innerText = `Chi Tiết Sự Kiện - Biển Số: ${plateNum}`;
             document.getElementById('modal-plate-img').src = platePath;
             document.getElementById('modal-full-img').src = fullPath;
@@ -3351,7 +3410,26 @@
             } else {
                 summaryBox.classList.add('hidden');
             }
+
+            const videoBtn = document.getElementById('modal-btn-view-video');
+            if (videoBtn) {
+                if (cameraId && detectedAt) {
+                    videoBtn.classList.remove('hidden');
+                } else {
+                    videoBtn.classList.add('hidden');
+                }
+            }
+
             document.getElementById('image-modal').classList.remove('hidden');
+        }
+
+        function viewVideoFromModal() {
+            if (currentModalEvent.cameraId && currentModalEvent.detectedAt) {
+                closeImageModal();
+                openPlaybackForEvent(currentModalEvent.cameraId, currentModalEvent.detectedAt, currentModalEvent.plateNumber);
+            } else {
+                showToast("Không có thông tin thời điểm để mở video.", "warning");
+            }
         }
 
         function closeImageModal() {
