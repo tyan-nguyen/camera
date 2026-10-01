@@ -3082,24 +3082,27 @@
             }
 
             // Nạp luồng stream mới và tua đến đúng giây targetOffset
+            video.pause();
+            video.onended = null; // Tạm ngắt onended để không bị nhận nhầm kết thúc luồng cũ
             video.onloadedmetadata = null;
             video.oncanplay = null;
 
             let seekDone = false;
             const applySeekOnce = () => {
                 if (!seekDone) {
+                    seekDone = true;
                     if (targetOffset > 0) {
                         try {
                             video.currentTime = targetOffset;
-                            seekDone = true;
                         } catch (err) {
                             console.warn("Seek error:", err);
                         }
-                    } else {
-                        seekDone = true;
                     }
                     video.playbackRate = playbackState.currentSpeed || 1;
                     video.play().catch(e => console.log("Auto-play note:", e));
+                    setTimeout(() => {
+                        video.onended = onPlaybackVideoEnded;
+                    }, 500);
                 }
             };
 
@@ -3108,14 +3111,7 @@
             };
 
             video.oncanplay = () => {
-                if (!seekDone || (targetOffset > 0 && Math.abs(video.currentTime - targetOffset) > 2.0 && video.currentTime < 1.0)) {
-                    if (targetOffset > 0) {
-                        try {
-                            video.currentTime = targetOffset;
-                            seekDone = true;
-                        } catch (e) { }
-                    }
-                }
+                applySeekOnce();
             };
 
             video.playbackRate = playbackState.currentSpeed || 1;
@@ -3211,7 +3207,14 @@
         }
 
         function onPlaybackVideoEnded() {
-            if (!playbackState.currentRecording || !playbackState.timelineData.blocks) return;
+            const video = document.getElementById('playback-video-element');
+            if (!video || !playbackState.currentRecording || !playbackState.timelineData || !playbackState.timelineData.blocks) return;
+
+            // Chỉ kích hoạt nếu video thực sự đã phát tới cuối file (chênh lệch < 1.0 giây so với duration)
+            if (!video.duration || isNaN(video.duration) || video.duration <= 0 || video.currentTime < video.duration - 1.0) {
+                return;
+            }
+
             const blocks = playbackState.timelineData.blocks;
             const currentRecId = playbackState.currentRecording.id || playbackState.currentRecording.recording_id;
             const curIdx = blocks.findIndex(b => (b.id === currentRecId || b.recording_id === currentRecId));
