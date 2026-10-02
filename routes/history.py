@@ -22,6 +22,7 @@ def search_vehicle_logs(
     action_group_id: Optional[int] = Query(None, description="ID nhóm hành động"),
     action_status: Optional[str] = Query(None, description="Trạng thái hành động (APPROVED, UNPLANNED, REJECTED, WARNING...)"),
     vehicle_view: Optional[str] = Query(None, description="Góc nhìn phương tiện (front, rear, unknown)"),
+    vehicle_type: Optional[str] = Query(None, description="Loại phương tiện (car, motorcycle)"),
     start_date: Optional[str] = Query(None, description="Thời gian bắt đầu (YYYY-MM-DD HH:MM:SS)"),
     end_date: Optional[str] = Query(None, description="Thời gian kết thúc (YYYY-MM-DD HH:MM:SS)"),
     page: int = Query(1, ge=1),
@@ -66,7 +67,12 @@ def search_vehicle_logs(
         clean_view = vehicle_view.strip().lower()
         query = query.filter(VehicleLog.vehicle_view == clean_view)
 
-    # 8. Bộ lọc theo Thời gian
+    # 8. Bộ lọc theo Loại phương tiện (Ô tô / Xe máy)
+    if vehicle_type and vehicle_type.strip() and vehicle_type.strip().lower() != "all":
+        clean_type = vehicle_type.strip().lower()
+        query = query.filter(VehicleLog.vehicle_type == clean_type)
+
+    # 9. Bộ lọc theo Thời gian
     if start_date:
         try:
             dt_start = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
@@ -118,6 +124,8 @@ def update_vehicle_log(
         log_item.plate_number = payload.plate_number.strip().upper()
     if payload.vehicle_view is not None:
         log_item.vehicle_view = payload.vehicle_view.strip().lower()
+    if payload.vehicle_type is not None:
+        log_item.vehicle_type = payload.vehicle_type.strip().lower()
     if payload.summary is not None:
         log_item.summary = payload.summary.strip() if payload.summary.strip() else None
     if payload.action_status is not None:

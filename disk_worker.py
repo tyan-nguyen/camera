@@ -41,7 +41,8 @@ def execute_action_webhook(
     confidence_score: float,
     detected_at: datetime,
     image_full_rel: str,
-    image_plate_rel: str
+    image_plate_rel: str,
+    vehicle_type: str = "car"
 ) -> Dict[str, Any]:
     """
     Gọi Webhook API của Nhóm Hành Động và chuẩn hóa kết quả trả về
@@ -61,6 +62,7 @@ def execute_action_webhook(
         "action_group_name": action_group.name,
         "plate_number": plate_number,
         "vehicle_view": vehicle_view,
+        "vehicle_type": vehicle_type,
         "confidence_score": confidence_score,
         "detected_at": detected_at.strftime("%Y-%m-%d %H:%M:%S"),
         "image_full_url": f"/static/captures/{image_full_rel}",
@@ -255,15 +257,17 @@ class AsyncDiskWorker:
 
         event["plate_number"] = res.get("plate_number", "UNKNOWN")
         event["vehicle_view"] = res.get("vehicle_view", "unknown")
+        event["vehicle_type"] = res.get("vehicle_type") or event.get("vehicle_type", "car")
         event["confidence_score"] = res.get("confidence_score", 0.9)
 
-        logger.info(f"Vision API [{ocr_engine_type}] result: Plate={event['plate_number']}, View={event['vehicle_view']}")
+        logger.info(f"Vision API [{ocr_engine_type}] result: Plate={event['plate_number']}, View={event['vehicle_view']}, Type={event['vehicle_type']}")
         self._save_event(event)
 
     def _save_event(self, event: dict):
         camera_id = event["camera_id"]
         plate_number = event.get("plate_number", "UNKNOWN")
         vehicle_view = event.get("vehicle_view", "front")
+        vehicle_type = event.get("vehicle_type", "car")
         confidence_score = event.get("confidence_score", 0.95)
         full_frame = event["full_frame"]
         plate_crop = event["plate_crop"]
@@ -317,30 +321,46 @@ class AsyncDiskWorker:
             summary = None
             voice_message = None
 
-            # Chỉ gọi Webhook nếu là xe mặt trước (front) hoặc hợp lệ VÀ độ tin cậy >= 0.40
+            is_car = (str(vehicle_type).lower() == "car")
+            is_moto = (str(vehicle_type).lower() == "motorcycle")
+
+            # Chỉ gọi Webhook nếu là biển số hợp lệ VÀ độ tin cậy >= 0.40
             if is_valid_license_plate(plate_number) and confidence_score >= 0.40:
                 if action_group:
-                    action_group_id = action_group.id
-                    action_group_name = action_group.name
-                    logger.info(f"Triggering Action Group [{action_group.name}] Webhook for Plate [{plate_number}] on {cam.camera_name}...")
-                    webhook_res = execute_action_webhook(
-                        action_group=action_group,
-                        camera=cam,
-                        plate_number=plate_number,
-                        vehicle_view=vehicle_view,
-                        confidence_score=confidence_score,
-                        detected_at=now,
-                        image_full_rel=rel_full_path,
-                        image_plate_rel=rel_plate_path
-                    )
-                    action_status = webhook_res.get("action_status", "INFO")
-                    summary = webhook_res.get("summary")
-                    alert_level = webhook_res.get("alert_level", "normal")
-                    voice_message = webhook_res.get("voice_message")
-                    action_result_raw = webhook_res.get("action_result_raw")
+                    apply_car = getattr(action_group, "apply_car", True)
+                    apply_moto = getattr(action_group, "apply_motorcycle", True)
+
+                    if is_car and not apply_car:
+                        action_status = "INFO"
+                        summary = "Bỏ qua Webhook (Không áp dụng Ô tô)"
+                        logger.info(f"Skipping Webhook for {plate_number} ({vehicle_type}): ActionGroup [{action_group.name}] has apply_car=False")
+                    elif is_moto and not apply_moto:
+                        action_status = "INFO"
+                        summary = "Bỏ qua Webhook (Không áp dụng Xe máy)"
+                        logger.info(f"Skipping Webhook for {plate_number} ({vehicle_type}): ActionGroup [{action_group.name}] has apply_motorcycle=False")
+                    else:
+                        action_group_id = action_group.id
+                        action_group_name = action_group.name
+                        logger.info(f"Triggering Action Group [{action_group.name}] Webhook for Plate [{plate_number}] ({vehicle_type}) on {cam.camera_name}...")
+                        webhook_res = execute_action_webhook(
+                            action_group=action_group,
+                            camera=cam,
+                            plate_number=plate_number,
+                            vehicle_view=vehicle_view,
+                            vehicle_type=vehicle_type,
+                            confidence_score=confidence_score,
+                            detected_at=now,
+                            image_full_rel=rel_full_path,
+                            image_plate_rel=rel_plate_path
+                        )
+                        action_status = webhook_res.get("action_status", "INFO")
+                        summary = webhook_res.get("summary")
+                        alert_level = webhook_res.get("alert_level", "normal")
+                        voice_message = webhook_res.get("voice_message")
+                        action_result_raw = webhook_res.get("action_result_raw")
                 else:
-                    # Mặc định: Nếu thuộc vùng Trường Lái, kiểm tra kế hoạch bằng API mặc định
-                    if zone_code == "TRUONGLAI" and str(vehicle_view).lower() == "front":
+                    # Mặc định: Nếu thuộc vùng Trường Lái, kiểm tra kế hoạch bằng API mặc định (chỉ cho xe ô tô mặt trước)
+                    if zone_code == "TRUONGLAI" and str(vehicle_view).lower() == "front" and is_car:
                         # Tra cứu Action Group mặc định kiểm tra đi không kế hoạch
                         default_ag = db.query(ActionGroup).filter(ActionGroup.code == "KIEM_TRA_DI_KHONG_KE_HOACH").first()
                         if default_ag:
@@ -349,6 +369,7 @@ class AsyncDiskWorker:
                                 camera=cam,
                                 plate_number=plate_number,
                                 vehicle_view=vehicle_view,
+                                vehicle_type=vehicle_type,
                                 confidence_score=confidence_score,
                                 detected_at=now,
                                 image_full_rel=rel_full_path,
@@ -367,6 +388,7 @@ class AsyncDiskWorker:
                 camera_id=camera_id,
                 plate_number=plate_number,
                 vehicle_view=vehicle_view,
+                vehicle_type=vehicle_type,
                 confidence_score=confidence_score,
                 image_full_path=rel_full_path,
                 image_plate_path=rel_plate_path,
@@ -382,7 +404,7 @@ class AsyncDiskWorker:
             db.add(log_entry)
             db.commit()
             db.refresh(log_entry)
-            logger.info(f"Saved detection event ID {log_entry.id} ({plate_number}) - Status: {action_status}, Zone: {zone_code}")
+            logger.info(f"Saved detection event ID {log_entry.id} ({plate_number} - {vehicle_type}) - Status: {action_status}, Zone: {zone_code}")
 
             # Định tuyến thông báo đa kênh (Web Realtime + Firebase Push)
             event_dispatch_payload = {
@@ -391,6 +413,7 @@ class AsyncDiskWorker:
                 "camera_name": cam.camera_name,
                 "plate_number": plate_number,
                 "vehicle_view": vehicle_view,
+                "vehicle_type": vehicle_type,
                 "confidence_score": confidence_score,
                 "zone_code": zone_code,
                 "zone_name": zone_name,

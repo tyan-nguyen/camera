@@ -73,6 +73,9 @@ class UnifiedNotificationService:
         summary = event_data.get("summary") or event_data.get("message") or "Phát hiện phương tiện ra/vào"
         alert_level = event_data.get("alert_level", "normal")
 
+        vehicle_type = event_data.get("vehicle_type", "car")
+        type_icon = "🏍️" if vehicle_type == "motorcycle" else "🚗"
+
         # 1. Tra cứu quyền truy cập
         authorized_user_ids = self.get_authorized_user_ids_for_camera(camera_id) if camera_id else set()
         event_data["authorized_user_ids"] = list(authorized_user_ids)
@@ -91,11 +94,11 @@ class UnifiedNotificationService:
             if tokens:
                 # Tiêu đề & Nội dung Push
                 if alert_level == "danger" or action_status == "REJECTED":
-                    title = f"🚨 CẢNH BÁO: {plate_number}"
+                    title = f"🚨 CẢNH BÁO: {type_icon} {plate_number}"
                 elif alert_level == "warning" or action_status == "UNPLANNED":
-                    title = f"⚠️ CHÚ Ý: {plate_number}"
+                    title = f"⚠️ CHÚ Ý: {type_icon} {plate_number}"
                 else:
-                    title = f"🚗 Nhận diện: {plate_number}"
+                    title = f"{type_icon} Nhận diện: {plate_number}"
 
                 body = f"{camera_name} ({zone_name}) - {summary}"
 
@@ -104,6 +107,7 @@ class UnifiedNotificationService:
                     "camera_id": str(camera_id),
                     "camera_name": str(camera_name),
                     "plate_number": str(plate_number),
+                    "vehicle_type": str(vehicle_type),
                     "zone_code": str(event_data.get("zone_code", "")),
                     "zone_name": str(zone_name),
                     "action_status": str(action_status),

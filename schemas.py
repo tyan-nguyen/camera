@@ -12,6 +12,8 @@ class ActionGroupBase(BaseModel):
     http_method: str = "POST"
     headers_json: Optional[str] = None
     description: Optional[str] = None
+    apply_car: bool = True
+    apply_motorcycle: bool = True
     is_active: bool = True
 
 class ActionGroupCreate(ActionGroupBase):
@@ -24,6 +26,8 @@ class ActionGroupUpdate(BaseModel):
     http_method: Optional[str] = None
     headers_json: Optional[str] = None
     description: Optional[str] = None
+    apply_car: Optional[bool] = None
+    apply_motorcycle: Optional[bool] = None
     is_active: Optional[bool] = None
 
 class ActionGroupResponse(ActionGroupBase):
@@ -36,6 +40,7 @@ class ActionGroupResponse(ActionGroupBase):
 class ActionGroupTestRequest(BaseModel):
     plate_number: str = "51A-12345"
     vehicle_view: str = "front"
+    vehicle_type: str = "car"
 
 class ActionGroupTestResponse(BaseModel):
     success: bool
@@ -92,6 +97,7 @@ class VehicleLogBase(BaseModel):
     camera_id: int
     plate_number: str
     vehicle_view: str = "unknown"
+    vehicle_type: str = "car"
     confidence_score: float = 0.0
     image_full_path: str
     image_plate_path: str
@@ -122,6 +128,7 @@ class PaginatedVehicleLogs(BaseModel):
 class VehicleLogUpdate(BaseModel):
     plate_number: Optional[str] = None
     vehicle_view: Optional[str] = None
+    vehicle_type: Optional[str] = None
     summary: Optional[str] = None
     action_status: Optional[str] = None
     alert_level: Optional[str] = None

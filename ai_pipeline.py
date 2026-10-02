@@ -297,15 +297,17 @@ class AIPipelineEngine:
                             active_settings = settings_manager.get_settings()
                             ocr_engine_type = active_settings.get("ocr_engine_type", "yolo_local")
 
+                            vehicle_type = "motorcycle" if cls_id == 3 else "car"
                             vehicle_view = "front" if cls_id == 2 else ("rear" if cls_id == 3 else "unknown")
 
                             if ocr_engine_type in ["lmstudio_api", "openai_api", "gemini_api"]:
-                                logger.info(f"[AI PIPELINE] Vehicle in zone: {VEHICLE_CLASSES[cls_id]} (Track #{track_id}). Routing vehicle crop to Vision API [{ocr_engine_type}]...")
+                                logger.info(f"[AI PIPELINE] Vehicle in zone: {VEHICLE_CLASSES[cls_id]} ({vehicle_type} - Track #{track_id}). Routing vehicle crop to Vision API [{ocr_engine_type}]...")
                                 return {
                                     "camera_id": camera_id,
                                     "track_id": track_id,
                                     "plate_number": "PENDING_API...",
                                     "vehicle_view": vehicle_view,
+                                    "vehicle_type": vehicle_type,
                                     "confidence_score": float(conf),
                                     "full_frame": frame,
                                     "vehicle_crop": vehicle_crop,
@@ -318,13 +320,14 @@ class AIPipelineEngine:
                             else:
                                 plate_num_format = f"29A-{track_id:03d}{np.random.randint(10, 99)}"
                                 normalized_plate = correct_vietnamese_plate_ocr(plate_num_format)
-                                logger.info(f"[AI PIPELINE] Vehicle in zone: {VEHICLE_CLASSES[cls_id]} (Track #{track_id}) plate {normalized_plate} (YOLO Local)")
+                                logger.info(f"[AI PIPELINE] Vehicle in zone: {VEHICLE_CLASSES[cls_id]} ({vehicle_type} - Track #{track_id}) plate {normalized_plate} (YOLO Local)")
 
                                 return {
                                     "camera_id": camera_id,
                                     "track_id": track_id,
                                     "plate_number": normalized_plate,
                                     "vehicle_view": vehicle_view,
+                                    "vehicle_type": vehicle_type,
                                     "confidence_score": float(conf),
                                     "full_frame": frame,
                                     "vehicle_crop": vehicle_crop,

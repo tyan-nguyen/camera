@@ -98,7 +98,7 @@ def init_db():
                 except Exception:
                     pass
 
-            # 2. Bảng vehicle_logs: summary, zone_code, action_group_id, action_group_name, action_status, action_result_raw, alert_level
+            # 2. Bảng vehicle_logs: summary, zone_code, action_group_id, action_group_name, action_status, action_result_raw, alert_level, vehicle_type
             for col, col_type in [
                 ("summary", "VARCHAR(250) NULL"),
                 ("zone_code", "VARCHAR(50) NULL"),
@@ -106,12 +106,25 @@ def init_db():
                 ("action_group_name", "VARCHAR(255) NULL"),
                 ("action_status", "VARCHAR(50) NULL"),
                 ("action_result_raw", "TEXT NULL"),
-                ("alert_level", "VARCHAR(20) DEFAULT 'normal'")
+                ("alert_level", "VARCHAR(20) DEFAULT 'normal'"),
+                ("vehicle_type", "VARCHAR(20) DEFAULT 'car'")
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE vehicle_logs ADD COLUMN {col} {col_type};"))
                     conn.commit()
                     logger.info(f"Added {col} column to vehicle_logs table.")
+                except Exception:
+                    pass
+
+            # 3. Bảng action_groups: apply_car, apply_motorcycle
+            for col, col_type in [
+                ("apply_car", "BOOLEAN DEFAULT TRUE"),
+                ("apply_motorcycle", "BOOLEAN DEFAULT TRUE")
+            ]:
+                try:
+                    conn.execute(text(f"ALTER TABLE action_groups ADD COLUMN {col} {col_type};"))
+                    conn.commit()
+                    logger.info(f"Added {col} column to action_groups table.")
                 except Exception:
                     pass
 

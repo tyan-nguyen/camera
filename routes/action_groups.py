@@ -53,6 +53,8 @@ def create_action_group(
         http_method=(ag_in.http_method or "POST").upper(),
         headers_json=ag_in.headers_json,
         description=ag_in.description,
+        apply_car=ag_in.apply_car if ag_in.apply_car is not None else True,
+        apply_motorcycle=ag_in.apply_motorcycle if ag_in.apply_motorcycle is not None else True,
         is_active=ag_in.is_active
     )
     db.add(new_ag)
@@ -87,6 +89,10 @@ def update_action_group(
         ag.headers_json = ag_in.headers_json
     if ag_in.description is not None:
         ag.description = ag_in.description
+    if ag_in.apply_car is not None:
+        ag.apply_car = ag_in.apply_car
+    if ag_in.apply_motorcycle is not None:
+        ag.apply_motorcycle = ag_in.apply_motorcycle
     if ag_in.is_active is not None:
         ag.is_active = ag_in.is_active
 
@@ -136,6 +142,7 @@ def test_action_group_webhook(
         camera=dummy_cam,
         plate_number=test_req.plate_number,
         vehicle_view=test_req.vehicle_view,
+        vehicle_type=test_req.vehicle_type,
         confidence_score=0.98,
         detected_at=now,
         image_full_rel="test_full.webp",

@@ -9,6 +9,11 @@ class VehicleViewEnum(str, enum.Enum):
     REAR = "rear"
     UNKNOWN = "unknown"
 
+class VehicleTypeEnum(str, enum.Enum):
+    CAR = "car"                   # Xe ô tô (gồm ô tô con, xe tải, xe buýt, xe khách, container...)
+    MOTORCYCLE = "motorcycle"     # Xe máy, mô tô 2 bánh
+    UNKNOWN = "unknown"
+
 class CameraFunctionEnum(str, enum.Enum):
     ANPR = "ANPR"                   # Camera đọc biển số (thực hiện nhận dạng vào - ra)
     SURVEILLANCE = "SURVEILLANCE"   # Camera quan sát (chỉ xem trực tiếp, không nhận dạng)
@@ -35,6 +40,8 @@ class ActionGroup(Base):
     http_method = Column(String(10), default="POST")                   # GET / POST
     headers_json = Column(String(1000), nullable=True, default=None)   # Custom HTTP headers (JSON string)
     description = Column(String(255), nullable=True, default=None)
+    apply_car = Column(Boolean, default=True)                          # Áp dụng Webhook cho toàn bộ nhóm Xe Ô Tô (ô tô, tải, buýt)
+    apply_motorcycle = Column(Boolean, default=True)                   # Áp dụng Webhook cho Xe Máy
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -116,6 +123,7 @@ class VehicleLog(Base):
     camera_id = Column(Integer, ForeignKey("cameras.id"), nullable=False)
     plate_number = Column(String(50), index=True, nullable=False)
     vehicle_view = Column(String(20), default=VehicleViewEnum.UNKNOWN.value)
+    vehicle_type = Column(String(20), default=VehicleTypeEnum.CAR.value, index=True) # car, motorcycle, unknown
     confidence_score = Column(Float, default=0.0)
     image_full_path = Column(String(500), nullable=False)
     image_plate_path = Column(String(500), nullable=False)
