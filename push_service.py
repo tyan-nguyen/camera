@@ -1,11 +1,26 @@
 import os
 import json
 import logging
+import importlib
 import urllib.request
 import urllib.error
 from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
+
+firebase_admin: Any = None
+credentials: Any = None
+messaging: Any = None
+HAS_FIREBASE_ADMIN = False
+
+try:
+    firebase_admin = importlib.import_module("firebase_admin")
+    credentials = importlib.import_module("firebase_admin.credentials")
+    messaging = importlib.import_module("firebase_admin.messaging")
+    HAS_FIREBASE_ADMIN = True
+except Exception as e:
+    logger.debug(f"Firebase Admin SDK not available: {e}")
+    HAS_FIREBASE_ADMIN = False
 
 _firebase_app_initialized = False
 
@@ -28,10 +43,11 @@ def _init_firebase_admin(fcm_key: Optional[str] = None) -> bool:
     if _firebase_app_initialized:
         return True
 
-    try:
-        import firebase_admin
-        from firebase_admin import credentials
+    if not HAS_FIREBASE_ADMIN or firebase_admin is None or credentials is None:
+        logger.debug("firebase-admin package is not installed or available.")
+        return False
 
+    try:
         if firebase_admin._apps:
             _firebase_app_initialized = True
             return True
@@ -97,10 +113,8 @@ def send_fcm_push(
     fcm_key = server_key or get_fcm_server_key_from_db()
 
     # --- CÁCH 1: GỬI QUA FIREBASE ADMIN SDK (HTTP v1 - CHUẨN MỚI NHẤT CỦA GOOGLE) ---
-    if _init_firebase_admin(fcm_key):
+    if _init_firebase_admin(fcm_key) and messaging is not None:
         try:
-            from firebase_admin import messaging
-            
             str_data = {str(k): str(v) for k, v in (data or {}).items()}
             message = messaging.MulticastMessage(
                 tokens=unique_tokens,
