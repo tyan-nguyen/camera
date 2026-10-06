@@ -88,8 +88,30 @@ class UnifiedNotificationService:
             }
             self.websocket_manager.broadcast_sync(ws_payload)
 
-        # 3. Bắn Firebase FCM Push Notification
-        if authorized_user_ids:
+        # 3. Bắn Firebase FCM Push Notification (Kiểm tra điều kiện cấu hình push_condition)
+        push_cond = str(event_data.get("push_condition") or "DEFAULT").upper().strip()
+        webhook_result_bool = event_data.get("webhook_result_bool")
+
+        # Xác định kết quả thành công (True) hay cảnh báo/thất bại (False)
+        if webhook_result_bool is not None:
+            is_result_true = bool(webhook_result_bool)
+        else:
+            is_result_true = (str(action_status).upper() == "APPROVED")
+
+        should_push = True
+        if push_cond == "WHEN_TRUE":
+            should_push = is_result_true
+        elif push_cond == "WHEN_FALSE":
+            should_push = not is_result_true
+        elif push_cond == "NEVER":
+            should_push = False
+        else:  # DEFAULT hoặc không chọn: luôn gửi thông báo mặc định
+            should_push = True
+
+        if not should_push:
+            logger.info(f"FCM Push suppressed for event {event_data.get('id')} ({plate_number}): push_condition='{push_cond}', is_result_true={is_result_true}")
+
+        if should_push and authorized_user_ids:
             tokens = self.get_device_tokens_for_users(authorized_user_ids)
             if tokens:
                 # Tiêu đề & Nội dung Push
@@ -118,7 +140,7 @@ class UnifiedNotificationService:
                     "detected_at": str(event_data.get("detected_at", ""))
                 }
 
-                logger.info(f"Routing FCM Push to {len(tokens)} token(s) of authorized users: {authorized_user_ids}")
+                logger.info(f"Routing FCM Push to {len(tokens)} token(s) of authorized users: {authorized_user_ids} (condition: {push_cond})")
                 send_fcm_push(tokens, title=title, body=body, data=push_data)
 
 notification_service = UnifiedNotificationService()

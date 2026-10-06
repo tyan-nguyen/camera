@@ -116,10 +116,11 @@ def init_db():
                 except Exception:
                     pass
 
-            # 3. Bảng action_groups: apply_car, apply_motorcycle
+            # 3. Bảng action_groups: apply_car, apply_motorcycle, push_condition
             for col, col_type in [
                 ("apply_car", "BOOLEAN DEFAULT TRUE"),
-                ("apply_motorcycle", "BOOLEAN DEFAULT TRUE")
+                ("apply_motorcycle", "BOOLEAN DEFAULT TRUE"),
+                ("push_condition", "VARCHAR(50) DEFAULT 'DEFAULT'")
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE action_groups ADD COLUMN {col} {col_type};"))

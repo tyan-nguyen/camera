@@ -14,6 +14,7 @@ class ActionGroupBase(BaseModel):
     description: Optional[str] = None
     apply_car: bool = True
     apply_motorcycle: bool = True
+    push_condition: str = "DEFAULT"  # DEFAULT, WHEN_TRUE, WHEN_FALSE, NEVER
     is_active: bool = True
 
 class ActionGroupCreate(ActionGroupBase):
@@ -28,6 +29,7 @@ class ActionGroupUpdate(BaseModel):
     description: Optional[str] = None
     apply_car: Optional[bool] = None
     apply_motorcycle: Optional[bool] = None
+    push_condition: Optional[str] = None
     is_active: Optional[bool] = None
 
 class ActionGroupResponse(ActionGroupBase):

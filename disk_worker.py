@@ -109,6 +109,7 @@ def execute_action_webhook(
                     "message": f"Phương tiện {plate_number} đi ngoài kế hoạch quy định",
                     "alert_level": "warning",
                     "voice_message": f"Cảnh báo xe {plate_number} đi không kế hoạch",
+                    "webhook_result_bool": True,
                     "action_result_raw": resp_body
                 }
             elif resp_body.lower() == "false":
@@ -118,6 +119,7 @@ def execute_action_webhook(
                     "message": f"Phương tiện {plate_number} có kế hoạch hợp lệ",
                     "alert_level": "normal",
                     "voice_message": f"Xe {plate_number} hợp lệ",
+                    "webhook_result_bool": False,
                     "action_result_raw": resp_body
                 }
 
@@ -130,12 +132,24 @@ def execute_action_webhook(
                     message = parsed.get("message") or summary or f"Kết quả từ {action_group.name}"
                     alert_level = parsed.get("alert_level") or ("danger" if action_status in ["REJECTED", "ERROR"] else ("warning" if action_status in ["UNPLANNED", "WARNING"] else "normal"))
                     voice_msg = parsed.get("voice_message") or message
+                    
+                    res_bool = None
+                    if "success" in parsed and isinstance(parsed["success"], bool):
+                        res_bool = parsed["success"]
+                    elif "result" in parsed and isinstance(parsed["result"], bool):
+                        res_bool = parsed["result"]
+                    elif "valid" in parsed and isinstance(parsed["valid"], bool):
+                        res_bool = parsed["valid"]
+                    else:
+                        res_bool = (str(action_status).upper() == "APPROVED")
+
                     return {
                         "action_status": str(action_status).upper(),
                         "summary": str(summary) if summary else None,
                         "message": str(message),
                         "alert_level": str(alert_level).lower(),
                         "voice_message": str(voice_msg),
+                        "webhook_result_bool": res_bool,
                         "action_result_raw": resp_body
                     }
                 elif isinstance(parsed, bool):
@@ -146,6 +160,7 @@ def execute_action_webhook(
                             "message": f"Phương tiện {plate_number} đi ngoài kế hoạch",
                             "alert_level": "warning",
                             "voice_message": f"Cảnh báo xe {plate_number} đi không kế hoạch",
+                            "webhook_result_bool": True,
                             "action_result_raw": resp_body
                         }
                     else:
@@ -155,6 +170,7 @@ def execute_action_webhook(
                             "message": f"Phương tiện {plate_number} có kế hoạch hợp lệ",
                             "alert_level": "normal",
                             "voice_message": f"Xe {plate_number} hợp lệ",
+                            "webhook_result_bool": False,
                             "action_result_raw": resp_body
                         }
             except Exception:
@@ -166,6 +182,7 @@ def execute_action_webhook(
                 "message": resp_body,
                 "alert_level": "normal",
                 "voice_message": f"Nhận diện xe {plate_number}",
+                "webhook_result_bool": None,
                 "action_result_raw": resp_body
             }
 
@@ -177,6 +194,7 @@ def execute_action_webhook(
             "message": f"Không thể kết nối API {action_group.name}: {e}",
             "alert_level": "warning",
             "voice_message": f"Lỗi kiểm tra xe {plate_number}",
+            "webhook_result_bool": False,
             "action_result_raw": json.dumps({"error": str(e)})
         }
 
@@ -320,6 +338,8 @@ class AsyncDiskWorker:
             alert_level = "normal"
             summary = None
             voice_message = None
+            push_condition = "DEFAULT"
+            webhook_result_bool = None
 
             is_car = (str(vehicle_type).lower() == "car")
             is_moto = (str(vehicle_type).lower() == "motorcycle")
@@ -327,6 +347,7 @@ class AsyncDiskWorker:
             # Chỉ gọi Webhook nếu là biển số hợp lệ VÀ độ tin cậy >= 0.40
             if is_valid_license_plate(plate_number) and confidence_score >= 0.40:
                 if action_group:
+                    push_condition = getattr(action_group, "push_condition", "DEFAULT") or "DEFAULT"
                     apply_car = getattr(action_group, "apply_car", True)
                     apply_moto = getattr(action_group, "apply_motorcycle", True)
 
@@ -358,12 +379,14 @@ class AsyncDiskWorker:
                         alert_level = webhook_res.get("alert_level", "normal")
                         voice_message = webhook_res.get("voice_message")
                         action_result_raw = webhook_res.get("action_result_raw")
+                        webhook_result_bool = webhook_res.get("webhook_result_bool")
                 else:
                     # Mặc định: Nếu thuộc vùng Trường Lái, kiểm tra kế hoạch bằng API mặc định (chỉ cho xe ô tô mặt trước)
                     if zone_code == "TRUONGLAI" and str(vehicle_view).lower() == "front" and is_car:
                         # Tra cứu Action Group mặc định kiểm tra đi không kế hoạch
                         default_ag = db.query(ActionGroup).filter(ActionGroup.code == "KIEM_TRA_DI_KHONG_KE_HOACH").first()
                         if default_ag:
+                            push_condition = getattr(default_ag, "push_condition", "DEFAULT") or "DEFAULT"
                             webhook_res = execute_action_webhook(
                                 action_group=default_ag,
                                 camera=cam,
@@ -380,6 +403,7 @@ class AsyncDiskWorker:
                             alert_level = webhook_res.get("alert_level", "normal")
                             voice_message = webhook_res.get("voice_message")
                             action_result_raw = webhook_res.get("action_result_raw")
+                            webhook_result_bool = webhook_res.get("webhook_result_bool")
                             action_group_id = default_ag.id
                             action_group_name = default_ag.name
 
@@ -423,6 +447,8 @@ class AsyncDiskWorker:
                 "alert_level": alert_level,
                 "summary": summary,
                 "voice_message": voice_message,
+                "push_condition": push_condition,
+                "webhook_result_bool": webhook_result_bool,
                 "image_full_path": f"/static/captures/{rel_full_path}",
                 "image_plate_path": f"/static/captures/{rel_plate_path}",
                 "detected_at": now.strftime("%Y-%m-%d %H:%M:%S")

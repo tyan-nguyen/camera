@@ -42,6 +42,7 @@ class ActionGroup(Base):
     description = Column(String(255), nullable=True, default=None)
     apply_car = Column(Boolean, default=True)                          # Áp dụng Webhook cho toàn bộ nhóm Xe Ô Tô (ô tô, tải, buýt)
     apply_motorcycle = Column(Boolean, default=True)                   # Áp dụng Webhook cho Xe Máy
+    push_condition = Column(String(50), default="DEFAULT", nullable=False) # DEFAULT (Luôn gửi), WHEN_TRUE (Chỉ khi true), WHEN_FALSE (Chỉ khi false), NEVER (Tắt thông báo)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -55,6 +55,7 @@ def create_action_group(
         description=ag_in.description,
         apply_car=ag_in.apply_car if ag_in.apply_car is not None else True,
         apply_motorcycle=ag_in.apply_motorcycle if ag_in.apply_motorcycle is not None else True,
+        push_condition=(ag_in.push_condition or "DEFAULT").strip().upper(),
         is_active=ag_in.is_active
     )
     db.add(new_ag)
@@ -93,6 +94,8 @@ def update_action_group(
         ag.apply_car = ag_in.apply_car
     if ag_in.apply_motorcycle is not None:
         ag.apply_motorcycle = ag_in.apply_motorcycle
+    if ag_in.push_condition is not None:
+        ag.push_condition = ag_in.push_condition.strip().upper()
     if ag_in.is_active is not None:
         ag.is_active = ag_in.is_active
 
