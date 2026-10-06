@@ -47,6 +47,10 @@ venv.bak/
 .env.local
 .env.*.local
 *.env
+*service_account*.json
+firebase_service_account.json
+google-services.json
+serviceAccountKey.json
 
 # ==========================================
 # Database & Storage / Media / Runtime Files
