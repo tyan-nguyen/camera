@@ -31,29 +31,37 @@ def get_engine():
         )
         return engine
 
-    # 2. Thử tạo database MySQL nếu chưa có
-    ensure_mysql_database_exists(settings.DB_HOST, settings.DB_PORT, settings.DB_USER, settings.DB_PASSWORD, settings.DB_NAME)
+    # 2. Các port MySQL cần thử (ưu tiên settings.DB_PORT, dự phòng 3306 / 3308)
+    ports_to_try = [settings.DB_PORT]
+    if settings.DB_PORT == 3306:
+        ports_to_try.append(3308)
+    elif settings.DB_PORT == 3308:
+        ports_to_try.append(3306)
 
-    # 3. Thử kết nối với Mật khẩu cấu hình
+    for port in ports_to_try:
+        ensure_mysql_database_exists(settings.DB_HOST, port, settings.DB_USER, settings.DB_PASSWORD, settings.DB_NAME)
+
+    # 3. Thử kết nối với Mật khẩu cấu hình và Port khả dụng
     passwords_to_try = [settings.DB_PASSWORD, "", "root"]
-    for pwd in passwords_to_try:
-        db_url = f"mysql+pymysql://{settings.DB_USER}:{pwd}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}?charset=utf8mb4"
-        try:
-            engine = create_engine(
-                db_url,
-                pool_size=25,
-                max_overflow=50,
-                pool_timeout=30,
-                pool_recycle=1800,
-                pool_pre_ping=True,
-                echo=False
-            )
-            with engine.connect() as conn:
-                pass
-            logger.info(f"Connected successfully to MySQL v8 database [{settings.DB_NAME}] on {settings.DB_HOST}:{settings.DB_PORT}")
-            return engine
-        except Exception:
-            continue
+    for port in ports_to_try:
+        for pwd in passwords_to_try:
+            db_url = f"mysql+pymysql://{settings.DB_USER}:{pwd}@{settings.DB_HOST}:{port}/{settings.DB_NAME}?charset=utf8mb4"
+            try:
+                engine = create_engine(
+                    db_url,
+                    pool_size=25,
+                    max_overflow=50,
+                    pool_timeout=30,
+                    pool_recycle=1800,
+                    pool_pre_ping=True,
+                    echo=False
+                )
+                with engine.connect() as conn:
+                    pass
+                logger.info(f"Connected successfully to MySQL v8 database [{settings.DB_NAME}] on {settings.DB_HOST}:{port}")
+                return engine
+            except Exception:
+                continue
 
     if settings.USE_SQLITE_FALLBACK:
         logger.warning("Could not connect to MySQL v8 with any password. Falling back to SQLite local database.")
