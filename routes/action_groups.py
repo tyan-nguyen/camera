@@ -52,6 +52,8 @@ def create_action_group(
         api_url=ag_in.api_url.strip(),
         http_method=(ag_in.http_method or "POST").upper(),
         headers_json=ag_in.headers_json,
+        auth_token=ag_in.auth_token.strip() if ag_in.auth_token else None,
+        auth_type=(ag_in.auth_type or "BEARER").strip().upper(),
         description=ag_in.description,
         apply_car=ag_in.apply_car if ag_in.apply_car is not None else True,
         apply_motorcycle=ag_in.apply_motorcycle if ag_in.apply_motorcycle is not None else True,
@@ -88,6 +90,10 @@ def update_action_group(
         ag.http_method = ag_in.http_method.upper()
     if ag_in.headers_json is not None:
         ag.headers_json = ag_in.headers_json
+    if ag_in.auth_token is not None:
+        ag.auth_token = ag_in.auth_token.strip() if ag_in.auth_token.strip() else None
+    if ag_in.auth_type is not None:
+        ag.auth_type = ag_in.auth_type.strip().upper()
     if ag_in.description is not None:
         ag.description = ag_in.description
     if ag_in.apply_car is not None:
@@ -165,6 +171,8 @@ def test_action_group_webhook(
         raw_response=raw or "",
         parsed_result=parsed if isinstance(parsed, dict) else None,
         normalized_status=res.get("action_status", "INFO"),
+        vehicle_classification=res.get("vehicle_classification"),
+        barrier_action=res.get("barrier_action", "NONE"),
         summary=res.get("summary"),
         message=res.get("message"),
         alert_level=res.get("alert_level", "normal")

@@ -181,6 +181,16 @@
 
             <!-- Header Controls & User Profile -->
             <div class="flex items-center space-x-2 sm:space-x-3 text-xs">
+                <!-- Webhook Health & Sync Status Indicator Button -->
+                <button id="webhook-header-status-btn" onclick="openWebhookSyncModal()"
+                    title="Trạng thái kết nối Webhook API đối tác & Hàng đợi đồng bộ"
+                    class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white transition-all font-medium cursor-pointer shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400" id="webhook-header-dot"></span>
+                    <i class="fa-solid fa-cloud-arrow-up text-xs text-blue-400" id="webhook-header-icon"></i>
+                    <span class="hidden sm:inline font-semibold text-[11px]" id="webhook-header-text">Webhook: OK</span>
+                    <span id="webhook-header-pending-badge" class="hidden px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-amber-500 text-slate-950">0</span>
+                </button>
+
                 <!-- Voice Alert Button -->
                 <button id="voice-toggle-btn" onclick="toggleVoiceAlert()"
                     title="Bật / Tắt âm thanh thông báo và cảnh báo giọng đọc"
@@ -218,6 +228,10 @@
                             <button onclick="openActionGroupsModal()" id="btn-manage-action-groups" class="hidden w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center space-x-2 transition-colors">
                                 <i class="fa-solid fa-diagram-project text-amber-400 w-4"></i>
                                 <span>Nhóm Hành Động (Webhook)</span>
+                            </button>
+                            <button onclick="openWebhookSyncModal()" class="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center space-x-2 transition-colors">
+                                <i class="fa-solid fa-rotate text-cyan-400 w-4"></i>
+                                <span>Đồng Bộ Webhook</span>
                             </button>
                         </div>
                         <div class="pt-1 border-t border-slate-800">
@@ -353,9 +367,33 @@
 
         <!-- TAB 2: VEHICLE HISTORY & SEARCH -->
         <div id="page-history" class="hidden space-y-4 sm:space-y-6">
+            <!-- Header Bar with Mode Sub-Tabs (All vs Trash) -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-800/80">
+                <div class="flex items-center space-x-2">
+                    <button id="subtab-history-all" onclick="switchHistoryMode('all')"
+                        class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/30 flex items-center space-x-2">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span>Tất Cả Sự Kiện</span>
+                    </button>
+                    <button id="subtab-history-trash" onclick="switchHistoryMode('trash')"
+                        class="role-admin-only hidden px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-rose-300 border border-slate-700/80 flex items-center space-x-2">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>Thùng Rác</span>
+                        <span id="trash-count-badge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">0</span>
+                    </button>
+                </div>
+                <div id="trash-actions-container" class="hidden items-center space-x-2">
+                    <button onclick="emptyTrash()"
+                        class="px-3.5 py-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 shadow-lg shadow-rose-900/20">
+                        <i class="fa-solid fa-dumpster-fire"></i>
+                        <span>Dọn Sạch Thùng Rác</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- Filter Bar -->
             <div class="glass-panel rounded-2xl p-3.5 sm:p-5">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5 sm:gap-3 items-center w-full">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2.5 sm:gap-3 items-center w-full">
                     <div>
                         <input type="text" id="filter-plate" placeholder="Nhập biển số xe..."
                             onkeydown="if(event.key==='Enter') fetchHistoryLogs(1)"
@@ -388,6 +426,16 @@
                     </div>
 
                     <div>
+                        <select id="filter-classification" onchange="fetchHistoryLogs(1)"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                            <option value="">-- Đối Tượng Xe --</option>
+                            <option value="INTERNAL_VALID">🟢 Xe Nội Bộ (Có Kế Hoạch)</option>
+                            <option value="INTERNAL_UNPLANNED">🔴 Xe Nội Bộ (Không Kế Hoạch)</option>
+                            <option value="EXTERNAL_UNKNOWN">⚪ Xe Lạ / Ngoài Danh Sách</option>
+                        </select>
+                    </div>
+
+                    <div>
                         <select id="filter-action-status" onchange="fetchHistoryLogs(1)"
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
                             <option value="">-- Tất cả Trạng Thái --</option>
@@ -414,7 +462,7 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs sm:text-sm">
                         <thead class="text-[10px] sm:text-xs uppercase bg-slate-900/80 text-slate-400 border-b border-slate-800">
-                            <tr>
+                            <tr id="history-thead-row">
                                 <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Thời gian</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Camera / Vùng</th>
@@ -768,6 +816,7 @@
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Tên Camera</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Phân Loại Vùng</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Chức Năng</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Chiều Xe / Cổng</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Lưu Video (REC)</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Nhóm Hành Động (API)</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">FPS</th>
@@ -1125,6 +1174,31 @@
                         </div>
                     </div>
 
+                    <!-- Cấu hình Xác thực Token Bảo Mật API (Bearer / API-Key) -->
+                    <div class="p-3.5 bg-slate-950/90 rounded-xl border border-slate-800 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-semibold text-slate-200">
+                                <i class="fa-solid fa-shield-halved text-amber-400 mr-1.5"></i> Xác Thực & Bảo Mật Webhook (API Token):
+                            </label>
+                            <span class="text-[11px] text-slate-400">Tự động gắn header Authorization: Bearer / X-API-Key</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-400 mb-1">Loại Xác Thực:</label>
+                                <select id="ag-form-auth-type" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs focus:border-amber-500 text-slate-100">
+                                    <option value="BEARER">Bearer Token (Authorization: Bearer)</option>
+                                    <option value="API_KEY">API Key (X-API-Key Header)</option>
+                                    <option value="NONE">Không Dùng Token (Công khai)</option>
+                                </select>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-[11px] font-medium text-slate-400 mb-1">Mã Token (API Token / Secret Key):</label>
+                                <input type="text" id="ag-form-auth-token" placeholder="Ví dụ: truonglai_camera_secure_token_2026"
+                                    class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-100 focus:border-amber-500 placeholder-slate-500">
+                            </div>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mô Tả / Ghi Chú Chức Năng:</label>
                         <input type="text" id="ag-form-desc" placeholder="Mô tả chức năng nghiệp vụ của Webhook này..."
@@ -1319,10 +1393,20 @@
                 <!-- Status Alert Banner -->
                 <div id="cam-form-alert" class="hidden p-3 rounded-xl text-xs flex items-center space-x-2 font-medium"></div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Tên Camera:</label>
-                    <input type="text" id="cam-form-name" required placeholder="Ví dụ: Cổng Vào Làn 1 - Trường lái..."
-                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Tên Hiển Thị Camera:</label>
+                        <input type="text" id="cam-form-name" required placeholder="Ví dụ: Vào Căn tin, Cổng Trà Bắc..."
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                            <span><i class="fa-solid fa-code text-cyan-400 mr-1"></i>Mã Camera (API Webhook):</span>
+                            <span class="text-[10px] text-amber-400 font-normal">Khớp đối tác API</span>
+                        </label>
+                        <input type="text" id="cam-form-code" placeholder="Ví dụ: cong_cantin, cong_san_cam_bien..."
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:border-cyan-500 text-cyan-300 font-mono">
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
@@ -1346,10 +1430,72 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nhóm Hành Động (Webhook Gọi Sau Khi Nhận Dạng):</label>
-                    <select id="cam-form-action-group" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
-                        <option value="">-- Mặc Định / Không Gán Nhóm --</option>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">
+                        <i class="fa-solid fa-arrows-split-up-and-left text-sky-400 mr-1"></i>Mô Hình Cổng & Chiều Xe Chạy:
+                    </label>
+                    <select id="cam-form-traffic-direction" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-sky-500 text-slate-200">
+                        <option value="TWO_WAY">🔄 Cổng 1 Camera (2 Chiều Tự Động: Trước = Ra, Sau = Vào)</option>
+                        <option value="OUT_FRONT_ONLY">↗️ Cổng 1 Làn Chung - Chiều RA (Chỉ đọc Mặt Trước xe ra, bỏ qua đuôi xe vào)</option>
+                        <option value="IN_FRONT_ONLY">↙️ Cổng 1 Làn Chung - Chiều VÀO (Chỉ đọc Mặt Trước xe vào, bỏ qua đuôi xe ra)</option>
+                        <option value="OUT_ALL">⏩ Cổng 2 Làn Riêng - Làn RA (Đọc cả Trước & Sau đều tính là Xe RA)</option>
+                        <option value="IN_ALL">⏪ Cổng 2 Làn Riêng - Làn VÀO (Đọc cả Trước & Sau đều tính là Xe VÀO)</option>
                     </select>
+                    <div class="text-[10px] text-slate-400 italic mt-1">
+                        *Lưu ý: Với cổng 2 camera riêng biệt (chiều ra và chiều vào đều chỉ chụp mặt trước xe), hãy chọn <b>Chiều RA</b> cho camera ra và <b>Chiều VÀO</b> cho camera vào để hệ thống tự động ép hướng nghiệp vụ và lọc triệt để việc chụp nhầm đuôi xe.*
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            <i class="fa-solid fa-arrow-right-to-bracket text-emerald-400 mr-1"></i>Webhook Mặt Trước (front):
+                        </label>
+                        <select id="cam-form-ag-front" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
+                            <option value="">-- Để trống (Không gọi Webhook) --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            <i class="fa-solid fa-arrow-right-from-bracket text-amber-400 mr-1"></i>Webhook Mặt Sau (rear):
+                        </label>
+                        <select id="cam-form-ag-rear" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
+                            <option value="">-- Để trống (Không gọi Webhook) --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="text-[11px] text-slate-400 italic -mt-2">
+                    💡 *Mẹo: Nếu 2 mặt dùng chung 1 webhook thì chọn giống nhau ở cả 2 ô. Nếu để trống ô nào thì sự kiện mặt đó sẽ không gọi webhook.*
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80">
+                    <div class="text-xs font-bold text-slate-100 flex items-center justify-between mb-1.5">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-bolt text-amber-400"></i>
+                            <span>Sự Kiện Kích Hoạt Webhook:</span>
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-normal">Tự động gọi API khi có sự kiện</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                        <label class="flex items-center space-x-2 bg-slate-800/60 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700/60 cursor-pointer transition">
+                            <input type="checkbox" id="cam-evt-create" class="rounded text-blue-500 focus:ring-blue-500 bg-slate-900 border-slate-700" checked>
+                            <span class="text-xs text-slate-200">➕ Thêm mới</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-800/60 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700/60 cursor-pointer transition">
+                            <input type="checkbox" id="cam-evt-update" class="rounded text-blue-500 focus:ring-blue-500 bg-slate-900 border-slate-700" checked>
+                            <span class="text-xs text-slate-200">✏️ Chỉnh sửa</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-800/60 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700/60 cursor-pointer transition">
+                            <input type="checkbox" id="cam-evt-delete" class="rounded text-rose-500 focus:ring-rose-500 bg-slate-900 border-slate-700">
+                            <span class="text-xs text-slate-200">🗑️ Xóa (Tạm)</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-800/60 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700/60 cursor-pointer transition">
+                            <input type="checkbox" id="cam-evt-restore" class="rounded text-emerald-500 focus:ring-emerald-500 bg-slate-900 border-slate-700">
+                            <span class="text-xs text-slate-200">↩️ Khôi phục</span>
+                        </label>
+                    </div>
+                    <div class="text-[10px] text-slate-400 italic mt-1.5">
+                        *Chỉ những hành động được đánh dấu mới kích hoạt gửi Webhook. Bỏ chọn để tắt gửi Webhook cho hành động đó.*
+                    </div>
                 </div>
 
                 <div>
@@ -1401,50 +1547,206 @@
     </div>
 
     <!-- Edit Vehicle Plate Modal -->
-    <div id="edit-log-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-        <div class="glass-panel max-w-md w-full rounded-2xl p-5 sm:p-6 relative border border-slate-700 shadow-2xl">
-            <button onclick="closeEditLogModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1">
+    <div id="edit-log-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-5xl w-full rounded-2xl p-5 sm:p-6 relative border border-slate-700 shadow-2xl my-auto">
+            <button onclick="closeEditLogModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1 z-10 transition-colors">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <h3 class="text-base sm:text-lg font-bold text-white mb-3 flex items-center space-x-2">
-                <i class="fa-solid fa-pen-to-square text-amber-400"></i>
-                <span>Chỉnh Sửa Biển Số Xe</span>
-            </h3>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-700/80 pr-8">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm flex-shrink-0">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-base sm:text-lg font-bold text-white leading-tight">Chỉnh Sửa Sự Kiện Nhận Dạng Xe</h3>
+                            <span id="edit-log-id-badge" class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">#--</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-1.5 text-xs">
+                            <!-- THỜI GIAN NHẬN DẠNG SỰ KIỆN -->
+                            <span class="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-lg bg-slate-800/90 text-slate-200 border border-slate-700/80 font-mono text-[11px] shadow-sm">
+                                <i class="fa-regular fa-clock text-amber-400"></i>
+                                <span class="text-slate-400 font-sans">Thời gian:</span>
+                                <strong id="edit-log-time" class="text-amber-300 font-semibold tracking-wide">--:--:--</strong>
+                            </span>
+                            <!-- NGUỒN CAMERA -->
+                            <span id="edit-log-cam-container" class="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700/70 text-[11px]">
+                                <i class="fa-solid fa-video text-blue-400"></i>
+                                <span id="edit-log-cam-name">Camera</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BỘ ĐIỀU HƯỚNG TỚI / LÙI RECORD THEO DANH SÁCH -->
+                <div id="edit-nav-container" class="flex items-center space-x-1.5 self-start sm:self-auto bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 shadow-inner">
+                    <button type="button" id="btn-edit-prev" onclick="navigateEditLog(-1)"
+                        class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center space-x-1"
+                        title="Chuyển đến bản ghi trước (Phím tắt: Alt + Mũi tên trái)">
+                        <i class="fa-solid fa-chevron-left text-[11px]"></i>
+                        <span>Trước</span>
+                    </button>
+                    <span id="edit-nav-counter" class="text-xs font-mono font-bold text-amber-400 px-2 py-0.5 whitespace-nowrap">
+                        1 / 1
+                    </span>
+                    <button type="button" id="btn-edit-next" onclick="navigateEditLog(1)"
+                        class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center space-x-1"
+                        title="Chuyển đến bản ghi sau (Phím tắt: Alt + Mũi tên phải)">
+                        <span>Sau</span>
+                        <i class="fa-solid fa-chevron-right text-[11px]"></i>
+                    </button>
+                </div>
+            </div>
             
-            <form id="edit-log-form" onsubmit="handleEditLogSubmit(event)" class="space-y-4">
-                <input type="hidden" id="edit-log-id" value="">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Biển Số Xe:</label>
-                    <input type="text" id="edit-log-plate" required placeholder="Ví dụ: 84A12345"
-                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold focus:border-amber-500 text-amber-400 uppercase">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
+                <!-- CỘT TRÁI: FORM CHỈNH SỬA DỮ LIỆU (5 cột trên Desktop) -->
+                <div class="lg:col-span-5 flex flex-col justify-between space-y-3.5">
+                    <form id="edit-log-form" onsubmit="handleEditLogSubmit(event)" class="space-y-3.5">
+                        <input type="hidden" id="edit-log-id" value="">
+                        
+                        <!-- THÔNG BÁO ĐÃ LƯU THÀNH CÔNG (HIỂN THỊ KHI BẤM LƯU) -->
+                        <div id="edit-log-save-alert" class="hidden p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex items-center justify-between transition-all shadow-sm">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-circle-check text-emerald-400 text-sm flex-shrink-0"></i>
+                                <span id="edit-log-save-alert-text" class="font-medium">Đã lưu thay đổi thành công!</span>
+                            </div>
+                            <button type="button" onclick="document.getElementById('edit-log-save-alert').classList.add('hidden')" class="text-emerald-400 hover:text-white text-xs px-1">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+                                <span>Biển Số Xe Đã Nhận Dạng:</span>
+                                <span class="text-[10px] text-amber-400/80 font-mono font-normal">IN HOA / LIỀN MẠCH</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                                    <i class="fa-solid fa-id-card"></i>
+                                </span>
+                                <input type="text" id="edit-log-plate" required placeholder="Ví dụ: 84A12345"
+                                    class="w-full bg-slate-900/90 border border-slate-700 rounded-xl pl-9 pr-3.5 py-2.5 text-base font-mono font-bold focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-amber-400 uppercase tracking-wider">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Góc Nhìn:</label>
+                                <select id="edit-log-view" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm focus:border-amber-500 text-slate-200">
+                                    <option value="front">🚗 Mặt trước (Front)</option>
+                                    <option value="rear">🚙 Mặt sau (Rear)</option>
+                                    <option value="unknown">❓ Không rõ (Unknown)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Loại Phương Tiện:</label>
+                                <select id="edit-log-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm focus:border-amber-500 text-slate-200">
+                                    <option value="car">🚗 Ô Tô (Tải, Buýt...)</option>
+                                    <option value="motorcycle">🏍️ Xe Máy</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ghi Chú / Trạng Thái (Summary):</label>
+                            <input type="text" id="edit-log-summary" placeholder="Ghi chú sự kiện..."
+                                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:border-amber-500 text-slate-200">
+                        </div>
+                        <div class="p-3 rounded-xl bg-blue-500/10 border border-blue-500/25 text-[11px] text-blue-300 flex items-start space-x-2">
+                            <i class="fa-solid fa-cloud-arrow-up text-blue-400 mt-0.5 flex-shrink-0"></i>
+                            <span class="leading-relaxed">Khi lưu, hệ thống tự động gửi webhook UPDATE để đối soát kế hoạch và cập nhật lại phân loại xe (Xe kế hoạch / Không kế hoạch / Xe ngoài).</span>
+                        </div>
+                        <div class="pt-2 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center space-x-1">
+                                <button type="button" id="btn-edit-prev-footer" onclick="navigateEditLog(-1)" class="px-2.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700/60 transition disabled:opacity-30 disabled:cursor-not-allowed" title="Bản ghi trước (Alt + ←)">
+                                    <i class="fa-solid fa-chevron-left mr-1"></i>Trước
+                                </button>
+                                <button type="button" id="btn-edit-next-footer" onclick="navigateEditLog(1)" class="px-2.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700/60 transition disabled:opacity-30 disabled:cursor-not-allowed" title="Bản ghi sau (Alt + →)">
+                                    Sau<i class="fa-solid fa-chevron-right ml-1"></i>
+                                </button>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button type="button" onclick="closeEditLogModal()" class="px-3.5 py-2 bg-slate-800 text-slate-300 text-xs font-medium rounded-xl hover:bg-slate-700 transition-colors">
+                                    Đóng
+                                </button>
+                                <button type="button" id="edit-log-save-next-btn" onclick="handleEditLogSaveAndNext()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/20 flex items-center space-x-1 transition-all" title="Lưu và chuyển ngay đến bản ghi sau (Ctrl + Enter)">
+                                    <i class="fa-solid fa-forward-step mr-1"></i><span>Lưu & Tiếp</span>
+                                </button>
+                                <button type="submit" id="edit-log-submit-btn" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-amber-600/20 flex items-center space-x-1 transition-all" title="Lưu thay đổi và đóng cửa sổ (Enter)">
+                                    <i class="fa-solid fa-floppy-disk mr-1"></i><span>Lưu</span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Góc Nhìn:</label>
-                        <select id="edit-log-view" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:border-amber-500 text-slate-200">
-                            <option value="front">🚗 Mặt trước (Front)</option>
-                            <option value="rear">🚙 Mặt sau (Rear)</option>
-                            <option value="unknown">❓ Không rõ (Unknown)</option>
-                        </select>
+
+                <!-- CỘT PHẢI: GALLERY HÌNH ẢNH SỰ KIỆN (7 cột trên Desktop) -->
+                <div class="lg:col-span-7 flex flex-col space-y-3 bg-slate-900/50 p-3.5 sm:p-4 rounded-xl border border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-semibold text-slate-300">Ảnh Đối Chiếu Thực Tế</span>
+                            <span id="edit-log-img-badge" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center space-x-1">
+                                <i class="fa-solid fa-crop-simple"></i>
+                                <span>Ảnh Cắt Bao Xe</span>
+                            </span>
+                        </div>
+                        <button type="button" onclick="zoomEditLogMainImage()" class="text-xs text-slate-400 hover:text-amber-400 transition-colors flex items-center space-x-1 py-0.5 px-2 rounded-lg hover:bg-slate-800/80">
+                            <i class="fa-solid fa-expand text-[11px]"></i>
+                            <span>Phóng to toàn màn hình</span>
+                        </button>
                     </div>
+
+                    <!-- ẢNH TO NHẤT Ở TRÊN (Click để phóng to toàn màn hình) -->
+                    <div id="edit-log-main-img-container" onclick="zoomEditLogMainImage()" 
+                        class="relative group cursor-zoom-in w-full h-56 sm:h-72 rounded-xl overflow-hidden bg-slate-950/80 border border-slate-700/80 shadow-inner flex items-center justify-center">
+                        <img id="edit-log-main-img" src="" alt="Main Preview" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105">
+                        
+                        <!-- Overlay gợi ý click zoom -->
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                            <div class="px-3 py-1.5 rounded-xl bg-slate-900/90 text-white text-xs font-medium border border-slate-700 shadow-xl flex items-center space-x-1.5 backdrop-blur-sm">
+                                <i class="fa-solid fa-magnifying-glass-plus text-amber-400"></i>
+                                <span>Click để xem toàn màn hình</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DANH SÁCH 2 ẢNH NHỎ BÊN DƯỚI (Thumbnails) -->
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Loại Phương Tiện:</label>
-                        <select id="edit-log-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:border-amber-500 text-slate-200">
-                            <option value="car">🚗 Ô Tô (Tải, Buýt...)</option>
-                            <option value="motorcycle">🏍️ Xe Máy</option>
-                        </select>
+                        <div class="text-[11px] font-semibold text-slate-400 mb-1.5 flex items-center space-x-1">
+                            <i class="fa-solid fa-images text-slate-500 text-[10px]"></i>
+                            <span>Chọn góc ảnh hiển thị ở trên:</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <!-- Thumbnail 1: Ảnh Cắt Xe (Mặc định Active) -->
+                            <button type="button" id="edit-log-thumb-crop-btn" onclick="switchEditLogImage('crop')" 
+                                class="flex items-center space-x-2.5 p-2 rounded-xl border border-amber-500 ring-2 ring-amber-500/40 bg-amber-500/10 text-left transition-all group">
+                                <div class="w-14 h-12 rounded-lg overflow-hidden bg-slate-950 border border-slate-700 flex-shrink-0 flex items-center justify-center">
+                                    <img id="edit-log-thumb-crop" src="" alt="Ảnh Cắt Xe" class="w-full h-full object-cover">
+                                </div>
+                                <div class="overflow-hidden">
+                                    <div class="text-xs font-semibold text-amber-300 group-hover:text-amber-200 truncate flex items-center space-x-1">
+                                        <i class="fa-solid fa-crop-simple text-[10px]"></i>
+                                        <span>Ảnh Cắt Xe</span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-400 truncate">Bao quanh thân xe</div>
+                                </div>
+                            </button>
+
+                            <!-- Thumbnail 2: Ảnh Gốc Toàn Cảnh -->
+                            <button type="button" id="edit-log-thumb-full-btn" onclick="switchEditLogImage('full')" 
+                                class="flex items-center space-x-2.5 p-2 rounded-xl border border-slate-700 hover:border-slate-500 bg-slate-800/40 text-left transition-all group">
+                                <div class="w-14 h-12 rounded-lg overflow-hidden bg-slate-950 border border-slate-700 flex-shrink-0 flex items-center justify-center">
+                                    <img id="edit-log-thumb-full" src="" alt="Ảnh Toàn Cảnh" class="w-full h-full object-cover">
+                                </div>
+                                <div class="overflow-hidden">
+                                    <div class="text-xs font-semibold text-slate-300 group-hover:text-white truncate flex items-center space-x-1">
+                                        <i class="fa-solid fa-camera text-[10px]"></i>
+                                        <span>Ảnh Toàn Cảnh</span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-400 truncate">Toàn bộ khung hình</div>
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ghi Chú / Trạng Thái (Summary):</label>
-                    <input type="text" id="edit-log-summary" placeholder="Ghi chú sự kiện..."
-                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:border-amber-500 text-slate-200">
-                </div>
-                <div class="pt-3 flex justify-end space-x-2">
-                    <button type="button" onclick="closeEditLogModal()" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs rounded-xl">Hủy</button>
-                    <button type="submit" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl shadow">Lưu Thay Đổi</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -1456,14 +1758,26 @@
             </button>
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pr-8">
                 <h3 class="text-base sm:text-lg font-bold text-white" id="modal-title">Chi Tiết Sự Kiện Nhận Dạng</h3>
-                <button id="modal-btn-view-video" onclick="viewVideoFromModal()" class="self-start sm:self-auto px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md flex items-center space-x-1.5 transition-all">
-                    <i class="fa-solid fa-film"></i>
-                    <span>Xem Video Thời Điểm Này</span>
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button id="modal-btn-edit-event" onclick="editFromDetailModal()" class="px-3.5 py-1.5 bg-amber-600/90 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow flex items-center space-x-1.5 transition-all">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        <span>Sửa Sự Kiện</span>
+                    </button>
+                    <button id="modal-btn-view-video" onclick="viewVideoFromModal()" class="self-start sm:self-auto px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md flex items-center space-x-1.5 transition-all">
+                        <i class="fa-solid fa-film"></i>
+                        <span>Xem Video Thời Điểm Này</span>
+                    </button>
+                </div>
             </div>
-            <div id="modal-summary-box" class="hidden mb-4 p-3 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs flex items-center space-x-2 font-medium">
-                <i class="fa-solid fa-info-circle text-blue-400 text-sm flex-shrink-0"></i>
-                <span id="modal-summary-text"></span>
+            <div id="modal-summary-box" class="hidden mb-4 p-3 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs flex flex-wrap items-center justify-between gap-2 font-medium">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-info-circle text-blue-400 text-sm flex-shrink-0"></i>
+                    <span id="modal-summary-text"></span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div id="modal-classification-badge"></div>
+                    <div id="modal-sync-badge"></div>
+                </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
@@ -1543,6 +1857,115 @@
                     <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow">Đổi Mật Khẩu</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- WEBHOOK SYNC & HEALTH MONITOR MODAL -->
+    <!-- ========================================== -->
+    <div id="webhook-sync-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto flex flex-col max-h-[90vh]">
+            <button onclick="closeWebhookSyncModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Header -->
+            <div class="flex items-center space-x-3 mb-4 pr-8">
+                <div class="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                        <span>Quản Lý Đồng Bộ Webhook API</span>
+                        <span id="webhook-modal-offline-tag" class="hidden px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">Có API Mất Kết Nối</span>
+                    </h3>
+                    <p class="text-xs text-slate-400">Giám sát sức khỏe API đối tác, Circuit Breaker và hàng đợi đồng bộ Transactional Outbox</p>
+                </div>
+            </div>
+
+            <!-- Modal Sub-Tabs -->
+            <div class="flex items-center space-x-2 border-b border-slate-800 pb-3 mb-4">
+                <button onclick="switchWebhookSyncTab('health')" id="wh-tab-health"
+                    class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-blue-600 text-white shadow-md flex items-center space-x-2">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                    <span>Sức Khỏe Kết Nối (Health)</span>
+                </button>
+                <button onclick="switchWebhookSyncTab('queue')" id="wh-tab-queue"
+                    class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 flex items-center space-x-2">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Hàng Đợi Chờ Gửi (Queue)</span>
+                    <span id="wh-queue-tab-count" class="hidden px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-amber-500 text-slate-950">0</span>
+                </button>
+            </div>
+
+            <!-- Tab 1: Health Status View -->
+            <div id="wh-view-health" class="flex-1 overflow-y-auto space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-900/60 rounded-xl border border-slate-800">
+                    <div class="text-xs text-slate-300 flex items-center space-x-2">
+                        <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                        <span>Cơ chế <strong>Circuit Breaker</strong> tự động ngắt mạch (fail-fast) khi đối tác sập để chống nghẽn camera.</span>
+                    </div>
+                    <button onclick="triggerWebhookHealthCheckManual()" id="wh-btn-ping-all"
+                        class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow flex items-center space-x-1.5 transition-all">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Kiểm Tra Kết Nối Ngay</span>
+                    </button>
+                </div>
+
+                <!-- Action Groups Health Cards Container -->
+                <div id="wh-health-cards-container" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    <div class="p-8 text-center text-slate-500 col-span-2">Đang tải trạng thái sức khỏe các API...</div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Queue View -->
+            <div id="wh-view-queue" class="hidden flex-1 overflow-y-auto flex flex-col space-y-3">
+                <!-- Action & Filter Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center space-x-1.5">
+                        <button onclick="filterWebhookQueue('ALL')" id="wh-qfilter-ALL" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-600 text-white">Tất cả</button>
+                        <button onclick="filterWebhookQueue('PENDING')" id="wh-qfilter-PENDING" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">Chờ gửi</button>
+                        <button onclick="filterWebhookQueue('FAILED')" id="wh-qfilter-FAILED" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">Lỗi</button>
+                        <button onclick="filterWebhookQueue('SUCCESS')" id="wh-qfilter-SUCCESS" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white">Đã gửi</button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="wh-queue-plate-search" oninput="debounceWebhookQueueSearch()" placeholder="Tìm biển số..."
+                            class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:border-blue-500 w-32 sm:w-44">
+                        <button onclick="retryAllWebhookQueueManual()" id="wh-btn-retry-all"
+                            class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow flex items-center space-x-1 transition-all" title="Ép gửi lại tất cả bản ghi ngay mà không chờ cron">
+                            <i class="fa-solid fa-rotate mr-1"></i><span>Đồng Bộ Tất Cả Ngay</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="flex-1 overflow-x-auto border border-slate-800 rounded-xl bg-slate-950/60">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-900/90 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                            <tr>
+                                <th class="p-2.5">ID</th>
+                                <th class="p-2.5">Hành Động</th>
+                                <th class="p-2.5">Biển Số</th>
+                                <th class="p-2.5">Nhóm API</th>
+                                <th class="p-2.5">Trạng Thái</th>
+                                <th class="p-2.5">Lần Thử</th>
+                                <th class="p-2.5">Thử Lại Lúc</th>
+                                <th class="p-2.5">Chi Tiết Lỗi</th>
+                                <th class="p-2.5 text-right">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wh-queue-table-body" class="divide-y divide-slate-800/60">
+                            <tr><td colspan="9" class="p-6 text-center text-slate-500">Đang nạp hàng đợi đồng bộ...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div id="wh-queue-pagination" class="flex items-center justify-between text-xs text-slate-400 pt-1">
+                    <span id="wh-queue-pagination-info">0 bản ghi</span>
+                    <div class="flex items-center space-x-1" id="wh-queue-pagination-btns"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1740,6 +2163,9 @@
 
             const isAdmin = (role === 'admin');
             document.querySelectorAll('.role-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
+            if (isAdmin && typeof updateTrashBadge === 'function') {
+                updateTrashBadge();
+            }
             
             const btnManageUsers = document.getElementById('btn-manage-users');
             if (btnManageUsers) btnManageUsers.classList.toggle('hidden', !isAdmin);
@@ -1868,6 +2294,22 @@
             }
         }
 
+        function getTrafficDirectionBadge(dir) {
+            switch (dir) {
+                case 'OUT_FRONT_ONLY':
+                    return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30" title="Cổng 1 Làn Chung - Chiều RA (Chỉ đọc Mặt Trước)">↗️ RA (Trước)</span>`;
+                case 'IN_FRONT_ONLY':
+                    return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30" title="Cổng 1 Làn Chung - Chiều VÀO (Chỉ đọc Mặt Trước)">↙️ VÀO (Trước)</span>`;
+                case 'OUT_ALL':
+                    return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30" title="Cổng 2 Làn Riêng - Làn RA (Đọc cả Trước & Sau)">⏩ Làn RA</span>`;
+                case 'IN_ALL':
+                    return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30" title="Cổng 2 Làn Riêng - Làn VÀO (Đọc cả Trước & Sau)">⏪ Làn VÀO</span>`;
+                case 'TWO_WAY':
+                default:
+                    return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" title="Cổng 1 Camera (2 Chiều: Trước = Ra, Sau = Vào)">🔄 2 Chiều</span>`;
+            }
+        }
+
         function renderCameraGrid() {
             stopAllGridStreams();
             const grid = document.getElementById('camera-grid');
@@ -1897,6 +2339,8 @@
                     ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">👁️ Quan Sát</span>`
                     : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">📸 Đọc Biển Số</span>`;
 
+                const dirBadge = getTrafficDirectionBadge(cam.traffic_direction);
+
                 const recBadge = cam.is_recording
                     ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>REC</span>`
                     : '';
@@ -1912,6 +2356,7 @@
                             </div>
                             <div class="flex items-center space-x-1.5 flex-shrink-0">
                                 ${recBadge}
+                                ${dirBadge}
                                 ${zoneBadge}
                                 ${funcBadge}
                                 ${isAdmin ? `
@@ -1931,7 +2376,10 @@
                             </div>
                         </div>
                         <div class="p-2.5 bg-slate-900/60 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
-                            <span class="truncate"><i class="fa-solid fa-diagram-project mr-1 text-amber-400"></i>${cam.action_group_name || 'Không gán webhook'}</span>
+                            <div class="truncate space-y-0.5 max-w-[65%]">
+                                <div class="truncate"><i class="fa-solid fa-arrow-right-to-bracket text-emerald-400 mr-1 text-[10px]"></i>Trước: <span class="text-slate-300 font-medium">${cam.action_group_front_name || cam.action_group_name || 'Không'}</span></div>
+                                <div class="truncate"><i class="fa-solid fa-arrow-right-from-bracket text-amber-400 mr-1 text-[10px]"></i>Sau: <span class="text-slate-300 font-medium">${cam.action_group_rear_name || cam.action_group_name || 'Không'}</span></div>
+                            </div>
                             <div class="flex items-center space-x-2 flex-shrink-0">
                                 <button onclick="openPlaybackForEvent(${cam.id}, '')" class="text-blue-400 hover:text-blue-300 font-semibold" title="Xem lại video camera này">
                                     <i class="fa-solid fa-film mr-1"></i>Xem lại
@@ -1958,16 +2406,25 @@
             tbody.innerHTML = camerasList.map(cam => `
                 <tr class="hover:bg-slate-800/40">
                     <td class="p-3 sm:p-4 font-mono text-slate-400">#${cam.id}</td>
-                    <td class="p-3 sm:p-4 font-bold text-white">${cam.camera_name}</td>
+                    <td class="p-3 sm:p-4">
+                        <div class="font-bold text-white">${cam.camera_name}</div>
+                        ${cam.camera_code ? `<div class="text-[11px] font-mono text-cyan-400 flex items-center gap-1 mt-0.5" title="Mã đồng bộ Webhook API: ${cam.camera_code}"><i class="fa-solid fa-code text-[9px] text-cyan-500"></i>${cam.camera_code}</div>` : '<div class="text-[10px] text-slate-500 italic mt-0.5">Chưa đặt mã API</div>'}
+                    </td>
                     <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${cam.zone_code === 'KHO_BAI' ? 'bg-amber-500/20 text-amber-300' : 'bg-cyan-500/20 text-cyan-300'}">${cam.zone_name || cam.zone_code}</span></td>
                     <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${cam.camera_function === 'SURVEILLANCE' ? 'bg-purple-500/20 text-purple-300' : 'bg-emerald-500/20 text-emerald-300'}">${cam.camera_function === 'SURVEILLANCE' ? 'Quan Sát' : 'Đọc Biển Số'}</span></td>
+                    <td class="p-3 sm:p-4">${getTrafficDirectionBadge(cam.traffic_direction)}</td>
                     <td class="p-3 sm:p-4">
                         <button onclick="toggleCameraRecording(${cam.id})" class="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${cam.is_recording ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 shadow-sm shadow-rose-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'} flex items-center gap-1.5 cursor-pointer" title="Nhấn để Bật/Tắt lưu video cho camera này">
                             <span class="w-2 h-2 rounded-full ${cam.is_recording ? 'bg-rose-500 animate-pulse' : 'bg-slate-600'}"></span>
                             <span>${cam.is_recording ? 'REC BẬT' : 'Tắt'}</span>
                         </button>
                     </td>
-                    <td class="p-3 sm:p-4 text-slate-300">${cam.action_group_name || '-'}</td>
+                    <td class="p-3 sm:p-4 text-xs text-slate-300">
+                        <div class="space-y-0.5">
+                            <div><span class="text-[10px] text-emerald-400 font-semibold">Trước:</span> ${cam.action_group_front_name || cam.action_group_name || '-'}</div>
+                            <div><span class="text-[10px] text-amber-400 font-semibold">Sau:</span> ${cam.action_group_rear_name || cam.action_group_name || '-'}</div>
+                        </div>
+                    </td>
                     <td class="p-3 sm:p-4 font-mono">${cam.target_fps}</td>
                     <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded-full text-[10px] ${cam.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${cam.is_active ? 'Đang Bật' : 'Tắt'}</span></td>
                     <td class="p-3 sm:p-4 text-right space-x-1 whitespace-nowrap">
@@ -2023,6 +2480,7 @@
             document.getElementById('camera-modal-title').innerText = 'Thêm Camera Mới';
             document.getElementById('cam-form-id').value = '';
             document.getElementById('cam-form-name').value = '';
+            if (document.getElementById('cam-form-code')) document.getElementById('cam-form-code').value = '';
             document.getElementById('cam-form-url').value = '';
             document.getElementById('cam-form-fps').value = '6';
             document.getElementById('cam-form-zone').value = 'TRUONGLAI';
@@ -2030,6 +2488,12 @@
             document.getElementById('cam-form-active').value = 'true';
             const recEl = document.getElementById('cam-form-recording');
             if (recEl) recEl.value = 'false';
+            if (document.getElementById('cam-form-traffic-direction')) document.getElementById('cam-form-traffic-direction').value = 'TWO_WAY';
+
+            if (document.getElementById('cam-evt-create')) document.getElementById('cam-evt-create').checked = true;
+            if (document.getElementById('cam-evt-update')) document.getElementById('cam-evt-update').checked = true;
+            if (document.getElementById('cam-evt-delete')) document.getElementById('cam-evt-delete').checked = false;
+            if (document.getElementById('cam-evt-restore')) document.getElementById('cam-evt-restore').checked = false;
             
             const alertBox = document.getElementById('cam-form-alert');
             if (alertBox) {
@@ -2046,7 +2510,7 @@
             if (!actionGroupsList || actionGroupsList.length === 0) {
                 await loadActionGroupsList();
             }
-            populateActionGroupOptions(null);
+            populateActionGroupOptions(null, null);
             document.getElementById('camera-form-modal').classList.remove('hidden');
         }
 
@@ -2076,6 +2540,7 @@
             document.getElementById('camera-modal-title').innerText = `Sửa Camera: ${cam.camera_name}`;
             document.getElementById('cam-form-id').value = cam.id;
             document.getElementById('cam-form-name').value = cam.camera_name || '';
+            if (document.getElementById('cam-form-code')) document.getElementById('cam-form-code').value = cam.camera_code || '';
             document.getElementById('cam-form-url').value = cam.rtsp_url || '';
             document.getElementById('cam-form-fps').value = cam.target_fps || 6;
             document.getElementById('cam-form-zone').value = cam.zone_code || 'TRUONGLAI';
@@ -2083,8 +2548,17 @@
             document.getElementById('cam-form-active').value = cam.is_active ? 'true' : 'false';
             const recEl = document.getElementById('cam-form-recording');
             if (recEl) recEl.value = cam.is_recording ? 'true' : 'false';
+            if (document.getElementById('cam-form-traffic-direction')) {
+                document.getElementById('cam-form-traffic-direction').value = cam.traffic_direction || 'TWO_WAY';
+            }
             
-            populateActionGroupOptions(cam.action_group_id);
+            const evts = (cam.webhook_events || 'CREATE,UPDATE').split(',').map(s => s.trim().toUpperCase());
+            if (document.getElementById('cam-evt-create')) document.getElementById('cam-evt-create').checked = evts.includes('CREATE');
+            if (document.getElementById('cam-evt-update')) document.getElementById('cam-evt-update').checked = evts.includes('UPDATE');
+            if (document.getElementById('cam-evt-delete')) document.getElementById('cam-evt-delete').checked = evts.includes('DELETE');
+            if (document.getElementById('cam-evt-restore')) document.getElementById('cam-evt-restore').checked = evts.includes('RESTORE');
+
+            populateActionGroupOptions(cam.action_group_front_id || cam.action_group_id, cam.action_group_rear_id || cam.action_group_id);
             document.getElementById('camera-form-modal').classList.remove('hidden');
         }
 
@@ -2092,13 +2566,18 @@
             document.getElementById('camera-form-modal').classList.add('hidden');
         }
 
-        function populateActionGroupOptions(selectedId = null) {
-            const select = document.getElementById('cam-form-action-group');
-            if (!select) return;
-            const selInt = selectedId ? parseInt(selectedId, 10) : null;
-            select.innerHTML = `<option value="">-- Mặc Định / Không Gán Nhóm --</option>` + actionGroupsList.map(ag => `
-                <option value="${ag.id}" ${ag.id === selInt ? 'selected' : ''}>${ag.name} (${ag.code})</option>
+        function populateActionGroupOptions(frontId = null, rearId = null) {
+            const selectFront = document.getElementById('cam-form-ag-front');
+            const selectRear = document.getElementById('cam-form-ag-rear');
+            const selFrontInt = frontId ? parseInt(frontId, 10) : null;
+            const selRearInt = rearId ? parseInt(rearId, 10) : null;
+
+            const optionsHtml = (selected) => `<option value="">-- Để trống (Không gọi Webhook) --</option>` + actionGroupsList.map(ag => `
+                <option value="${ag.id}" ${ag.id === selected ? 'selected' : ''}>${ag.name} (${ag.code})</option>
             `).join('');
+
+            if (selectFront) selectFront.innerHTML = optionsHtml(selFrontInt);
+            if (selectRear) selectRear.innerHTML = optionsHtml(selRearInt);
         }
 
         async function handleCameraFormSubmit(e) {
@@ -2111,18 +2590,30 @@
             else if (zoneCode === 'TRU_SO') zoneName = "Trụ Sở";
             else if (zoneCode === 'KHO_XE') zoneName = "Bãi Xe";
 
-            const agVal = document.getElementById('cam-form-action-group').value;
+            const agFrontVal = document.getElementById('cam-form-ag-front') ? document.getElementById('cam-form-ag-front').value : '';
+            const agRearVal = document.getElementById('cam-form-ag-rear') ? document.getElementById('cam-form-ag-rear').value : '';
             const submitBtn = document.getElementById('cam-form-submit-btn');
             const alertBox = document.getElementById('cam-form-alert');
 
+            const selectedEvts = [];
+            if (document.getElementById('cam-evt-create')?.checked) selectedEvts.push('CREATE');
+            if (document.getElementById('cam-evt-update')?.checked) selectedEvts.push('UPDATE');
+            if (document.getElementById('cam-evt-delete')?.checked) selectedEvts.push('DELETE');
+            if (document.getElementById('cam-evt-restore')?.checked) selectedEvts.push('RESTORE');
+
             const payload = {
                 camera_name: document.getElementById('cam-form-name').value.trim(),
+                camera_code: document.getElementById('cam-form-code') ? (document.getElementById('cam-form-code').value.trim() || null) : null,
                 rtsp_url: document.getElementById('cam-form-url').value.trim(),
                 target_fps: parseInt(document.getElementById('cam-form-fps').value, 10) || 6,
                 zone_code: zoneCode,
                 zone_name: zoneName,
                 camera_function: document.getElementById('cam-form-function').value,
-                action_group_id: agVal ? parseInt(agVal, 10) : null,
+                traffic_direction: document.getElementById('cam-form-traffic-direction') ? document.getElementById('cam-form-traffic-direction').value : 'TWO_WAY',
+                action_group_front_id: agFrontVal ? parseInt(agFrontVal, 10) : null,
+                action_group_rear_id: agRearVal ? parseInt(agRearVal, 10) : null,
+                action_group_id: agFrontVal ? parseInt(agFrontVal, 10) : (agRearVal ? parseInt(agRearVal, 10) : null),
+                webhook_events: selectedEvts.join(','),
                 is_active: document.getElementById('cam-form-active').value === 'true',
                 is_recording: document.getElementById('cam-form-recording') ? (document.getElementById('cam-form-recording').value === 'true') : false
             };
@@ -2295,6 +2786,7 @@
                                 <i class="fa-regular fa-copy"></i>
                             </button>
                         </div>
+                        ${ag.auth_token ? `<div class="mt-1 flex items-center gap-1.5 text-[10px] text-emerald-400 font-mono"><i class="fa-solid fa-key text-[9px]"></i><span>${ag.auth_type || 'BEARER'}: ••••••••</span></div>` : ''}
                     </td>
                     <td class="px-4 py-3.5 text-center whitespace-nowrap">
                         <span class="px-2.5 py-1 rounded-md text-xs font-bold ${ag.http_method === 'GET' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}">${ag.http_method}</span>
@@ -2323,6 +2815,8 @@
             document.getElementById('ag-form-code').value = '';
             document.getElementById('ag-form-url').value = '';
             document.getElementById('ag-form-method').value = 'POST';
+            if (document.getElementById('ag-form-auth-token')) document.getElementById('ag-form-auth-token').value = '';
+            if (document.getElementById('ag-form-auth-type')) document.getElementById('ag-form-auth-type').value = 'BEARER';
             document.getElementById('ag-form-desc').value = '';
             if (document.getElementById('ag-form-push-condition')) document.getElementById('ag-form-push-condition').value = 'DEFAULT';
             if (document.getElementById('ag-form-apply-car')) document.getElementById('ag-form-apply-car').checked = true;
@@ -2339,6 +2833,8 @@
             document.getElementById('ag-form-code').value = ag.code || '';
             document.getElementById('ag-form-url').value = ag.api_url || '';
             document.getElementById('ag-form-method').value = ag.http_method || 'POST';
+            if (document.getElementById('ag-form-auth-token')) document.getElementById('ag-form-auth-token').value = ag.auth_token || '';
+            if (document.getElementById('ag-form-auth-type')) document.getElementById('ag-form-auth-type').value = ag.auth_type || 'BEARER';
             document.getElementById('ag-form-desc').value = ag.description || '';
             if (document.getElementById('ag-form-push-condition')) {
                 document.getElementById('ag-form-push-condition').value = ag.push_condition || 'DEFAULT';
@@ -2365,6 +2861,8 @@
                 code: document.getElementById('ag-form-code').value.trim().toUpperCase(),
                 api_url: document.getElementById('ag-form-url').value.trim(),
                 http_method: document.getElementById('ag-form-method').value,
+                auth_token: document.getElementById('ag-form-auth-token') ? document.getElementById('ag-form-auth-token').value.trim() : null,
+                auth_type: document.getElementById('ag-form-auth-type') ? document.getElementById('ag-form-auth-type').value : 'BEARER',
                 description: document.getElementById('ag-form-desc').value.trim(),
                 apply_car: document.getElementById('ag-form-apply-car') ? document.getElementById('ag-form-apply-car').checked : true,
                 apply_motorcycle: document.getElementById('ag-form-apply-motorcycle') ? document.getElementById('ag-form-apply-motorcycle').checked : true,
@@ -2418,12 +2916,378 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert(`✅ KIỂM TRA WEBHOOK THÀNH CÔNG!\n\n- Trạng thái: ${data.normalized_status}\n- Tóm tắt: ${data.summary || data.message || 'Hợp lệ'}\n- Cảnh báo: ${data.alert_level}\n\nPhản hồi gốc:\n${data.raw_response}`);
+                    alert(`✅ KIỂM TRA WEBHOOK THÀNH CÔNG!\n\n- Phân loại xe: ${data.vehicle_classification || 'N/A'}\n- Trạng thái: ${data.normalized_status}\n- Lệnh Barrier: ${data.barrier_action || 'HOLD'}\n- Tóm tắt: ${data.summary || data.message || 'Hợp lệ'}\n- Cảnh báo: ${data.alert_level}\n\nPhản hồi gốc:\n${data.raw_response}`);
                 } else {
-                    alert(`⚠️ KẾT QUẢ TEST:\n\n- Trạng thái: ${data.normalized_status}\n- Lỗi/Chi tiết: ${data.message}\n\nPhản hồi gốc:\n${data.raw_response}`);
+                    alert(`⚠️ KẾT QUẢ TEST:\n\n- Phân loại xe: ${data.vehicle_classification || 'N/A'}\n- Trạng thái: ${data.normalized_status}\n- Lỗi/Chi tiết: ${data.message}\n\nPhản hồi gốc:\n${data.raw_response}`);
                 }
             } catch (err) {
                 showToast("Lỗi khi test webhook: " + err, "error");
+            }
+        }
+
+        /* --- WEBHOOK SYNC & CIRCUIT BREAKER HEALTH MANAGER --- */
+        let currentWebhookSyncTab = 'health';
+        let currentWebhookQueueStatus = 'ALL';
+        let currentWebhookQueuePage = 1;
+        let webhookQueueSearchTimeout = null;
+
+        function openWebhookSyncModal(tab = 'health') {
+            const userMenu = document.getElementById('user-dropdown-menu');
+            if (userMenu) userMenu.classList.add('hidden');
+            const modal = document.getElementById('webhook-sync-modal');
+            if (modal) modal.classList.remove('hidden');
+            switchWebhookSyncTab(tab);
+        }
+
+        function closeWebhookSyncModal() {
+            const modal = document.getElementById('webhook-sync-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function switchWebhookSyncTab(tab) {
+            currentWebhookSyncTab = tab;
+            const tabHealthBtn = document.getElementById('wh-tab-health');
+            const tabQueueBtn = document.getElementById('wh-tab-queue');
+            const viewHealth = document.getElementById('wh-view-health');
+            const viewQueue = document.getElementById('wh-view-queue');
+
+            if (!tabHealthBtn || !tabQueueBtn || !viewHealth || !viewQueue) return;
+
+            if (tab === 'health') {
+                tabHealthBtn.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-blue-600 text-white shadow-md flex items-center space-x-2";
+                tabQueueBtn.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 flex items-center space-x-2";
+                viewHealth.classList.remove('hidden');
+                viewQueue.classList.add('hidden');
+                loadWebhookHealthList();
+            } else {
+                tabQueueBtn.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-blue-600 text-white shadow-md flex items-center space-x-2";
+                tabHealthBtn.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 flex items-center space-x-2";
+                viewHealth.classList.add('hidden');
+                viewQueue.classList.remove('hidden');
+                loadWebhookQueue(1);
+            }
+        }
+
+        async function updateWebhookHeaderStatus() {
+            try {
+                const res = await fetch('/api/v1/webhook-sync/status');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const dot = document.getElementById('webhook-header-dot');
+                const text = document.getElementById('webhook-header-text');
+                const badge = document.getElementById('webhook-header-pending-badge');
+                const offlineTag = document.getElementById('webhook-modal-offline-tag');
+                const queueTabCount = document.getElementById('wh-queue-tab-count');
+
+                const totalPending = (data.pending_count || 0) + (data.failed_count || 0);
+
+                if (queueTabCount) {
+                    queueTabCount.innerText = totalPending;
+                    queueTabCount.classList.toggle('hidden', totalPending === 0);
+                }
+
+                if (badge) {
+                    badge.innerText = totalPending;
+                    badge.classList.toggle('hidden', totalPending === 0);
+                }
+
+                if (data.offline_count > 0) {
+                    if (dot) dot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+                    if (text) text.innerHTML = `<span class="text-rose-400">Webhook (${data.offline_count} offline)</span>`;
+                    if (offlineTag) offlineTag.classList.remove('hidden');
+                } else if (data.open_circuit_count > 0) {
+                    if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+                    if (text) text.innerHTML = `<span class="text-amber-400">Webhook: Ngắt mạch</span>`;
+                    if (offlineTag) offlineTag.classList.remove('hidden');
+                } else if (totalPending > 0) {
+                    if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+                    if (text) text.innerHTML = `<span>Webhook: Chờ sync</span>`;
+                    if (offlineTag) offlineTag.classList.add('hidden');
+                } else {
+                    if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+                    if (text) text.innerHTML = `<span>Webhook: OK</span>`;
+                    if (offlineTag) offlineTag.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error("Lỗi cập nhật trạng thái Webhook Header:", e);
+            }
+        }
+
+        async function loadWebhookHealthList() {
+            const container = document.getElementById('wh-health-cards-container');
+            if (!container) return;
+            try {
+                const res = await fetch('/api/v1/webhook-sync/status');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (!data.action_groups || data.action_groups.length === 0) {
+                    container.innerHTML = `<div class="p-8 text-center text-slate-500 col-span-2">Chưa có Action Group (API Webhook) nào được cấu hình trong hệ thống.</div>`;
+                    return;
+                }
+
+                container.innerHTML = data.action_groups.map(ag => {
+                    const isOnline = ag.is_active;
+                    const cbState = ag.circuit_breaker_state || 'CLOSED';
+                    let cbBadge = '';
+                    if (cbState === 'CLOSED') {
+                        cbBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Mạch Đóng (Bình thường)</span>';
+                    } else if (cbState === 'OPEN') {
+                        cbBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse">Mạch Ngắt (Fail-fast chống nghẽn)</span>';
+                    } else {
+                        cbBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">Thử Thách (Half-Open)</span>';
+                    }
+
+                    const statusDot = isOnline
+                        ? '<span class="w-3 h-3 rounded-full bg-emerald-400 inline-block shadow-sm"></span>'
+                        : '<span class="w-3 h-3 rounded-full bg-rose-500 inline-block animate-ping shadow-sm"></span>';
+
+                    const cardBorder = !isOnline || cbState === 'OPEN'
+                        ? 'border-rose-500/40 bg-rose-950/10'
+                        : 'border-slate-800 bg-slate-900/60';
+
+                    return `
+                        <div class="p-4 rounded-xl border ${cardBorder} flex flex-col justify-between space-y-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="space-y-1">
+                                    <div class="flex items-center space-x-2">
+                                        ${statusDot}
+                                        <span class="font-bold text-white text-sm sm:text-base">${ag.action_group_name}</span>
+                                        <span class="text-[10px] font-mono text-slate-400">#${ag.action_group_id}</span>
+                                    </div>
+                                    <div class="text-xs text-slate-400 font-mono break-all line-clamp-1" title="${ag.api_url}">
+                                        <i class="fa-solid fa-link mr-1 text-slate-500"></i>${ag.api_url}
+                                    </div>
+                                </div>
+                                <div>${cbBadge}</div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 text-xs bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
+                                <div>
+                                    <span class="text-slate-400">Trạng thái:</span>
+                                    <span class="font-semibold ml-1 ${isOnline ? 'text-emerald-400' : 'text-rose-400'}">${isOnline ? '🟢 Hoạt động (Online)' : '🔴 Mất kết nối (Offline)'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400">Độ trễ:</span>
+                                    <span class="font-mono text-slate-200 ml-1">${ag.last_response_time_ms ? ag.last_response_time_ms + ' ms' : 'N/A'}</span>
+                                </div>
+                                <div class="col-span-2">
+                                    <span class="text-slate-400">Kiểm tra lúc:</span>
+                                    <span class="text-slate-300 ml-1 font-mono">${ag.last_checked_at || 'Chưa kiểm tra'}</span>
+                                </div>
+                                ${ag.last_error ? `
+                                    <div class="col-span-2 text-rose-300 text-[11px] bg-rose-950/30 p-1.5 rounded border border-rose-900/40">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>${ag.last_error}
+                                    </div>
+                                ` : ''}
+                            </div>
+
+                            <div class="flex items-center justify-between pt-1">
+                                <span class="text-[11px] text-slate-400">Số lỗi liên tiếp: <strong class="text-white">${ag.consecutive_failures || 0}</strong>/3</span>
+                                <button onclick="testActionGroup(${ag.action_group_id})" class="px-2.5 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg transition-all flex items-center space-x-1">
+                                    <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                                    <span>Thử Gửi Payload</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error("Lỗi nạp danh sách sức khỏe Webhook:", e);
+            }
+        }
+
+        async function triggerWebhookHealthCheckManual() {
+            const btn = document.getElementById('wh-btn-ping-all');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i>Đang kiểm tra...`;
+            }
+            try {
+                const res = await fetch('/api/v1/webhook-sync/check-health', { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast(`Đã kiểm tra ${data.total_checked} API Webhook (Online: ${data.online_count}, Offline: ${data.offline_count})`, data.offline_count > 0 ? "warning" : "success");
+                    loadWebhookHealthList();
+                    updateWebhookHeaderStatus();
+                } else {
+                    showToast("Lỗi khi kiểm tra sức khỏe Webhook", "error");
+                }
+            } catch (e) {
+                showToast("Lỗi kết nối: " + e, "error");
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-arrows-rotate mr-1"></i><span>Kiểm Tra Kết Nối Ngay</span>`;
+                }
+            }
+        }
+
+        async function loadWebhookQueue(page = 1) {
+            currentWebhookQueuePage = page;
+            const tbody = document.getElementById('wh-queue-table-body');
+            if (!tbody) return;
+            const plate = (document.getElementById('wh-queue-plate-search')?.value || '').trim();
+
+            let url = `/api/v1/webhook-sync/queue?page=${page}&page_size=15`;
+            if (currentWebhookQueueStatus && currentWebhookQueueStatus !== 'ALL') {
+                url += `&status=${currentWebhookQueueStatus}`;
+            }
+            if (plate) {
+                url += `&plate_number=${encodeURIComponent(plate)}`;
+            }
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (!data.items || data.items.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-500 font-medium">Hàng đợi đồng bộ trống. Không có bản ghi nào.</td></tr>`;
+                    renderWebhookQueuePagination(1, 0, 15);
+                    return;
+                }
+
+                tbody.innerHTML = data.items.map(item => {
+                    let statusBadge = '';
+                    if (item.status === 'SUCCESS') {
+                        statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Thành công</span>';
+                    } else if (item.status === 'PENDING') {
+                        statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">Chờ gửi</span>';
+                    } else {
+                        statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Thất bại</span>';
+                    }
+
+                    let actionBadge = '';
+                    if (item.event_action === 'CREATE') {
+                        actionBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">CREATE</span>';
+                    } else if (item.event_action === 'UPDATE') {
+                        actionBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">UPDATE</span>';
+                    } else if (item.event_action === 'DELETE') {
+                        actionBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">DELETE</span>';
+                    } else {
+                        actionBadge = '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">RESTORE</span>';
+                    }
+
+                    return `
+                        <tr class="hover:bg-slate-900/60 border-b border-slate-800/40">
+                            <td class="p-2.5 font-mono text-slate-400">#${item.id}</td>
+                            <td class="p-2.5 whitespace-nowrap">${actionBadge}</td>
+                            <td class="p-2.5 font-mono font-bold text-amber-400">${item.plate_number || 'N/A'}</td>
+                            <td class="p-2.5 text-slate-300 whitespace-nowrap">${item.action_group_name || ('Nhóm #' + item.action_group_id)}</td>
+                            <td class="p-2.5 whitespace-nowrap">${statusBadge}</td>
+                            <td class="p-2.5 font-mono text-slate-300">${item.retry_count}/${item.max_retries}</td>
+                            <td class="p-2.5 text-slate-400 text-[11px] font-mono whitespace-nowrap">${item.next_retry_at ? item.next_retry_at.replace('T', ' ') : 'N/A'}</td>
+                            <td class="p-2.5 text-[11px] text-rose-400 max-w-xs truncate" title="${(item.last_error || '').replace(/"/g, '&quot;')}">${item.last_error || '-'}</td>
+                            <td class="p-2.5 text-right whitespace-nowrap space-x-1">
+                                ${item.status !== 'SUCCESS' ? `
+                                    <button onclick="retrySingleWebhookQueueManual(${item.id})" class="px-2 py-1 text-[11px] bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30 rounded-lg transition-all" title="Thử lại bản ghi này ngay">
+                                        <i class="fa-solid fa-rotate-right mr-0.5"></i>Thử lại
+                                    </button>
+                                ` : ''}
+                                <button onclick="cancelWebhookQueueManual(${item.id})" class="px-2 py-1 text-[11px] bg-rose-600/20 hover:bg-rose-600/40 text-rose-400 border border-rose-500/30 rounded-lg transition-all" title="Hủy bỏ / Xóa khỏi hàng đợi">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                renderWebhookQueuePagination(data.page, data.total, data.page_size);
+            } catch (e) {
+                console.error("Lỗi nạp hàng đợi webhook:", e);
+            }
+        }
+
+        function renderWebhookQueuePagination(page, total, pageSize) {
+            const info = document.getElementById('wh-queue-pagination-info');
+            const btns = document.getElementById('wh-queue-pagination-btns');
+            if (!info || !btns) return;
+            const totalPages = Math.ceil(total / pageSize) || 1;
+            info.innerText = `Trang ${page} / ${totalPages} (Tổng: ${total} bản ghi)`;
+            btns.innerHTML = `
+                <button onclick="loadWebhookQueue(${page - 1})" ${page <= 1 ? 'disabled' : ''} class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-xs disabled:opacity-40">Trước</button>
+                <button onclick="loadWebhookQueue(${page + 1})" ${page >= totalPages ? 'disabled' : ''} class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-xs disabled:opacity-40">Sau</button>
+            `;
+        }
+
+        function filterWebhookQueue(status) {
+            currentWebhookQueueStatus = status;
+            ['ALL', 'PENDING', 'FAILED', 'SUCCESS'].forEach(s => {
+                const btn = document.getElementById(`wh-qfilter-${s}`);
+                if (!btn) return;
+                if (s === status) {
+                    btn.className = "px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-600 text-white";
+                } else {
+                    btn.className = "px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white";
+                }
+            });
+            loadWebhookQueue(1);
+        }
+
+        function debounceWebhookQueueSearch() {
+            clearTimeout(webhookQueueSearchTimeout);
+            webhookQueueSearchTimeout = setTimeout(() => {
+                loadWebhookQueue(1);
+            }, 350);
+        }
+
+        async function retryAllWebhookQueueManual() {
+            const btn = document.getElementById('wh-btn-retry-all');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i>Đang gửi...`;
+            }
+            try {
+                const res = await fetch('/api/v1/webhook-sync/retry-all', { method: 'POST' });
+                if (res.ok) {
+                    showToast(`Đã kích hoạt đồng bộ lại toàn bộ hàng đợi!`, "success");
+                    loadWebhookQueue(currentWebhookQueuePage);
+                    updateWebhookHeaderStatus();
+                } else {
+                    showToast("Lỗi khi gửi yêu cầu đồng bộ lại", "error");
+                }
+            } catch (e) {
+                showToast("Lỗi kết nối: " + e, "error");
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-rotate mr-1"></i><span>Đồng Bộ Tất Cả Ngay</span>`;
+                }
+            }
+        }
+
+        async function retrySingleWebhookQueueManual(queueId) {
+            try {
+                const res = await fetch(`/api/v1/webhook-sync/${queueId}/retry`, { method: 'POST' });
+                if (res.ok) {
+                    showToast(`Đã đưa bản ghi #${queueId} vào hàng đợi thử lại!`, "success");
+                    loadWebhookQueue(currentWebhookQueuePage);
+                    updateWebhookHeaderStatus();
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (e) {
+                showToast("Lỗi kết nối: " + e, "error");
+            }
+        }
+
+        async function cancelWebhookQueueManual(queueId) {
+            if (!confirm(`Bạn có chắc muốn hủy bản ghi đồng bộ #${queueId}?`)) return;
+            try {
+                const res = await fetch(`/api/v1/webhook-sync/${queueId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast(`Đã xóa bản ghi #${queueId} khỏi hàng đợi`, "info");
+                    loadWebhookQueue(currentWebhookQueuePage);
+                    updateWebhookHeaderStatus();
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi khi hủy: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (e) {
+                showToast("Lỗi kết nối: " + e, "error");
             }
         }
 
@@ -2784,24 +3648,101 @@
         }
 
         /* --- HISTORY & EVENT DETAIL --- */
+        let currentHistoryMode = 'all'; // 'all' or 'trash'
+        let currentHistoryPage = 1;
+        let currentHistoryLogs = [];
+        let currentDashboardLogs = [];
+
+        function switchHistoryMode(mode) {
+            currentHistoryMode = mode;
+            currentHistoryPage = 1;
+            const btnAll = document.getElementById('subtab-history-all');
+            const btnTrash = document.getElementById('subtab-history-trash');
+            const trashActions = document.getElementById('trash-actions-container');
+
+            if (mode === 'trash') {
+                if (btnAll) btnAll.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-400 border border-slate-700/80 flex items-center space-x-2";
+                if (btnTrash) btnTrash.className = "role-admin-only px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-rose-600 text-white shadow-lg shadow-rose-600/30 flex items-center space-x-2";
+                if (trashActions) {
+                    trashActions.classList.remove('hidden');
+                    trashActions.classList.add('flex');
+                }
+                renderHistoryTableHead('trash');
+            } else {
+                if (btnAll) btnAll.className = "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/30 flex items-center space-x-2";
+                if (btnTrash) btnTrash.className = "role-admin-only px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-rose-300 border border-slate-700/80 flex items-center space-x-2";
+                if (trashActions) {
+                    trashActions.classList.add('hidden');
+                    trashActions.classList.remove('flex');
+                }
+                renderHistoryTableHead('all');
+            }
+            fetchHistoryLogs(1);
+            updateTrashBadge();
+        }
+
+        function renderHistoryTableHead(mode) {
+            const thead = document.getElementById('history-thead-row');
+            if (!thead) return;
+            if (mode === 'trash') {
+                thead.innerHTML = `
+                    <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Thời gian phát hiện</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Camera / Vùng</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Biển Số Xe</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Loại Xe</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Thông Tin Đã Xóa</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Ảnh Biển Số</th>
+                    <th class="p-3 sm:p-4 text-right whitespace-nowrap">Thao Tác Thùng Rác</th>
+                `;
+            } else {
+                thead.innerHTML = `
+                    <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Thời gian</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Camera / Vùng</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Biển Số Xe</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Loại Xe</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Trạng Thái / Hành Động</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Góc Nhìn</th>
+                    <th class="p-3 sm:p-4 whitespace-nowrap">Ảnh Biển Số</th>
+                    <th class="p-3 sm:p-4 text-right whitespace-nowrap">Thao Tác</th>
+                `;
+            }
+        }
+
         async function fetchHistoryLogs(page = 1) {
+            currentHistoryPage = page;
             const plate = document.getElementById('filter-plate').value.trim();
             const zone = document.getElementById('filter-zone').value;
             const camId = document.getElementById('filter-camera').value;
             const status = document.getElementById('filter-action-status').value;
             const vtype = document.getElementById('filter-vehicle-type') ? document.getElementById('filter-vehicle-type').value : '';
+            const classification = document.getElementById('filter-classification') ? document.getElementById('filter-classification').value : '';
 
             let url = `/api/v1/vehicle-logs?page=${page}&page_size=20`;
+            if (currentHistoryMode === 'trash') {
+                url += '&is_deleted=true';
+            } else {
+                url += '&is_deleted=false';
+            }
+
             if (plate) url += `&plate_number=${encodeURIComponent(plate)}`;
             if (zone) url += `&zone_code=${encodeURIComponent(zone)}`;
             if (camId) url += `&camera_id=${encodeURIComponent(camId)}`;
             if (status) url += `&action_status=${encodeURIComponent(status)}`;
             if (vtype) url += `&vehicle_type=${encodeURIComponent(vtype)}`;
+            if (classification) url += `&vehicle_classification=${encodeURIComponent(classification)}`;
 
             try {
                 const res = await fetch(url);
-                if (!res.ok) return;
+                if (!res.ok) {
+                    if (res.status === 403) {
+                        showToast("Chỉ Admin mới có quyền truy cập Thùng Rác!", "error");
+                    }
+                    return;
+                }
                 const data = await res.json();
+                currentHistoryLogs = data.items || [];
                 renderHistoryTable(data.items);
                 renderPagination(data.page, data.total, data.page_size);
             } catch (err) { }
@@ -2815,15 +3756,78 @@
             return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 whitespace-nowrap"><i class="fa-solid fa-car mr-1"></i>Ô tô</span>`;
         }
 
+        function renderSyncStatusBadge(syncStatus, syncError) {
+            if (!syncStatus) return '';
+            const st = syncStatus.toUpperCase();
+            if (st === 'SYNCED') {
+                return `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap" title="Đã đồng bộ Webhook đối tác thành công"><i class="fa-solid fa-cloud-arrow-up mr-1 text-[9px]"></i>Đã sync</span>`;
+            } else if (st === 'PENDING_SYNC') {
+                const title = syncError ? syncError.replace(/"/g, '&quot;') : 'Đang trong hàng đợi chờ kết nối đối tác...';
+                return `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap animate-pulse" title="${title}"><i class="fa-solid fa-clock-rotate-left mr-1 text-[9px]"></i>Chờ sync</span>`;
+            } else if (st === 'SYNC_FAILED') {
+                const title = syncError ? syncError.replace(/"/g, '&quot;') : 'Gửi webhook thất bại';
+                return `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 whitespace-nowrap" title="${title}"><i class="fa-solid fa-triangle-exclamation mr-1 text-[9px]"></i>Lỗi sync</span>`;
+            }
+            return '';
+        }
+
         function renderHistoryTable(items) {
             const tbody = document.getElementById('history-table-body');
+            if (currentHistoryMode === 'trash') {
+                if (items.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500 font-medium"><i class="fa-solid fa-trash-can mr-2 text-slate-600"></i>Thùng rác trống. Không có sự kiện nào.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = items.map(item => {
+                    const zoneBadge = item.zone_code === 'KHO_BAI' 
+                        ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">Kho Bãi</span>`
+                        : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300">Trường Lái</span>`;
+
+                    return `
+                        <tr class="hover:bg-slate-800/40 border-b border-slate-800/60">
+                            <td class="p-3 font-mono text-slate-400">#${item.id}</td>
+                            <td class="p-3 text-xs text-slate-300 whitespace-nowrap">${item.detected_at}</td>
+                            <td class="p-3">
+                                <div class="font-medium text-white">${item.camera_name}</div>
+                                <div class="mt-0.5">${zoneBadge}</div>
+                            </td>
+                            <td class="p-3">
+                                <span class="font-mono font-bold text-amber-400 text-sm sm:text-base">${item.plate_number}</span>
+                            </td>
+                            <td class="p-3">${renderVehicleTypeBadge(item.vehicle_type)}</td>
+                            <td class="p-3 whitespace-nowrap">
+                                <div class="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-clock-rotate-left"></i>
+                                    <span>${item.deleted_at || 'N/A'}</span>
+                                </div>
+                                <div class="text-[11px] text-slate-400 mt-0.5">Xóa bởi: <span class="font-medium text-slate-300">${item.deleted_by || 'admin'}</span></div>
+                            </td>
+                            <td class="p-3">
+                                <img src="${item.image_plate_path}" onclick="openImageViewer('${item.image_plate_path}', 'Biển số: ${item.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform">
+                            </td>
+                            <td class="p-3 text-right space-x-1 whitespace-nowrap">
+                                <button onclick="restoreVehicleLog(${item.id}, '${item.plate_number}')" class="px-2.5 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 rounded-lg transition-all font-semibold" title="Khôi phục sự kiện và cập nhật lại API">
+                                    <i class="fa-solid fa-rotate-left mr-1"></i>Khôi Phục
+                                </button>
+                                <button onclick="permanentDeleteVehicleLog(${item.id}, '${item.plate_number}')" class="px-2.5 py-1 text-xs bg-rose-600/20 hover:bg-rose-600/40 text-rose-400 border border-rose-500/40 rounded-lg transition-all font-semibold" title="Xóa vĩnh viễn khỏi CSDL (không gọi API)">
+                                    <i class="fa-solid fa-trash-can mr-1"></i>Xóa Hẳn
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                return;
+            }
+
             if (items.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">Không tìm thấy bản ghi nhận dạng nào.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = items.map(item => {
-                const statusBadge = renderActionStatusBadge(item.action_status, item.summary);
+                const statusBadge = renderActionStatusBadge(item.action_status, item.summary, item.vehicle_classification);
+                const syncBadge = renderSyncStatusBadge(item.sync_status, item.sync_error);
                 const zoneBadge = item.zone_code === 'KHO_BAI' 
                     ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">Kho Bãi</span>`
                     : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300">Trường Lái</span>`;
@@ -2837,10 +3841,18 @@
                             <div class="mt-0.5">${zoneBadge}</div>
                         </td>
                         <td class="p-3">
-                            <div class="font-mono font-bold text-amber-400 text-sm sm:text-base">${item.plate_number}</div>
+                            <div class="flex items-center space-x-1.5">
+                                <span class="font-mono font-bold text-amber-400 text-sm sm:text-base">${item.plate_number}</span>
+                                ${item.is_edited ? `<span title="Đã chỉnh sửa (Gốc: ${item.original_plate_number || 'N/A'}) bởi ${item.updated_by || 'admin'}" class="inline-flex items-center text-[10px] text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1 py-0.5 rounded cursor-help font-mono"><i class="fa-solid fa-pen-to-square mr-0.5"></i>Sửa</span>` : ''}
+                            </div>
                         </td>
                         <td class="p-3">${renderVehicleTypeBadge(item.vehicle_type)}</td>
-                        <td class="p-3">${statusBadge}</td>
+                        <td class="p-3">
+                            <div class="flex flex-col gap-1 items-start">
+                                ${statusBadge}
+                                ${syncBadge}
+                            </div>
+                        </td>
                         <td class="p-3">${renderVehicleViewBadge(item.vehicle_view)}</td>
                         <td class="p-3">
                             <img src="${item.image_plate_path}" onclick="openImageViewer('${item.image_plate_path}', 'Biển số: ${item.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform">
@@ -2849,9 +3861,12 @@
                             <button onclick="openPlaybackForEvent(${item.camera_id}, '${item.detected_at}', '${item.plate_number}')" class="px-2.5 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
-                            <button onclick="openImageModal('${item.image_plate_path}', '${item.image_full_path}', '${item.plate_number}', '${item.summary || ''}', ${item.camera_id}, '${item.detected_at}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                            <button onclick="openImageModal('${item.image_plate_path}', '${item.image_full_path}', '${item.plate_number}', '${(item.summary || '').replace(/'/g, "\\'")}', ${item.camera_id}, '${item.detected_at}', '${item.vehicle_classification || ''}', ${item.id}, '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${item.sync_status || ''}', '${(item.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                            ${(item.sync_status === 'PENDING_SYNC' || item.sync_status === 'SYNC_FAILED') ? `
+                                <button onclick="openWebhookSyncModal('queue')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Xem trong hàng đợi đồng bộ"><i class="fa-solid fa-cloud-arrow-up"></i></button>
+                            ` : ''}
                             ${currentUser && (currentUser.role === 'admin' || currentUser.role === 'quan_ly') ? `
-                                <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${(item.summary || '').replace(/'/g, "\\'")}')" class="px-2 py-1 text-xs bg-amber-600/20 text-amber-400 rounded-lg" title="Chỉnh sửa"><i class="fa-solid fa-pen-to-square"></i></button>
+                                <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${(item.summary || '').replace(/'/g, "\\'")}', '${item.image_plate_path}', '${item.image_full_path}', 'history', '${item.detected_at || ''}', '${(item.camera_name || '').replace(/'/g, "\\'")}')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 rounded-lg" title="Chỉnh sửa"><i class="fa-solid fa-pen-to-square"></i></button>
                                 <button onclick="deleteVehicleLog(${item.id}, '${item.plate_number}')" class="px-2 py-1 text-xs bg-rose-600/20 text-rose-400 rounded-lg" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
                             ` : ''}
                         </td>
@@ -2860,18 +3875,22 @@
             }).join('');
         }
 
-        function renderActionStatusBadge(status, summary) {
+        function renderActionStatusBadge(status, summary, classification = null) {
+            const cls = (classification || '').toUpperCase();
             const st = (status || 'INFO').toUpperCase();
-            if (st === 'UNPLANNED') {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${summary || 'Không Kế Hoạch'}</span>`;
-            } else if (st === 'APPROVED') {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"><i class="fa-solid fa-circle-check mr-1"></i>${summary || 'Hợp Lệ'}</span>`;
+
+            if (cls === 'INTERNAL_VALID' || (!cls && st === 'APPROVED')) {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1"></i>${summary || 'Có Kế Hoạch'}</span>`;
+            } else if (cls === 'INTERNAL_UNPLANNED' || (!cls && st === 'UNPLANNED')) {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 whitespace-nowrap animate-pulse"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${summary || 'Không Kế Hoạch'}</span>`;
+            } else if (cls === 'EXTERNAL_UNKNOWN') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-500/20 text-slate-300 border border-slate-500/30 whitespace-nowrap"><i class="fa-solid fa-car-side mr-1"></i>${summary || 'Xe Bên Ngoài'}</span>`;
             } else if (st === 'REJECTED') {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600/30 text-rose-200 border border-rose-600/40"><i class="fa-solid fa-circle-xmark mr-1"></i>${summary || 'Từ Chối'}</span>`;
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600/30 text-rose-200 border border-rose-600/40 whitespace-nowrap"><i class="fa-solid fa-circle-xmark mr-1"></i>${summary || 'Từ Chối'}</span>`;
             } else if (st === 'WARNING') {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30"><i class="fa-solid fa-bolt mr-1"></i>${summary || 'Cảnh Báo'}</span>`;
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap"><i class="fa-solid fa-bolt mr-1"></i>${summary || 'Cảnh Báo'}</span>`;
             }
-            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20">${summary || 'Ghi nhận'}</span>`;
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20 whitespace-nowrap">${summary || 'Ghi nhận'}</span>`;
         }
 
         function renderVehicleViewBadge(view) {
@@ -2896,6 +3915,7 @@
                 const res = await fetch('/api/v1/vehicle-logs?page=1&page_size=10');
                 if (!res.ok) return;
                 const data = await res.json();
+                currentDashboardLogs = data.items || [];
                 const tbody = document.getElementById('realtime-log-body');
                 if (data.items.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">Chưa có sự kiện nào.</td></tr>`;
@@ -2905,9 +3925,19 @@
                     <tr class="hover:bg-slate-800/40">
                         <td class="p-2.5 sm:p-3 text-xs text-slate-300 whitespace-nowrap">${d.detected_at}</td>
                         <td class="p-2.5 sm:p-3 whitespace-nowrap font-medium">${d.camera_name}</td>
-                        <td class="p-2.5 sm:p-3 whitespace-nowrap font-mono font-bold text-amber-400">${d.plate_number}</td>
+                        <td class="p-2.5 sm:p-3 whitespace-nowrap">
+                            <div class="flex items-center space-x-1">
+                                <span class="font-mono font-bold text-amber-400">${d.plate_number}</span>
+                                ${d.is_edited ? `<span title="Đã chỉnh sửa (Gốc: ${d.original_plate_number || 'N/A'})" class="text-[10px] text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1 py-0.2 rounded cursor-help"><i class="fa-solid fa-pen-to-square"></i></span>` : ''}
+                            </div>
+                        </td>
                         <td class="p-2.5 sm:p-3">${renderVehicleTypeBadge(d.vehicle_type)}</td>
-                        <td class="p-2.5 sm:p-3">${renderActionStatusBadge(d.action_status, d.summary)}</td>
+                        <td class="p-2.5 sm:p-3">
+                            <div class="flex flex-col gap-1 items-start">
+                                ${renderActionStatusBadge(d.action_status, d.summary, d.vehicle_classification)}
+                                ${renderSyncStatusBadge(d.sync_status, d.sync_error)}
+                            </div>
+                        </td>
                         <td class="p-2.5 sm:p-3">${renderVehicleViewBadge(d.vehicle_view)}</td>
                         <td class="p-2.5 sm:p-3 text-xs text-slate-400 font-mono">${(d.confidence_score * 100).toFixed(1)}%</td>
                         <td class="p-2.5 sm:p-3"><img src="${d.image_plate_path}" onclick="openImageViewer('${d.image_plate_path}', 'Biển số: ${d.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform"></td>
@@ -2915,7 +3945,11 @@
                             <button onclick="openPlaybackForEvent(${d.camera_id}, '${d.detected_at}', '${d.plate_number}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
-                            <button onclick="openImageModal('${d.image_plate_path}', '${d.image_full_path}', '${d.plate_number}', '${d.summary || ''}', ${d.camera_id}, '${d.detected_at}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                            <button onclick="openImageModal('${d.image_plate_path}', '${d.image_full_path}', '${d.plate_number}', '${(d.summary || '').replace(/'/g, "\\'")}', ${d.camera_id}, '${d.detected_at}', '${d.vehicle_classification || ''}', ${d.id}, '${d.vehicle_view || 'front'}', '${d.vehicle_type || 'car'}', '${d.sync_status || ''}', '${(d.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                            ${(d.sync_status === 'PENDING_SYNC' || d.sync_status === 'SYNC_FAILED') ? `
+                                <button onclick="openWebhookSyncModal('queue')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Xem hàng đợi đồng bộ"><i class="fa-solid fa-cloud-arrow-up"></i></button>
+                            ` : ''}
+                            <button onclick="openEditLogModal(${d.id}, '${d.plate_number}', '${d.vehicle_view || 'front'}', '${d.vehicle_type || 'car'}', '${(d.summary || '').replace(/'/g, "\\'")}', '${d.image_plate_path}', '${d.image_full_path}', 'dashboard', '${d.detected_at || ''}', '${(d.camera_name || '').replace(/'/g, "\\'")}')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square"></i></button>
                         </td>
                     </tr>
                 `).join('');
@@ -3560,21 +4594,48 @@
         }
 
         /* --- MODALS HANDLERS --- */
-        let currentModalEvent = { cameraId: null, detectedAt: '', plateNumber: '' };
+        let currentModalEvent = { cameraId: null, detectedAt: '', plateNumber: '', logId: null, vehicleView: 'front', vehicleType: 'car', platePath: '', fullPath: '', summary: '' };
 
-        function openImageModal(platePath, fullPath, plateNum, summary, cameraId = null, detectedAt = '') {
+        function openImageModal(platePath, fullPath, plateNum, summary, cameraId = null, detectedAt = '', classification = '', logId = null, vehicleView = 'front', vehicleType = 'car', syncStatus = '', syncError = '') {
             currentModalEvent = {
+                logId: logId,
                 cameraId: cameraId,
                 detectedAt: detectedAt,
-                plateNumber: plateNum
+                plateNumber: plateNum,
+                summary: summary,
+                vehicleView: vehicleView,
+                vehicleType: vehicleType,
+                platePath: platePath,
+                fullPath: fullPath,
+                classification: classification
             };
 
             document.getElementById('modal-title').innerText = `Chi Tiết Sự Kiện - Biển Số: ${plateNum}`;
             document.getElementById('modal-plate-img').src = platePath;
             document.getElementById('modal-full-img').src = fullPath;
             const summaryBox = document.getElementById('modal-summary-box');
-            if (summary) {
-                document.getElementById('modal-summary-text').innerText = summary;
+            const classBadgeEl = document.getElementById('modal-classification-badge');
+            const syncBadgeEl = document.getElementById('modal-sync-badge');
+
+            if (classBadgeEl) {
+                const cls = (classification || '').toUpperCase();
+                if (cls === 'INTERNAL_VALID') {
+                    classBadgeEl.innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"><i class="fa-solid fa-circle-check mr-1"></i>Xe Nội Bộ Có Kế Hoạch</span>`;
+                } else if (cls === 'INTERNAL_UNPLANNED') {
+                    classBadgeEl.innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Xe Nội Bộ Không Kế Hoạch</span>`;
+                } else if (cls === 'EXTERNAL_UNKNOWN') {
+                    classBadgeEl.innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-500/20 text-slate-300 border border-slate-500/40"><i class="fa-solid fa-car-side mr-1"></i>Xe Bên Ngoài (Chưa Đăng Ký)</span>`;
+                } else {
+                    classBadgeEl.innerHTML = '';
+                }
+            }
+
+            if (syncBadgeEl) {
+                syncBadgeEl.innerHTML = renderSyncStatusBadge(syncStatus, syncError);
+            }
+
+            if (summary || classification || syncStatus) {
+                document.getElementById('modal-summary-text').innerText = summary || 'Sự kiện được xử lý qua Action Group Webhook.';
                 summaryBox.classList.remove('hidden');
             } else {
                 summaryBox.classList.add('hidden');
@@ -3589,6 +4650,15 @@
                 }
             }
 
+            const editBtn = document.getElementById('modal-btn-edit-event');
+            if (editBtn) {
+                if (logId) {
+                    editBtn.classList.remove('hidden');
+                } else {
+                    editBtn.classList.add('hidden');
+                }
+            }
+
             document.getElementById('image-modal').classList.remove('hidden');
         }
 
@@ -3599,6 +4669,17 @@
             } else {
                 showToast("Không có thông tin thời điểm để mở video.", "warning");
             }
+        }
+
+        function editFromDetailModal() {
+            if (!currentModalEvent || !currentModalEvent.logId) {
+                showToast("Không tìm thấy mã sự kiện để chỉnh sửa.", "warning");
+                return;
+            }
+            const evt = currentModalEvent;
+            closeImageModal();
+            const src = (typeof currentTab !== 'undefined' && currentTab === 'history') ? 'history' : 'dashboard';
+            openEditLogModal(evt.logId, evt.plateNumber, evt.vehicleView, evt.vehicleType, evt.summary, evt.platePath, evt.fullPath, src, evt.detectedAt, evt.cameraName || '');
         }
 
         function closeImageModal() {
@@ -3667,32 +4748,222 @@
             }
         }
 
-        function openEditLogModal(logId, currentPlate, currentView, currentType, currentSummary) {
-            document.getElementById('edit-log-id').value = logId;
-            document.getElementById('edit-log-plate').value = currentPlate || '';
-            document.getElementById('edit-log-view').value = (currentView || 'unknown').toLowerCase();
-            const typeSelect = document.getElementById('edit-log-type');
-            if (typeSelect) {
-                typeSelect.value = (currentType || 'car').toLowerCase();
+        let currentEditCropUrl = '';
+        let currentEditFullUrl = '';
+        let currentEditActiveType = 'crop';
+        let currentEditList = [];
+        let currentEditIndex = -1;
+
+        function updateEditNavButtons() {
+            const counter = document.getElementById('edit-nav-counter');
+            const btnPrev = document.getElementById('btn-edit-prev');
+            const btnNext = document.getElementById('btn-edit-next');
+            const btnPrevFooter = document.getElementById('btn-edit-prev-footer');
+            const btnNextFooter = document.getElementById('btn-edit-next-footer');
+
+            const total = (currentEditList && currentEditList.length) ? currentEditList.length : 0;
+            const current = (total > 0 && currentEditIndex >= 0) ? (currentEditIndex + 1) : 0;
+
+            if (counter) {
+                counter.innerText = total > 0 ? `${current} / ${total}` : '0 / 0';
             }
-            document.getElementById('edit-log-summary').value = currentSummary || '';
+
+            const isFirst = currentEditIndex <= 0;
+            const isLast = currentEditIndex >= total - 1 || total === 0;
+
+            if (btnPrev) btnPrev.disabled = isFirst;
+            if (btnNext) btnNext.disabled = isLast;
+            if (btnPrevFooter) btnPrevFooter.disabled = isFirst;
+            if (btnNextFooter) btnNextFooter.disabled = isLast;
+        }
+
+        function populateEditModalWithItem(item) {
+            if (!item) return;
+            const logIdEl = document.getElementById('edit-log-id');
+            if (logIdEl) logIdEl.value = item.id;
+
+            // Hiển thị mã sự kiện ID
+            const idBadge = document.getElementById('edit-log-id-badge');
+            if (idBadge) idBadge.innerText = item.id ? `#${item.id}` : '';
+
+            // Hiển thị thời gian nhận dạng sự kiện
+            const timeEl = document.getElementById('edit-log-time');
+            if (timeEl) {
+                timeEl.innerText = item.detected_at || '--:--:--';
+            }
+
+            // Hiển thị nguồn camera
+            const camEl = document.getElementById('edit-log-cam-name');
+            if (camEl) {
+                camEl.innerText = item.camera_name || (item.camera_id ? `Camera #${item.camera_id}` : 'Camera');
+            }
+
+            const plateInput = document.getElementById('edit-log-plate');
+            if (plateInput) plateInput.value = item.plate_number || '';
+
+            const viewSelect = document.getElementById('edit-log-view');
+            if (viewSelect) viewSelect.value = (item.vehicle_view || 'unknown').toLowerCase();
+
+            const typeSelect = document.getElementById('edit-log-type');
+            if (typeSelect) typeSelect.value = (item.vehicle_type || 'car').toLowerCase();
+
+            const summaryInput = document.getElementById('edit-log-summary');
+            if (summaryInput) summaryInput.value = item.summary || '';
+
+            // Ẩn thông báo đã lưu trước đó nếu đang chuyển bản ghi
+            const saveAlert = document.getElementById('edit-log-save-alert');
+            if (saveAlert) saveAlert.classList.add('hidden');
+
+            // Nạp link ảnh vào state
+            currentEditCropUrl = item.image_plate_path || '';
+            currentEditFullUrl = item.image_full_path || '';
+
+            // Cập nhật nguồn ảnh thumbnail
+            const thumbCrop = document.getElementById('edit-log-thumb-crop');
+            const thumbFull = document.getElementById('edit-log-thumb-full');
+            if (thumbCrop) thumbCrop.src = currentEditCropUrl || '';
+            if (thumbFull) thumbFull.src = currentEditFullUrl || '';
+
+            // Cập nhật khung xem ảnh lớn
+            switchEditLogImage(currentEditActiveType || 'crop');
+
+            // Cập nhật trạng thái các nút lùi / tới
+            updateEditNavButtons();
+
+            // Tự động focus và bôi đen toàn bộ biển số để người dùng gõ ngay mà không cần dùng chuột
+            if (plateInput) {
+                setTimeout(() => {
+                    plateInput.focus();
+                    plateInput.select();
+                }, 50);
+            }
+        }
+
+        function navigateEditLog(direction) {
+            if (!currentEditList || currentEditList.length === 0) return;
+            const newIndex = currentEditIndex + direction;
+            if (newIndex < 0 || newIndex >= currentEditList.length) return;
+
+            currentEditIndex = newIndex;
+            populateEditModalWithItem(currentEditList[currentEditIndex]);
+        }
+
+        function openEditLogModal(logId, currentPlate, currentView, currentType, currentSummary, imagePlatePath, imageFullPath, source = null, detectedAt = null, cameraName = null) {
+            const numericId = parseInt(logId, 10);
+
+            // Xác định danh sách nguồn hiện hành (History logs hoặc Dashboard logs)
+            if (source === 'history') {
+                currentEditList = (typeof currentHistoryLogs !== 'undefined' && currentHistoryLogs && currentHistoryLogs.length > 0)
+                    ? [...currentHistoryLogs] : [];
+            } else if (source === 'dashboard') {
+                currentEditList = (typeof currentDashboardLogs !== 'undefined' && currentDashboardLogs && currentDashboardLogs.length > 0)
+                    ? [...currentDashboardLogs] : [];
+            } else {
+                // Tự động đoán theo danh sách đang có chứa ID
+                if (typeof currentHistoryLogs !== 'undefined' && currentHistoryLogs && currentHistoryLogs.some(x => x.id === numericId)) {
+                    currentEditList = [...currentHistoryLogs];
+                } else if (typeof currentDashboardLogs !== 'undefined' && currentDashboardLogs && currentDashboardLogs.some(x => x.id === numericId)) {
+                    currentEditList = [...currentDashboardLogs];
+                } else {
+                    currentEditList = [];
+                }
+            }
+
+            // Tìm vị trí của bản ghi trong danh sách
+            let idx = currentEditList.findIndex(x => x.id === numericId);
+            if (idx === -1) {
+                currentEditList.push({
+                    id: numericId,
+                    plate_number: currentPlate || '',
+                    vehicle_view: currentView || 'unknown',
+                    vehicle_type: currentType || 'car',
+                    summary: currentSummary || '',
+                    image_plate_path: imagePlatePath || '',
+                    image_full_path: imageFullPath || '',
+                    detected_at: detectedAt || (currentModalEvent ? currentModalEvent.detectedAt : ''),
+                    camera_name: cameraName || ''
+                });
+                idx = currentEditList.length - 1;
+            } else {
+                if (detectedAt && !currentEditList[idx].detected_at) {
+                    currentEditList[idx].detected_at = detectedAt;
+                }
+                if (cameraName && !currentEditList[idx].camera_name) {
+                    currentEditList[idx].camera_name = cameraName;
+                }
+            }
+
+            currentEditIndex = idx;
+            currentEditActiveType = 'crop';
+            populateEditModalWithItem(currentEditList[currentEditIndex]);
+
             document.getElementById('edit-log-modal').classList.remove('hidden');
+        }
+
+        function switchEditLogImage(type) {
+            currentEditActiveType = type;
+            const mainImg = document.getElementById('edit-log-main-img');
+            const badge = document.getElementById('edit-log-img-badge');
+            const btnCrop = document.getElementById('edit-log-thumb-crop-btn');
+            const btnFull = document.getElementById('edit-log-thumb-full-btn');
+
+            const activeClass = 'border-amber-500 ring-2 ring-amber-500/40 bg-amber-500/10';
+            const inactiveClass = 'border-slate-700 hover:border-slate-500 bg-slate-800/40';
+
+            if (type === 'crop') {
+                if (mainImg) mainImg.src = currentEditCropUrl || '';
+                if (badge) {
+                    badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center space-x-1';
+                    badge.innerHTML = '<i class="fa-solid fa-crop-simple"></i><span>Ảnh Cắt Bao Xe</span>';
+                }
+                if (btnCrop) btnCrop.className = `flex items-center space-x-2.5 p-2 rounded-xl border ${activeClass} text-left transition-all group`;
+                if (btnFull) btnFull.className = `flex items-center space-x-2.5 p-2 rounded-xl border ${inactiveClass} text-left transition-all group`;
+            } else {
+                if (mainImg) mainImg.src = currentEditFullUrl || '';
+                if (badge) {
+                    badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center space-x-1';
+                    badge.innerHTML = '<i class="fa-solid fa-camera"></i><span>Ảnh Gốc Toàn Cảnh</span>';
+                }
+                if (btnCrop) btnCrop.className = `flex items-center space-x-2.5 p-2 rounded-xl border ${inactiveClass} text-left transition-all group`;
+                if (btnFull) btnFull.className = `flex items-center space-x-2.5 p-2 rounded-xl border ${activeClass} text-left transition-all group`;
+            }
+        }
+
+        function zoomEditLogMainImage() {
+            const mainImg = document.getElementById('edit-log-main-img');
+            const plate = document.getElementById('edit-log-plate').value || 'Phương tiện';
+            const titleType = currentEditActiveType === 'crop' ? 'Ảnh Cắt Xe' : 'Ảnh Toàn Cảnh';
+            if (mainImg && mainImg.src) {
+                openImageViewer(mainImg.src, `Biển số: ${plate} - ${titleType}`);
+            }
         }
 
         function closeEditLogModal() {
             document.getElementById('edit-log-modal').classList.add('hidden');
         }
 
-        async function handleEditLogSubmit(e) {
-            e.preventDefault();
+        async function saveEditLogData(options = { advanceNext: false }) {
+            const isAdvanceNext = options && options.advanceNext === true;
             const logId = document.getElementById('edit-log-id').value;
             const typeSelect = document.getElementById('edit-log-type');
+            const submitBtn = document.getElementById('edit-log-submit-btn');
+            const saveNextBtn = document.getElementById('edit-log-save-next-btn');
+            const saveAlert = document.getElementById('edit-log-save-alert');
+            const saveAlertText = document.getElementById('edit-log-save-alert-text');
             const payload = {
                 plate_number: document.getElementById('edit-log-plate').value.trim().toUpperCase(),
                 vehicle_view: document.getElementById('edit-log-view').value,
                 vehicle_type: typeSelect ? typeSelect.value : 'car',
                 summary: document.getElementById('edit-log-summary').value.trim()
             };
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i><span>Đang lưu...</span>';
+            }
+            if (saveNextBtn) {
+                saveNextBtn.disabled = true;
+            }
 
             try {
                 const res = await fetch(`/api/v1/vehicle-logs/${logId}`, {
@@ -3701,31 +4972,196 @@
                     body: JSON.stringify(payload)
                 });
                 if (res.ok) {
-                    closeEditLogModal();
+                    const updated = await res.json();
+
+                    // Cập nhật lại trong currentEditList để khi lùi/tới không bị dữ liệu cũ
+                    if (currentEditList && currentEditIndex >= 0 && currentEditIndex < currentEditList.length) {
+                        currentEditList[currentEditIndex].plate_number = updated.plate_number;
+                        currentEditList[currentEditIndex].vehicle_view = updated.vehicle_view;
+                        currentEditList[currentEditIndex].vehicle_type = updated.vehicle_type;
+                        currentEditList[currentEditIndex].summary = updated.summary;
+                        currentEditList[currentEditIndex].vehicle_classification = updated.vehicle_classification;
+                        currentEditList[currentEditIndex].is_edited = true;
+                    }
+
+                    // Tải lại danh sách ngoài nền
                     loadRecentDashboardLogs();
-                    if (currentTab === 'history') fetchHistoryLogs(1);
-                    showToast("Đã cập nhật sự kiện biển số xe thành công!", "success");
+                    if (typeof currentTab !== 'undefined' && currentTab === 'history') {
+                        fetchHistoryLogs(currentHistoryPage || 1);
+                    }
+
+                    const cls = updated.vehicle_classification;
+                    let msg = `Đã lưu thành công sự kiện #${updated.id} (${updated.plate_number})!`;
+                    let toastType = 'success';
+                    if (cls === 'INTERNAL_VALID') {
+                        msg += ` (🟢 Xe kế hoạch)`;
+                    } else if (cls === 'INTERNAL_UNPLANNED') {
+                        msg += ` (⚠️ Xe không kế hoạch)`;
+                        toastType = 'warning';
+                    } else if (cls === 'EXTERNAL_UNKNOWN') {
+                        msg += ` (⚪ Xe ngoài)`;
+                        toastType = 'info';
+                    }
+                    showToast(msg, toastType, 4000);
+
+                    // Hiển thị thông báo đã lưu ngay trong popup
+                    if (saveAlert && saveAlertText) {
+                        saveAlertText.innerText = `Đã lưu thành công sự kiện #${updated.id} (${updated.plate_number})!`;
+                        saveAlert.classList.remove('hidden');
+                    }
+
+                    // Hiệu ứng nút Lưu chuyển sang trạng thái Đã Lưu
+                    if (submitBtn) {
+                        submitBtn.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i><span>Đã Lưu!</span>';
+                        submitBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                        submitBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                        setTimeout(() => {
+                            if (submitBtn) {
+                                submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i><span>Lưu</span>';
+                                submitBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                                submitBtn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                            }
+                        }, 2000);
+                    }
+
+                    // KHÔNG ĐÓNG POPUP khi bấm nút Lưu. Người dùng tự đóng popup khi hoàn tất.
+                    if (isAdvanceNext) {
+                        if (currentEditIndex < currentEditList.length - 1) {
+                            navigateEditLog(1);
+                        } else {
+                            showToast("Đã là bản ghi cuối cùng trong danh sách.", "info");
+                        }
+                    }
+                    return true;
                 } else {
                     const err = await res.json();
                     showToast("Lỗi: " + (err.detail || JSON.stringify(err)), "error");
+                    return false;
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối: " + err, "error");
+                return false;
+            } finally {
+                if (submitBtn && submitBtn.innerText !== 'Đã Lưu!') {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i><span>Lưu</span>';
+                } else if (submitBtn) {
+                    submitBtn.disabled = false;
+                }
+                if (saveNextBtn) {
+                    saveNextBtn.disabled = false;
+                }
+            }
+        }
+
+        async function handleEditLogSubmit(e) {
+            if (e) e.preventDefault();
+            await saveEditLogData({ advanceNext: false });
+        }
+
+        async function handleEditLogSaveAndNext() {
+            await saveEditLogData({ advanceNext: true });
+        }
+
+        // Lắng nghe phím tắt điều hướng nhanh trong cửa sổ chỉnh sửa sự kiện:
+        // Alt + ← (Bản ghi trước), Alt + → (Bản ghi sau), Ctrl + Enter (Lưu & Tiếp)
+        document.addEventListener('keydown', function (e) {
+            const modal = document.getElementById('edit-log-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                if (e.altKey && e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    navigateEditLog(-1);
+                } else if (e.altKey && e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    navigateEditLog(1);
+                } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    handleEditLogSaveAndNext();
+                }
+            }
+        });
+
+        async function deleteVehicleLog(logId, plateNumber) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa sự kiện biển số [${plateNumber}] không?\n(Sự kiện sẽ được chuyển vào Thùng Rác và thông báo đồng bộ xóa tới API)`)) return;
+            try {
+                const res = await fetch(`/api/v1/vehicle-logs/${logId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadRecentDashboardLogs();
+                    if (currentTab === 'history') fetchHistoryLogs(currentHistoryPage || 1);
+                    updateTrashBadge();
+                    showToast(`Đã chuyển sự kiện [${plateNumber}] vào Thùng Rác!`, "success");
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi khi xóa: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi khi xóa: " + err, "error");
+            }
+        }
+
+        async function restoreVehicleLog(logId, plateNumber) {
+            if (!confirm(`Khôi phục sự kiện biển số [${plateNumber}]?\n(Sự kiện sẽ được đưa trở lại danh sách chính và gửi yêu cầu RESTORE tới API)`)) return;
+            try {
+                const res = await fetch(`/api/v1/vehicle-logs/${logId}/restore`, { method: 'POST' });
+                if (res.ok) {
+                    loadRecentDashboardLogs();
+                    if (currentTab === 'history') fetchHistoryLogs(currentHistoryPage || 1);
+                    updateTrashBadge();
+                    showToast(`Đã khôi phục thành công sự kiện biển số [${plateNumber}]!`, "success");
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi khi khôi phục: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi khi khôi phục: " + err, "error");
+            }
+        }
+
+        async function permanentDeleteVehicleLog(logId, plateNumber) {
+            if (!confirm(`CẢNH BÁO NGUY HIỂM:\nBạn có chắc chắn muốn XÓA VĨNH VIỄN sự kiện [${plateNumber}] khỏi cơ sở dữ liệu?\nHành động này KHÔNG THỂ hoàn tác và sẽ KHÔNG gọi API.`)) return;
+            try {
+                const res = await fetch(`/api/v1/vehicle-logs/${logId}/permanent`, { method: 'DELETE' });
+                if (res.ok) {
+                    if (currentTab === 'history') fetchHistoryLogs(currentHistoryPage || 1);
+                    updateTrashBadge();
+                    showToast(`Đã xóa vĩnh viễn sự kiện [${plateNumber}] khỏi CSDL!`, "success");
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi xóa vĩnh viễn: " + (err.detail || JSON.stringify(err)), "error");
                 }
             } catch (err) {
                 showToast("Lỗi kết nối: " + err, "error");
             }
         }
 
-        async function deleteVehicleLog(logId, plateNumber) {
-            if (!confirm(`Bạn có chắc chắn muốn xóa sự kiện biển số [${plateNumber}] không?`)) return;
+        async function emptyTrash() {
+            if (!confirm("CẢNH BÁO NGUY HIỂM:\nBạn có chắc chắn muốn DỌN SẠCH toàn bộ sự kiện trong Thùng Rác không?\nTất cả bản ghi trong thùng rác sẽ bị XÓA VĨNH VIỄN khỏi CSDL và không gọi API!")) return;
             try {
-                const res = await fetch(`/api/v1/vehicle-logs/${logId}`, { method: 'DELETE' });
+                const res = await fetch('/api/v1/vehicle-logs/trash/empty', { method: 'DELETE' });
                 if (res.ok) {
-                    loadRecentDashboardLogs();
+                    const data = await res.json();
                     if (currentTab === 'history') fetchHistoryLogs(1);
-                    showToast("Đã xóa sự kiện thành công!", "success");
+                    updateTrashBadge();
+                    showToast(`Đã dọn sạch thùng rác (xóa ${data.deleted_count} bản ghi)!`, "success");
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi khi dọn thùng rác: " + (err.detail || JSON.stringify(err)), "error");
                 }
             } catch (err) {
-                showToast("Lỗi khi xóa: " + err, "error");
+                showToast("Lỗi kết nối: " + err, "error");
             }
+        }
+
+        async function updateTrashBadge() {
+            if (!currentUser || currentUser.role !== 'admin') return;
+            try {
+                const res = await fetch('/api/v1/vehicle-logs/trash/count');
+                if (res.ok) {
+                    const data = await res.json();
+                    const badge = document.getElementById('trash-count-badge');
+                    if (badge) badge.innerText = data.count || 0;
+                }
+            } catch (e) { }
         }
 
         /* --- REAL-TIME VOICE / SPEECH ALERT --- */
@@ -3780,14 +5216,19 @@
                         logBody.innerHTML = '';
                     }
 
-                    const statusBadge = renderActionStatusBadge(data.action_status, data.summary);
+                    const statusBadge = renderActionStatusBadge(data.action_status, data.summary, data.vehicle_classification);
                     const newRow = `
                         <tr class="bg-blue-500/10 transition-all duration-500">
                             <td class="p-2.5 sm:p-3 text-xs text-slate-300 whitespace-nowrap">${data.detected_at}</td>
                             <td class="p-2.5 sm:p-3 whitespace-nowrap font-medium">${data.camera_name} <span class="text-[10px] text-slate-400 font-mono">(${data.zone_name || data.zone_code})</span></td>
                             <td class="p-2.5 sm:p-3 whitespace-nowrap font-mono font-bold text-amber-400 text-sm sm:text-base">${data.plate_number}</td>
                             <td class="p-2.5 sm:p-3">${renderVehicleTypeBadge(data.vehicle_type)}</td>
-                            <td class="p-2.5 sm:p-3">${statusBadge}</td>
+                            <td class="p-2.5 sm:p-3">
+                                <div class="flex flex-col gap-1 items-start">
+                                    ${statusBadge}
+                                    ${renderSyncStatusBadge(data.sync_status, data.sync_error)}
+                                </div>
+                            </td>
                             <td class="p-2.5 sm:p-3">${renderVehicleViewBadge(data.vehicle_view)}</td>
                             <td class="p-2.5 sm:p-3 text-xs text-slate-400 font-mono">${(data.confidence_score * 100).toFixed(1)}%</td>
                             <td class="p-2.5 sm:p-3">
@@ -3797,22 +5238,88 @@
                                 <button onclick="openPlaybackForEvent(${data.camera_id}, '${data.detected_at}', '${data.plate_number}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video">
                                     <i class="fa-solid fa-film mr-1"></i>Video
                                 </button>
-                                <button onclick="openImageModal('${data.image_plate_path}', '${data.image_full_path}', '${data.plate_number}', '${data.summary || ''}', ${data.camera_id}, '${data.detected_at}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                                <button onclick="openImageModal('${data.image_plate_path}', '${data.image_full_path}', '${data.plate_number}', '${(data.summary || '').replace(/'/g, "\\'")}', ${data.camera_id}, '${data.detected_at}', '${data.vehicle_classification || ''}', ${data.id || ''}, '${data.vehicle_view || 'front'}', '${data.vehicle_type || 'car'}', '${data.sync_status || ''}', '${(data.sync_error || '').replace(/'/g, "\\"')}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                                ${data.id ? `<button onclick="openEditLogModal(${data.id}, '${data.plate_number}', '${data.vehicle_view || 'front'}', '${data.vehicle_type || 'car'}', '${(data.summary || '').replace(/'/g, "\\'")}', '${data.image_plate_path}', '${data.image_full_path}', 'dashboard', '${data.detected_at || ''}', '${(data.camera_name || '').replace(/'/g, "\\'")}')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
                             </td>
                         </tr>
                     `;
                     logBody.insertAdjacentHTML('afterbegin', newRow);
 
-                    // Toast & Voice Alert
-                    if (data.alert_level === 'warning' || data.action_status === 'UNPLANNED') {
-                        showToast(`⚠️ Cảnh báo: Xe ${data.plate_number} đi không kế hoạch (${data.camera_name})`, "warning", 5000);
+                    // Toast & Voice Alert theo phân loại
+                    const cls = (data.vehicle_classification || '').toUpperCase();
+                    if (cls === 'INTERNAL_UNPLANNED' || data.alert_level === 'warning' || data.action_status === 'UNPLANNED') {
+                        showToast(`⚠️ Cảnh báo: Xe ${data.plate_number} đi không kế hoạch (${data.camera_name})`, "warning", 6000);
+                        if (data.voice_message) speakText(data.voice_message);
+                    } else if (cls === 'EXTERNAL_UNKNOWN') {
+                        showToast(`⚪ Xe bên ngoài: ${data.plate_number} tại ${data.camera_name}`, "info", 4000);
                         if (data.voice_message) speakText(data.voice_message);
                     } else if (data.alert_level === 'danger' || data.action_status === 'REJECTED') {
                         showToast(`🚨 Cảnh báo từ chối: Xe ${data.plate_number} (${data.camera_name})`, "error", 6000);
                         if (data.voice_message) speakText(data.voice_message);
+                    } else if (cls === 'INTERNAL_VALID' || data.action_status === 'APPROVED') {
+                        showToast(`🟢 Xe hợp lệ: ${data.plate_number} (${data.camera_name})`, "success", 3500);
+                        if (data.voice_message) speakText(data.voice_message);
                     } else {
                         showToast(`🚗 Đã phát hiện xe: ${data.plate_number} tại ${data.camera_name}`, "info", 3500);
                     }
+                } else if (msg.event === 'vehicle_updated') {
+                    const data = msg.data;
+                    if (typeof currentTab !== 'undefined' && currentTab === 'history') {
+                        if (typeof fetchHistoryLogs === 'function') {
+                            fetchHistoryLogs(currentHistoryPage || 1);
+                        }
+                    }
+                    if (typeof loadRecentDashboardLogs === 'function') {
+                        loadRecentDashboardLogs();
+                    }
+                    showToast(`✏️ Sự kiện xe ${data.plate_number} vừa được chỉnh sửa (${data.camera_name || ''})`, "info", 4000);
+                } else if (msg.event === 'vehicle_deleted') {
+                    const data = msg.data;
+                    if (typeof currentTab !== 'undefined' && currentTab === 'history') {
+                        if (typeof fetchHistoryLogs === 'function') {
+                            fetchHistoryLogs(currentHistoryPage || 1);
+                        }
+                    }
+                    if (typeof loadRecentDashboardLogs === 'function') {
+                        loadRecentDashboardLogs();
+                    }
+                    if (typeof updateTrashBadge === 'function') {
+                        updateTrashBadge();
+                    }
+                    showToast(`🗑️ Sự kiện xe ${data.plate_number} đã được chuyển vào thùng rác`, "info", 3500);
+                } else if (msg.event === 'vehicle_restored') {
+                    const data = msg.data;
+                    if (typeof currentTab !== 'undefined' && currentTab === 'history') {
+                        if (typeof fetchHistoryLogs === 'function') {
+                            fetchHistoryLogs(currentHistoryPage || 1);
+                        }
+                    }
+                    if (typeof loadRecentDashboardLogs === 'function') {
+                        loadRecentDashboardLogs();
+                    }
+                    if (typeof updateTrashBadge === 'function') {
+                        updateTrashBadge();
+                    }
+                    showToast(`↩️ Sự kiện xe ${data.plate_number} đã được khôi phục thành công`, "success", 3500);
+                } else if (msg.event === 'webhook_health_changed') {
+                    if (typeof updateWebhookHeaderStatus === 'function') updateWebhookHeaderStatus();
+                    if (typeof currentWebhookSyncTab !== 'undefined' && currentWebhookSyncTab === 'health') {
+                        if (typeof loadWebhookHealthList === 'function') loadWebhookHealthList();
+                    }
+                } else if (msg.event === 'webhook_queue_updated') {
+                    if (typeof updateWebhookHeaderStatus === 'function') updateWebhookHeaderStatus();
+                    if (typeof currentWebhookSyncTab !== 'undefined' && currentWebhookSyncTab === 'queue') {
+                        if (typeof loadWebhookQueue === 'function') loadWebhookQueue(currentWebhookQueuePage || 1);
+                    }
+                } else if (msg.event === 'vehicle_log_synced') {
+                    const data = msg.data;
+                    if (typeof currentTab !== 'undefined' && currentTab === 'history') {
+                        if (typeof fetchHistoryLogs === 'function') fetchHistoryLogs(currentHistoryPage || 1);
+                    }
+                    if (typeof loadRecentDashboardLogs === 'function') {
+                        loadRecentDashboardLogs();
+                    }
+                    if (typeof updateWebhookHeaderStatus === 'function') updateWebhookHeaderStatus();
                 }
             };
         }
@@ -3824,6 +5331,10 @@
                 loadCameras();
                 loadRecentDashboardLogs();
                 initWebSocket();
+                if (typeof updateWebhookHeaderStatus === 'function') {
+                    updateWebhookHeaderStatus();
+                    setInterval(updateWebhookHeaderStatus, 30000);
+                }
             }
         });
     </script>

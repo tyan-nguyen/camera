@@ -21,9 +21,12 @@ admin_only = require_roles([UserRoleEnum.ADMIN.value])
 
 def build_camera_response(cam: Camera) -> CameraResponse:
     ag_name = cam.action_group.name if cam.action_group else None
+    ag_front_name = cam.action_group_front.name if getattr(cam, "action_group_front", None) else None
+    ag_rear_name = cam.action_group_rear.name if getattr(cam, "action_group_rear", None) else None
     return CameraResponse(
         id=cam.id,
         camera_name=cam.camera_name,
+        camera_code=cam.camera_code,
         rtsp_url=cam.rtsp_url,
         target_fps=cam.target_fps,
         is_active=cam.is_active,
@@ -33,7 +36,13 @@ def build_camera_response(cam: Camera) -> CameraResponse:
         camera_function=cam.camera_function or "ANPR",
         action_group_id=cam.action_group_id,
         action_group_name=ag_name,
+        action_group_front_id=cam.action_group_front_id,
+        action_group_front_name=ag_front_name,
+        action_group_rear_id=cam.action_group_rear_id,
+        action_group_rear_name=ag_rear_name,
+        traffic_direction=cam.traffic_direction or "TWO_WAY",
         detection_zone=cam.detection_zone,
+        webhook_events=cam.webhook_events or "CREATE,UPDATE",
         created_at=cam.created_at,
         updated_at=cam.updated_at
     )
@@ -116,8 +125,11 @@ def create_camera(cam_in: CameraCreate, db: Session = Depends(get_db), current_u
     zone_name = cam_in.zone_name.strip() if cam_in.zone_name else ("Trường Lái" if zone_code == "TRUONGLAI" else "Kho Bãi")
     camera_function = (cam_in.camera_function or "ANPR").strip().upper()
 
+    camera_code = cam_in.camera_code.strip() if (cam_in.camera_code and cam_in.camera_code.strip()) else None
+
     new_cam = Camera(
         camera_name=cam_in.camera_name.strip(),
+        camera_code=camera_code,
         rtsp_url=cam_in.rtsp_url.strip(),
         target_fps=cam_in.target_fps,
         is_active=cam_in.is_active,
@@ -126,7 +138,11 @@ def create_camera(cam_in: CameraCreate, db: Session = Depends(get_db), current_u
         zone_name=zone_name,
         camera_function=camera_function,
         action_group_id=cam_in.action_group_id,
-        detection_zone=cam_in.detection_zone
+        action_group_front_id=cam_in.action_group_front_id,
+        action_group_rear_id=cam_in.action_group_rear_id,
+        traffic_direction=cam_in.traffic_direction or "TWO_WAY",
+        detection_zone=cam_in.detection_zone,
+        webhook_events=cam_in.webhook_events or "CREATE,UPDATE"
     )
     db.add(new_cam)
     db.commit()
@@ -158,6 +174,8 @@ def update_camera(camera_id: int, cam_in: CameraUpdate, db: Session = Depends(ge
 
     if cam_in.camera_name is not None:
         cam.camera_name = cam_in.camera_name.strip()
+    if "camera_code" in cam_in.model_fields_set:
+        cam.camera_code = cam_in.camera_code.strip() if (cam_in.camera_code and cam_in.camera_code.strip()) else None
     if cam_in.rtsp_url is not None:
         cam.rtsp_url = cam_in.rtsp_url.strip()
     if cam_in.target_fps is not None:
@@ -181,8 +199,26 @@ def update_camera(camera_id: int, cam_in: CameraUpdate, db: Session = Depends(ge
         else:
             cam.action_group_id = None
 
+    if "action_group_front_id" in cam_in.model_fields_set:
+        if cam_in.action_group_front_id and cam_in.action_group_front_id > 0:
+            ag_f = db.query(ActionGroup).filter(ActionGroup.id == cam_in.action_group_front_id).first()
+            cam.action_group_front_id = ag_f.id if ag_f else None
+        else:
+            cam.action_group_front_id = None
+
+    if "action_group_rear_id" in cam_in.model_fields_set:
+        if cam_in.action_group_rear_id and cam_in.action_group_rear_id > 0:
+            ag_r = db.query(ActionGroup).filter(ActionGroup.id == cam_in.action_group_rear_id).first()
+            cam.action_group_rear_id = ag_r.id if ag_r else None
+        else:
+            cam.action_group_rear_id = None
+
     if cam_in.detection_zone is not None:
         cam.detection_zone = cam_in.detection_zone
+    if cam_in.traffic_direction is not None:
+        cam.traffic_direction = cam_in.traffic_direction.strip().upper()
+    if cam_in.webhook_events is not None:
+        cam.webhook_events = cam_in.webhook_events.strip()
 
     db.commit()
     db.refresh(cam)

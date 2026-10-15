@@ -82,13 +82,18 @@ def init_db():
     # Auto-migration columns check
     try:
         with engine.connect() as conn:
-            # 1. Bảng cameras: detection_zone, zone_code, zone_name, camera_function, action_group_id, is_recording
+            # 1. Bảng cameras: detection_zone, zone_code, zone_name, camera_function, action_group_id, is_recording, action_group_front_id, action_group_rear_id, camera_code
             for col, col_type in [
+                ("camera_code", "VARCHAR(100) NULL"),
                 ("detection_zone", "TEXT NULL"),
                 ("zone_code", "VARCHAR(50) DEFAULT 'TRUONGLAI'"),
                 ("zone_name", "VARCHAR(100) DEFAULT 'Trường Lái'"),
                 ("camera_function", "VARCHAR(50) DEFAULT 'ANPR'"),
                 ("action_group_id", "INT NULL"),
+                ("action_group_front_id", "INT NULL"),
+                ("action_group_rear_id", "INT NULL"),
+                ("traffic_direction", "VARCHAR(50) DEFAULT 'TWO_WAY'"),
+                ("webhook_events", "VARCHAR(100) DEFAULT 'CREATE,UPDATE'"),
                 ("is_recording", "BOOLEAN DEFAULT FALSE")
             ]:
                 try:
@@ -98,16 +103,42 @@ def init_db():
                 except Exception:
                     pass
 
-            # 2. Bảng vehicle_logs: summary, zone_code, action_group_id, action_group_name, action_status, action_result_raw, alert_level, vehicle_type
+            try:
+                conn.execute(text("CREATE INDEX idx_cameras_camera_code ON cameras (camera_code);"))
+                conn.commit()
+            except Exception:
+                pass
+
+            # Migrate dữ liệu cũ: nếu action_group_front_id chưa có thì sao chép từ action_group_id
+            try:
+                conn.execute(text("UPDATE cameras SET action_group_front_id = action_group_id WHERE action_group_front_id IS NULL AND action_group_id IS NOT NULL;"))
+                conn.execute(text("UPDATE cameras SET action_group_rear_id = action_group_id WHERE action_group_rear_id IS NULL AND action_group_id IS NOT NULL;"))
+                conn.commit()
+            except Exception:
+                pass
+
+            # 2. Bảng vehicle_logs: summary, zone_code, action_group_id, action_group_name, action_status, action_result_raw, alert_level, vehicle_type, vehicle_classification, is_edited, original_plate_number, original_vehicle_view, updated_by, updated_at, is_deleted, deleted_at, deleted_by
             for col, col_type in [
                 ("summary", "VARCHAR(250) NULL"),
                 ("zone_code", "VARCHAR(50) NULL"),
                 ("action_group_id", "INT NULL"),
                 ("action_group_name", "VARCHAR(255) NULL"),
                 ("action_status", "VARCHAR(50) NULL"),
+                ("vehicle_classification", "VARCHAR(50) NULL"),
                 ("action_result_raw", "TEXT NULL"),
                 ("alert_level", "VARCHAR(20) DEFAULT 'normal'"),
-                ("vehicle_type", "VARCHAR(20) DEFAULT 'car'")
+                ("vehicle_type", "VARCHAR(20) DEFAULT 'car'"),
+                ("is_edited", "BOOLEAN DEFAULT FALSE"),
+                ("original_plate_number", "VARCHAR(50) NULL"),
+                ("original_vehicle_view", "VARCHAR(20) NULL"),
+                ("updated_by", "VARCHAR(100) NULL"),
+                ("updated_at", "DATETIME NULL"),
+                ("is_deleted", "BOOLEAN DEFAULT FALSE"),
+                ("deleted_at", "DATETIME NULL"),
+                ("deleted_by", "VARCHAR(100) NULL"),
+                ("sync_status", "VARCHAR(30) DEFAULT 'SYNCED'"),
+                ("last_sync_at", "DATETIME NULL"),
+                ("sync_error", "TEXT NULL")
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE vehicle_logs ADD COLUMN {col} {col_type};"))
@@ -116,11 +147,25 @@ def init_db():
                 except Exception:
                     pass
 
-            # 3. Bảng action_groups: apply_car, apply_motorcycle, push_condition
+            # Tạo Index cho is_deleted và sync_status trong vehicle_logs
+            try:
+                conn.execute(text("CREATE INDEX idx_vehicle_logs_is_deleted ON vehicle_logs (is_deleted);"))
+                conn.commit()
+            except Exception:
+                pass
+            try:
+                conn.execute(text("CREATE INDEX idx_vehicle_logs_sync_status ON vehicle_logs (sync_status);"))
+                conn.commit()
+            except Exception:
+                pass
+
+            # 3. Bảng action_groups: apply_car, apply_motorcycle, push_condition, auth_token, auth_type
             for col, col_type in [
                 ("apply_car", "BOOLEAN DEFAULT TRUE"),
                 ("apply_motorcycle", "BOOLEAN DEFAULT TRUE"),
-                ("push_condition", "VARCHAR(50) DEFAULT 'DEFAULT'")
+                ("push_condition", "VARCHAR(50) DEFAULT 'DEFAULT'"),
+                ("auth_token", "VARCHAR(500) NULL"),
+                ("auth_type", "VARCHAR(50) DEFAULT 'BEARER'")
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE action_groups ADD COLUMN {col} {col_type};"))
@@ -156,7 +201,7 @@ def init_db():
         try:
             with engine.connect() as conn:
                 conn.execute(text(f"ALTER DATABASE `{settings.DB_NAME}` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;"))
-                for table_name in ["cameras", "vehicle_logs", "system_settings", "users", "action_groups", "user_camera_permissions", "device_tokens", "video_recordings", "video_export_jobs"]:
+                for table_name in ["cameras", "vehicle_logs", "system_settings", "users", "action_groups", "user_camera_permissions", "device_tokens", "video_recordings", "video_export_jobs", "webhook_sync_queue"]:
                     try:
                         conn.execute(text(f"ALTER TABLE `{table_name}` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"))
                     except Exception:

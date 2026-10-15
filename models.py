@@ -18,6 +18,13 @@ class CameraFunctionEnum(str, enum.Enum):
     ANPR = "ANPR"                   # Camera đọc biển số (thực hiện nhận dạng vào - ra)
     SURVEILLANCE = "SURVEILLANCE"   # Camera quan sát (chỉ xem trực tiếp, không nhận dạng)
 
+class TrafficDirectionEnum(str, enum.Enum):
+    TWO_WAY = "TWO_WAY"                  # Cổng 1 Camera: Hai chiều tự động (Trước = Đi ra, Sau = Về bãi)
+    OUT_FRONT_ONLY = "OUT_FRONT_ONLY"    # Cổng 1 Làn Chung / Cổng Ra: Chiều RA chỉ bắt mặt trước (Bỏ qua đuôi xe vào)
+    IN_FRONT_ONLY = "IN_FRONT_ONLY"      # Cổng 1 Làn Chung / Cổng Vào: Chiều VÀO chỉ bắt mặt trước (Bỏ qua đuôi xe ra)
+    OUT_ALL = "OUT_ALL"                  # Cổng 2 Làn Riêng: Làn RA riêng biệt (Mọi góc chụp đều là xe ra)
+    IN_ALL = "IN_ALL"                    # Cổng 2 Làn Riêng: Làn VÀO riêng biệt (Mọi góc chụp đều là xe vào)
+
 # Bảng liên kết nhiều - nhiều: Phân quyền Camera cho từng Tài khoản người dùng
 user_camera_permissions = Table(
     "user_camera_permissions",
@@ -39,6 +46,8 @@ class ActionGroup(Base):
     api_url = Column(String(500), nullable=False)                      # URL Webhook API để gọi sau khi nhận dạng
     http_method = Column(String(10), default="POST")                   # GET / POST
     headers_json = Column(String(1000), nullable=True, default=None)   # Custom HTTP headers (JSON string)
+    auth_token = Column(String(500), nullable=True, default=None)       # API Token / Bearer Token
+    auth_type = Column(String(50), default="BEARER", nullable=False)    # BEARER, API_KEY, NONE
     description = Column(String(255), nullable=True, default=None)
     apply_car = Column(Boolean, default=True)                          # Áp dụng Webhook cho toàn bộ nhóm Xe Ô Tô (ô tô, tải, buýt)
     apply_motorcycle = Column(Boolean, default=True)                   # Áp dụng Webhook cho Xe Máy
@@ -47,7 +56,7 @@ class ActionGroup(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    cameras = relationship("Camera", back_populates="action_group")
+    cameras = relationship("Camera", foreign_keys="[Camera.action_group_id]", back_populates="action_group")
 
 class Camera(Base):
     __tablename__ = "cameras"
@@ -55,6 +64,7 @@ class Camera(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     camera_name = Column(String(255), nullable=False)
+    camera_code = Column(String(100), nullable=True, index=True)  # Mã định danh camera đồng bộ API đối tác (e.g. cong_cantin, cong_san_cam_bien)
     rtsp_url = Column(String(500), nullable=False)
     target_fps = Column(Integer, default=6)
     is_active = Column(Boolean, default=True)
@@ -69,12 +79,20 @@ class Camera(Base):
     
     # 3. Nhóm theo hành động (Liên kết tới bảng action_groups)
     action_group_id = Column(Integer, ForeignKey("action_groups.id", ondelete="SET NULL"), nullable=True)
+    action_group_front_id = Column(Integer, ForeignKey("action_groups.id", ondelete="SET NULL"), nullable=True)
+    action_group_rear_id = Column(Integer, ForeignKey("action_groups.id", ondelete="SET NULL"), nullable=True)
+
+    # 4. Hướng luồng giao thông của Camera (TWO_WAY, OUT_FRONT_ONLY, IN_FRONT_ONLY, OUT_ALL, IN_ALL)
+    traffic_direction = Column(String(50), default=TrafficDirectionEnum.TWO_WAY.value, nullable=False)
 
     detection_zone = Column(String(2000), nullable=True, default=None)  # JSON lưu danh sách các điểm polygon vùng khoanh ROI
+    webhook_events = Column(String(100), default="CREATE,UPDATE")        # Danh sách sự kiện gửi webhook (CREATE,UPDATE,DELETE,RESTORE)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    action_group = relationship("ActionGroup", back_populates="cameras")
+    action_group = relationship("ActionGroup", foreign_keys=[action_group_id], back_populates="cameras")
+    action_group_front = relationship("ActionGroup", foreign_keys=[action_group_front_id])
+    action_group_rear = relationship("ActionGroup", foreign_keys=[action_group_rear_id])
     logs = relationship("VehicleLog", back_populates="camera", cascade="all, delete-orphan")
     users = relationship("User", secondary=user_camera_permissions, back_populates="allowed_cameras")
     recordings = relationship("VideoRecording", back_populates="camera", cascade="all, delete-orphan")
@@ -134,11 +152,29 @@ class VehicleLog(Base):
     action_group_id = Column(Integer, nullable=True)
     action_group_name = Column(String(255), nullable=True)
     action_status = Column(String(50), nullable=True, index=True)      # APPROVED, UNPLANNED, REJECTED, WARNING, INFO
+    vehicle_classification = Column(String(50), nullable=True, index=True) # INTERNAL_VALID, INTERNAL_UNPLANNED, EXTERNAL_UNKNOWN...
     action_result_raw = Column(Text, nullable=True)                    # JSON chi tiết phản hồi từ Webhook API
     alert_level = Column(String(20), default="normal")                 # normal, warning, danger
     
     summary = Column(String(250), nullable=True, default=None)
     detected_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Thông tin chỉnh sửa thủ công
+    is_edited = Column(Boolean, default=False, index=True)
+    original_plate_number = Column(String(50), nullable=True)
+    original_vehicle_view = Column(String(20), nullable=True)
+    updated_by = Column(String(100), nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+    # Quản lý Xóa mềm & Thùng rác
+    is_deleted = Column(Boolean, default=False, index=True)
+    deleted_at = Column(DateTime, nullable=True, index=True)
+    deleted_by = Column(String(100), nullable=True)
+
+    # Quản lý Trạng thái Đồng bộ Webhook (Transactional Outbox)
+    sync_status = Column(String(30), default="SYNCED", index=True)     # SYNCED, PENDING_SYNC, SYNC_FAILED, NOT_APPLICABLE
+    last_sync_at = Column(DateTime, nullable=True)
+    sync_error = Column(Text, nullable=True)
 
     camera = relationship("Camera", back_populates="logs")
 
@@ -210,3 +246,36 @@ class User(Base):
 
     allowed_cameras = relationship("Camera", secondary=user_camera_permissions, back_populates="users")
     device_tokens = relationship("DeviceToken", back_populates="user", cascade="all, delete-orphan")
+
+class WebhookSyncQueue(Base):
+    """
+    Bảng lưu trữ hàng đợi đồng bộ Webhook (Transactional Outbox Queue)
+    Đảm bảo 100% không mất dữ liệu khi API đối tác bị mất kết nối, sập server hoặc chập chờn.
+    Hỗ trợ phát lại tự động (Auto-Replay) theo FIFO và thử lại theo cơ chế Exponential Backoff.
+    """
+    __tablename__ = "webhook_sync_queue"
+    __table_args__ = {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci'}
+
+    id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
+    action_group_id = Column(Integer, ForeignKey("action_groups.id", ondelete="CASCADE"), nullable=False, index=True)
+    log_id = Column(BigInteger, ForeignKey("vehicle_logs.id", ondelete="CASCADE"), nullable=True, index=True)
+    camera_id = Column(Integer, ForeignKey("cameras.id", ondelete="SET NULL"), nullable=True, index=True)
+    
+    event_action = Column(String(20), nullable=False, index=True)       # CREATE, UPDATE, DELETE, RESTORE
+    event_id = Column(String(100), nullable=False, index=True)          # EVT_... định danh duy nhất chống lặp
+    plate_number = Column(String(50), nullable=True, index=True)
+    payload_json = Column(Text, nullable=False)                          # Chuỗi JSON body chuẩn bị gửi
+    
+    status = Column(String(30), default="PENDING", index=True)           # PENDING, SYNCING, SUCCESS, FAILED, CANCELLED
+    retry_count = Column(Integer, default=0)
+    max_retries = Column(Integer, default=10)
+    next_retry_at = Column(DateTime, default=datetime.utcnow, index=True)
+    last_error = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    synced_at = Column(DateTime, nullable=True)
+
+    action_group = relationship("ActionGroup")
+    log = relationship("VehicleLog")
+    camera = relationship("Camera")
+

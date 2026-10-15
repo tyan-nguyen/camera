@@ -18,8 +18,9 @@ from disk_worker import AsyncDiskWorker
 from stream_manager import DynamicStreamManager
 from websocket_manager import websocket_manager
 from notification_service import notification_service
-from routes import camera, history, settings as settings_route, tts, auth, users, action_groups, devices, playback
+from routes import camera, history, settings as settings_route, tts, auth, users, action_groups, devices, playback, webhook_sync
 from settings_manager import settings_manager
+from webhook_sync_worker import webhook_sync_worker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -110,12 +111,17 @@ async def lifespan(app: FastAPI):
     notification_service.set_websocket_manager(websocket_manager)
     
     disk_worker.start()
+    webhook_sync_worker.start()
     stream_manager.start_all_active_cameras()
     
     try:
         yield
     finally:
         logger.info("Stopping ANPR System components...")
+        try:
+            webhook_sync_worker.stop()
+        except Exception as e:
+            logger.warning(f"Error stopping webhook_sync_worker: {e}")
         try:
             stream_manager.stop_all()
         except Exception as e:
@@ -150,6 +156,7 @@ app.include_router(history.router)
 app.include_router(playback.router)
 app.include_router(settings_route.router)
 app.include_router(tts.router)
+app.include_router(webhook_sync.router)
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index_page(request: Request):

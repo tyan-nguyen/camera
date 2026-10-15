@@ -11,6 +11,8 @@ class ActionGroupBase(BaseModel):
     api_url: str
     http_method: str = "POST"
     headers_json: Optional[str] = None
+    auth_token: Optional[str] = None
+    auth_type: str = "BEARER"
     description: Optional[str] = None
     apply_car: bool = True
     apply_motorcycle: bool = True
@@ -26,6 +28,8 @@ class ActionGroupUpdate(BaseModel):
     api_url: Optional[str] = None
     http_method: Optional[str] = None
     headers_json: Optional[str] = None
+    auth_token: Optional[str] = None
+    auth_type: Optional[str] = None
     description: Optional[str] = None
     apply_car: Optional[bool] = None
     apply_motorcycle: Optional[bool] = None
@@ -50,6 +54,8 @@ class ActionGroupTestResponse(BaseModel):
     raw_response: str
     parsed_result: Optional[Dict[str, Any]] = None
     normalized_status: str = "INFO"
+    vehicle_classification: Optional[str] = None
+    barrier_action: Optional[str] = "NONE"
     summary: Optional[str] = None
     message: Optional[str] = None
     alert_level: str = "normal"
@@ -59,6 +65,7 @@ class ActionGroupTestResponse(BaseModel):
 # ==========================================
 class CameraBase(BaseModel):
     camera_name: str
+    camera_code: Optional[str] = None      # Mã camera đồng bộ Webhook API (e.g. cong_cantin, cong_san_cam_bien)
     rtsp_url: str
     target_fps: int = 6
     is_active: bool = True
@@ -67,13 +74,18 @@ class CameraBase(BaseModel):
     zone_name: str = "Trường Lái"
     camera_function: str = "ANPR"          # ANPR (Đọc biển số), SURVEILLANCE (Quan sát)
     action_group_id: Optional[int] = None
+    action_group_front_id: Optional[int] = None
+    action_group_rear_id: Optional[int] = None
+    traffic_direction: Optional[str] = "TWO_WAY" # TWO_WAY, OUT_FRONT_ONLY, IN_FRONT_ONLY, OUT_ALL, IN_ALL
     detection_zone: Optional[str] = None
+    webhook_events: Optional[str] = "CREATE,UPDATE"
 
 class CameraCreate(CameraBase):
     pass
 
 class CameraUpdate(BaseModel):
     camera_name: Optional[str] = None
+    camera_code: Optional[str] = None
     rtsp_url: Optional[str] = None
     target_fps: Optional[int] = None
     is_active: Optional[bool] = None
@@ -82,11 +94,17 @@ class CameraUpdate(BaseModel):
     zone_name: Optional[str] = None
     camera_function: Optional[str] = None
     action_group_id: Optional[int] = None
+    action_group_front_id: Optional[int] = None
+    action_group_rear_id: Optional[int] = None
+    traffic_direction: Optional[str] = None
     detection_zone: Optional[str] = None
+    webhook_events: Optional[str] = None
 
 class CameraResponse(CameraBase):
     id: int
     action_group_name: Optional[str] = None
+    action_group_front_name: Optional[str] = None
+    action_group_rear_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -107,9 +125,21 @@ class VehicleLogBase(BaseModel):
     action_group_id: Optional[int] = None
     action_group_name: Optional[str] = None
     action_status: Optional[str] = None
+    vehicle_classification: Optional[str] = None
     action_result_raw: Optional[str] = None
     alert_level: str = "normal"
     summary: Optional[str] = None
+    is_edited: bool = False
+    original_plate_number: Optional[str] = None
+    original_vehicle_view: Optional[str] = None
+    updated_by: Optional[str] = None
+    updated_at: Optional[datetime] = None
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[str] = None
+    sync_status: Optional[str] = "SYNCED"
+    last_sync_at: Optional[datetime] = None
+    sync_error: Optional[str] = None
 
 class VehicleLogCreate(VehicleLogBase):
     pass
@@ -133,6 +163,7 @@ class VehicleLogUpdate(BaseModel):
     vehicle_type: Optional[str] = None
     summary: Optional[str] = None
     action_status: Optional[str] = None
+    vehicle_classification: Optional[str] = None
     alert_level: Optional[str] = None
 
 # ==========================================
@@ -308,3 +339,63 @@ class UserResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+# ==========================================
+# 7. Webhook Sync Queue & Health Check Schemas
+# ==========================================
+class WebhookSyncItemResponse(BaseModel):
+    id: int
+    action_group_id: int
+    action_group_name: Optional[str] = None
+    log_id: Optional[int] = None
+    camera_id: Optional[int] = None
+    camera_name: Optional[str] = None
+    event_action: str
+    event_id: str
+    plate_number: Optional[str] = None
+    status: str
+    retry_count: int
+    max_retries: int
+    next_retry_at: datetime
+    last_error: Optional[str] = None
+    created_at: datetime
+    synced_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PaginatedWebhookSyncQueue(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: List[WebhookSyncItemResponse]
+
+class WebhookHealthStatusResponse(BaseModel):
+    action_group_id: int
+    action_group_name: str
+    code: str
+    api_url: str
+    http_method: str
+    is_active: bool
+    status: str                         # ONLINE, OFFLINE, DEGRADED
+    circuit_state: str                  # CLOSED, OPEN, HALF_OPEN
+    circuit_breaker_state: Optional[str] = None
+    latency_ms: Optional[float] = None
+    last_response_time_ms: Optional[float] = None
+    last_checked_at: Optional[datetime] = None
+    last_error: Optional[str] = None
+    consecutive_failures: int = 0
+    pending_count: int = 0
+
+class WebhookSystemStatusResponse(BaseModel):
+    total_pending: int = 0
+    pending_count: int = 0
+    total_failed: int = 0
+    failed_count: int = 0
+    total_synced_today: int = 0
+    has_offline_webhook: bool = False
+    total_action_groups: int = 0
+    online_count: int = 0
+    offline_count: int = 0
+    open_circuit_count: int = 0
+    action_groups: List[WebhookHealthStatusResponse] = []
+

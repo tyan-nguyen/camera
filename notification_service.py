@@ -114,11 +114,16 @@ class UnifiedNotificationService:
         if should_push and authorized_user_ids:
             tokens = self.get_device_tokens_for_users(authorized_user_ids)
             if tokens:
-                # Tiêu đề & Nội dung Push
+                # Tiêu đề & Nội dung Push theo phân loại xe
+                veh_class = str(event_data.get("vehicle_classification") or "").upper()
                 if alert_level == "danger" or action_status == "REJECTED":
                     title = f"🚨 CẢNH BÁO: {type_icon} {plate_number}"
-                elif alert_level == "warning" or action_status == "UNPLANNED":
-                    title = f"⚠️ CHÚ Ý: {type_icon} {plate_number}"
+                elif alert_level == "warning" or action_status == "UNPLANNED" or veh_class == "INTERNAL_UNPLANNED":
+                    title = f"⚠️ KHÔNG KẾ HOẠCH: {type_icon} {plate_number}"
+                elif veh_class == "EXTERNAL_UNKNOWN":
+                    title = f"⚪ XE BÊN NGOÀI: {type_icon} {plate_number}"
+                elif veh_class == "INTERNAL_VALID":
+                    title = f"✅ XE HỢP LỆ: {type_icon} {plate_number}"
                 else:
                     title = f"{type_icon} Nhận diện: {plate_number}"
 
@@ -130,6 +135,8 @@ class UnifiedNotificationService:
                     "camera_name": str(camera_name),
                     "plate_number": str(plate_number),
                     "vehicle_type": str(vehicle_type),
+                    "vehicle_classification": veh_class,
+                    "barrier_action": str(event_data.get("barrier_action", "NONE")),
                     "zone_code": str(event_data.get("zone_code", "")),
                     "zone_name": str(zone_name),
                     "action_status": str(action_status),
