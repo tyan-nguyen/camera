@@ -267,7 +267,12 @@ def delete_camera(camera_id: int, db: Session = Depends(get_db), current_user=De
     return None
 
 @router.get("/{camera_id}/snapshot")
-def get_camera_snapshot(camera_id: int, request: Request):
+def get_camera_snapshot(
+    camera_id: int, 
+    request: Request,
+    w: Optional[int] = None,
+    q: Optional[int] = None
+):
     db = SessionLocal()
     try:
         current_user = get_current_user_optional(request, db)
@@ -278,7 +283,12 @@ def get_camera_snapshot(camera_id: int, request: Request):
 
     if not stream_manager_ref:
         raise HTTPException(status_code=503, detail="Stream Manager chưa sẵn sàng.")
-    jpeg_bytes = stream_manager_ref.get_camera_snapshot(camera_id)
+
+    # Giới hạn kích thước và chất lượng an toàn
+    target_w = w if (w and 120 <= w <= 1920) else None
+    target_q = q if (q and 30 <= q <= 95) else 75
+
+    jpeg_bytes = stream_manager_ref.get_camera_snapshot(camera_id, width=target_w, quality=target_q)
     if not jpeg_bytes:
         raise HTTPException(status_code=404, detail="Không có hình ảnh snapshot.")
     return Response(

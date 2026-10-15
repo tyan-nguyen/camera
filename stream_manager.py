@@ -67,6 +67,12 @@ class CameraThread(threading.Thread):
         self.latest_frame: Optional[np.ndarray] = self._generate_connecting_frame()
         self.frame_lock = threading.Lock()
 
+        # Cache đệm ảnh JPEG đã nén để tránh lặp lại cv2.imencode gây lag/tranh chấp khóa
+        self._cached_thumb_jpeg: Optional[bytes] = None
+        self._cached_thumb_time: float = 0.0
+        self._cached_full_jpeg: Optional[bytes] = None
+        self._cached_full_time: float = 0.0
+
         # Khởi động recorder nếu bật lưu
         if self.is_recording:
             video_recorder_manager.start_recorder(self.camera_id, self.camera_name, self.target_fps)
@@ -241,13 +247,51 @@ class CameraThread(threading.Thread):
         video_recorder_manager.stop_recorder(self.camera_id)
         logger.info(f"Stopped camera thread for [{self.camera_name}] (ID: {self.camera_id})")
 
-    def get_latest_frame_jpeg(self) -> Optional[bytes]:
+    def get_latest_frame_jpeg(self, width: Optional[int] = None, quality: int = 75) -> Optional[bytes]:
+        """
+        Nén ảnh JPEG từ khung hình mới nhất.
+        Hỗ trợ:
+        - width: Tự động scale nhỏ kích thước (ví dụ 640 cho thumbnail Web Grid) giúp giảm 85% băng thông mạng.
+        - quality: Tùy chỉnh chất lượng nén JPEG (mặc định 75%).
+        - Cache đệm RAM ngắn hạn (150ms - 200ms) tránh chạy cv2.imencode lặp đi lặp lại khi có nhiều request đồng thời.
+        """
+        now = time.time()
+        
+        # 1. Trường hợp yêu cầu ảnh thumbnail (width <= 640): dùng cache 200ms
+        if width and width <= 640:
+            if self._cached_thumb_jpeg and (now - self._cached_thumb_time < 0.20):
+                return self._cached_thumb_jpeg
+            
+            with self.frame_lock:
+                if self.latest_frame is None:
+                    return None
+                frame_to_encode = self.latest_frame
+                h, orig_w = frame_to_encode.shape[:2]
+                if orig_w > width:
+                    new_h = int(h * (width / orig_w))
+                    frame_to_encode = cv2.resize(frame_to_encode, (width, new_h), interpolation=cv2.INTER_AREA)
+                ret, buffer = cv2.imencode('.jpg', frame_to_encode, [int(cv2.IMWRITE_JPEG_QUALITY), max(40, min(quality, 85))])
+                if ret:
+                    encoded = buffer.tobytes()
+                    self._cached_thumb_jpeg = encoded
+                    self._cached_thumb_time = now
+                    return encoded
+                return None
+
+        # 2. Trường hợp Full Resolution snapshot: dùng cache 150ms
+        if self._cached_full_jpeg and (now - self._cached_full_time < 0.15):
+            return self._cached_full_jpeg
+
         with self.frame_lock:
             if self.latest_frame is None:
                 return None
-            ret, buffer = cv2.imencode('.jpg', self.latest_frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+            frame_to_encode = self.latest_frame
+            ret, buffer = cv2.imencode('.jpg', frame_to_encode, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
             if ret:
-                return buffer.tobytes()
+                encoded = buffer.tobytes()
+                self._cached_full_jpeg = encoded
+                self._cached_full_time = now
+                return encoded
             return None
 
     def stop(self):
@@ -395,10 +439,10 @@ class DynamicStreamManager:
         ret, buf = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
         return buf.tobytes() if ret else b''
 
-    def get_camera_snapshot(self, camera_id: int) -> bytes:
+    def get_camera_snapshot(self, camera_id: int, width: Optional[int] = None, quality: int = 75) -> bytes:
         thread = self.threads.get(camera_id)
         if thread:
-            img_bytes = thread.get_latest_frame_jpeg()
+            img_bytes = thread.get_latest_frame_jpeg(width=width, quality=quality)
             if img_bytes:
                 return img_bytes
             return self._create_default_offline_jpeg(thread.camera_name, "Dang ket noi luong RTSP...")
