@@ -1533,6 +1533,21 @@
                     </select>
                 </div>
 
+                <div id="cam-form-roi-container" class="hidden p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+                            <i class="fa-solid fa-draw-polygon text-cyan-400"></i>
+                            <span>Vùng Nhận Diện Biển Số (ROI):</span>
+                        </div>
+                        <div id="cam-form-roi-status" class="text-[11px] text-slate-400 mt-0.5">Chưa khoanh vùng (Nhận diện toàn khung hình)</div>
+                    </div>
+                    <button type="button" onclick="closeAddCameraModal(); openRoiModal(document.getElementById('cam-form-id').value)"
+                        class="px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-pen-ruler"></i>
+                        <span>Vẽ Vùng ROI</span>
+                    </button>
+                </div>
+
                 <div class="pt-3 flex justify-end space-x-2">
                     <button type="button" onclick="closeAddCameraModal()"
                         class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium rounded-xl transition-all">Hủy</button>
@@ -1543,6 +1558,71 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 8. Camera ROI (Detection Zone) Drawing Modal -->
+    <div id="camera-roi-modal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto flex flex-col space-y-3.5">
+            <button onclick="closeRoiModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1 z-10 transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pr-8">
+                <div>
+                    <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-draw-polygon text-cyan-400"></i>
+                        <span>Khoanh Vùng Nhận Diện ROI</span>
+                        <span id="roi-modal-cam-name" class="text-xs sm:text-sm font-normal text-slate-400 font-mono"></span>
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Click chuột lên khung hình để chấm các điểm tạo đa giác ROI (tối thiểu 3 điểm). Chỉ phương tiện đi vào vùng này mới được chụp và nhận diện.</p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span id="roi-points-badge" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                        0 điểm
+                    </span>
+                </div>
+            </div>
+
+            <!-- Canvas / Video Snapshot Container -->
+            <div class="relative w-full aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-700/80 flex items-center justify-center select-none shadow-inner" id="roi-canvas-container">
+                <img id="roi-bg-img" alt="Camera Snapshot" class="w-full h-full object-contain pointer-events-none select-none">
+                <canvas id="roi-canvas" class="absolute inset-0 w-full h-full cursor-crosshair"></canvas>
+                <div id="roi-loading-overlay" class="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center text-slate-300 gap-2 z-20">
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-cyan-400"></i>
+                    <span class="text-xs">Đang chụp hình ảnh mới nhất từ luồng RTSP...</span>
+                </div>
+            </div>
+
+            <!-- Instructions & Controls Toolbar -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800">
+                <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <button type="button" onclick="refreshRoiSnapshot()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl transition-all flex items-center gap-1.5" title="Chụp lại hình mới từ luồng video camera">
+                        <i class="fa-solid fa-arrows-rotate text-cyan-400"></i>
+                        <span>Làm Mới Hình</span>
+                    </button>
+                    <button type="button" onclick="undoRoiPoint()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl transition-all flex items-center gap-1.5" title="Xóa điểm góc vừa chấm">
+                        <i class="fa-solid fa-rotate-left text-amber-400"></i>
+                        <span>Hoàn Tác</span>
+                    </button>
+                    <button type="button" onclick="clearRoiPoints()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl transition-all flex items-center gap-1.5" title="Xóa tất cả các điểm để chấm lại từ đầu">
+                        <i class="fa-solid fa-trash-can text-rose-400"></i>
+                        <span>Vẽ Lại</span>
+                    </button>
+                    <button type="button" onclick="resetToFullFrameRoi()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl transition-all flex items-center gap-1.5" title="Xóa vùng ROI để nhận diện toàn bộ khung hình camera">
+                        <i class="fa-solid fa-expand text-blue-400"></i>
+                        <span>Toàn Màn Hình</span>
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="closeRoiModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium rounded-xl transition-all">
+                        Hủy
+                    </button>
+                    <button type="button" id="roi-save-btn" onclick="saveRoiPoints()" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-lg shadow-cyan-600/30 flex items-center space-x-1.5 transition-all">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Lưu Vùng ROI</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2359,7 +2439,11 @@
                                 ${dirBadge}
                                 ${zoneBadge}
                                 ${funcBadge}
+                                ${cam.detection_zone && cam.detection_zone.length >= 10 ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono flex items-center gap-1" title="Đã cấu hình vùng nhận diện ROI"><i class="fa-solid fa-draw-polygon text-[9px]"></i>ROI</span>` : ''}
                                 ${isAdmin ? `
+                                    <button onclick="openRoiModal(${cam.id})" class="p-1 px-2 rounded-lg bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/40 text-xs font-semibold" title="Khoanh vùng nhận diện ROI">
+                                        <i class="fa-solid fa-draw-polygon"></i>
+                                    </button>
                                     <button onclick="openEditCameraModal(${cam.id})" class="p-1 px-2 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 text-xs font-semibold" title="Chỉnh sửa Camera">
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
@@ -2407,7 +2491,10 @@
                 <tr class="hover:bg-slate-800/40">
                     <td class="p-3 sm:p-4 font-mono text-slate-400">#${cam.id}</td>
                     <td class="p-3 sm:p-4">
-                        <div class="font-bold text-white">${cam.camera_name}</div>
+                        <div class="font-bold text-white flex items-center gap-1.5">
+                            <span>${cam.camera_name}</span>
+                            ${cam.detection_zone && cam.detection_zone.length >= 10 ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 font-mono inline-flex items-center gap-1" title="Đã khoanh vùng nhận diện ROI"><i class="fa-solid fa-draw-polygon text-[9px]"></i>ROI</span>` : ''}
+                        </div>
                         ${cam.camera_code ? `<div class="text-[11px] font-mono text-cyan-400 flex items-center gap-1 mt-0.5" title="Mã đồng bộ Webhook API: ${cam.camera_code}"><i class="fa-solid fa-code text-[9px] text-cyan-500"></i>${cam.camera_code}</div>` : '<div class="text-[10px] text-slate-500 italic mt-0.5">Chưa đặt mã API</div>'}
                     </td>
                     <td class="p-3 sm:p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${cam.zone_code === 'KHO_BAI' ? 'bg-amber-500/20 text-amber-300' : 'bg-cyan-500/20 text-cyan-300'}">${cam.zone_name || cam.zone_code}</span></td>
@@ -2430,6 +2517,9 @@
                     <td class="p-3 sm:p-4 text-right space-x-1 whitespace-nowrap">
                         <button onclick="openPlaybackForEvent(${cam.id}, '')" class="px-2.5 py-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 rounded-lg text-xs" title="Xem lại video">
                             <i class="fa-solid fa-film mr-1"></i>Xem lại
+                        </button>
+                        <button onclick="openRoiModal(${cam.id})" class="px-2.5 py-1 bg-cyan-600/20 text-cyan-300 hover:bg-cyan-600/30 rounded-lg text-xs" title="Khoanh vùng nhận diện biển số xe (ROI)">
+                            <i class="fa-solid fa-draw-polygon mr-1"></i>Vẽ ROI
                         </button>
                         <button onclick="openEditCameraModal(${cam.id})" class="px-2.5 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs">
                             <i class="fa-solid fa-pen mr-1"></i>Sửa
@@ -2489,6 +2579,9 @@
             const recEl = document.getElementById('cam-form-recording');
             if (recEl) recEl.value = 'false';
             if (document.getElementById('cam-form-traffic-direction')) document.getElementById('cam-form-traffic-direction').value = 'TWO_WAY';
+
+            const roiCont = document.getElementById('cam-form-roi-container');
+            if (roiCont) roiCont.classList.add('hidden');
 
             if (document.getElementById('cam-evt-create')) document.getElementById('cam-evt-create').checked = true;
             if (document.getElementById('cam-evt-update')) document.getElementById('cam-evt-update').checked = true;
@@ -2550,6 +2643,18 @@
             if (recEl) recEl.value = cam.is_recording ? 'true' : 'false';
             if (document.getElementById('cam-form-traffic-direction')) {
                 document.getElementById('cam-form-traffic-direction').value = cam.traffic_direction || 'TWO_WAY';
+            }
+
+            const roiCont = document.getElementById('cam-form-roi-container');
+            if (roiCont) {
+                roiCont.classList.remove('hidden');
+                const roiStatus = document.getElementById('cam-form-roi-status');
+                if (roiStatus) {
+                    const hasRoi = cam.detection_zone && cam.detection_zone.length >= 10;
+                    roiStatus.innerHTML = hasRoi 
+                        ? '<span class="text-cyan-400 font-semibold flex items-center gap-1"><i class="fa-solid fa-check-circle"></i> Đã khoanh vùng ROI</span>' 
+                        : '<span class="text-slate-400">Chưa khoanh (nhận diện toàn khung hình)</span>';
+                }
             }
             
             const evts = (cam.webhook_events || 'CREATE,UPDATE').split(',').map(s => s.trim().toUpperCase());
@@ -2705,6 +2810,319 @@
                 }
             } catch (err) {
                 showToast("Lỗi khi xóa: " + err, "error");
+            }
+        }
+
+        /* --- CAMERA ROI (DETECTION ZONE) DRAWING TOOL --- */
+        let currentRoiCameraId = null;
+        let roiPoints = []; // Danh sách tọa độ chuẩn hóa { x: 0..1, y: 0..1 }
+        let currentMousePos = null;
+
+        function initRoiCanvasEvents() {
+            const canvas = document.getElementById('roi-canvas');
+            if (!canvas || canvas.dataset.initialized) return;
+            canvas.dataset.initialized = 'true';
+
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
+                const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+                roiPoints.push({ x: Number(normX.toFixed(4)), y: Number(normY.toFixed(4)) });
+                updateRoiUi();
+                redrawRoiCanvas();
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
+                currentMousePos = {
+                    x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
+                    y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
+                };
+                if (roiPoints.length > 0) {
+                    redrawRoiCanvas();
+                }
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                currentMousePos = null;
+                redrawRoiCanvas();
+            });
+
+            window.addEventListener('resize', () => {
+                const modal = document.getElementById('camera-roi-modal');
+                if (modal && !modal.classList.contains('hidden')) {
+                    syncCanvasResolution();
+                    redrawRoiCanvas();
+                }
+            });
+        }
+
+        function syncCanvasResolution() {
+            const canvas = document.getElementById('roi-canvas');
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = Math.round(rect.width) || 640;
+            canvas.height = Math.round(rect.height) || 360;
+        }
+
+        async function openRoiModal(camId) {
+            currentRoiCameraId = parseInt(camId, 10);
+            const cam = camerasList.find(c => c.id === currentRoiCameraId);
+            if (!cam) {
+                showToast("Không tìm thấy Camera #" + camId, "error");
+                return;
+            }
+
+            document.getElementById('roi-modal-cam-name').innerText = `[#${cam.id}] ${cam.camera_name}`;
+            roiPoints = [];
+            currentMousePos = null;
+
+            // Nạp vùng ROI sẵn có nếu đã cấu hình
+            if (cam.detection_zone) {
+                try {
+                    const parsed = JSON.parse(cam.detection_zone);
+                    if (Array.isArray(parsed) && parsed.length >= 3) {
+                        roiPoints = parsed.map(p => ({ x: Number(p.x), y: Number(p.y) }));
+                    }
+                } catch (e) {
+                    console.warn("Lỗi đọc detection_zone:", e);
+                }
+            }
+
+            const modal = document.getElementById('camera-roi-modal');
+            modal.classList.remove('hidden');
+            initRoiCanvasEvents();
+            updateRoiUi();
+
+            // Tải snapshot mới nhất
+            await refreshRoiSnapshot();
+        }
+
+        function closeRoiModal() {
+            const modal = document.getElementById('camera-roi-modal');
+            if (modal) modal.classList.add('hidden');
+            currentRoiCameraId = null;
+            roiPoints = [];
+            currentMousePos = null;
+        }
+
+        async function refreshRoiSnapshot() {
+            if (!currentRoiCameraId) return;
+            const overlay = document.getElementById('roi-loading-overlay');
+            const img = document.getElementById('roi-bg-img');
+            if (overlay) {
+                overlay.classList.remove('hidden');
+                overlay.innerHTML = `
+                    <i class="fa-solid fa-circle-notch fa-spin text-2xl text-cyan-400"></i>
+                    <span class="text-xs">Đang chụp hình ảnh mới nhất từ luồng RTSP...</span>
+                `;
+            }
+
+            const timestamp = Date.now();
+            const snapUrl = `/api/v1/cameras/${currentRoiCameraId}/snapshot?_t=${timestamp}`;
+
+            img.onload = () => {
+                if (overlay) overlay.classList.add('hidden');
+                syncCanvasResolution();
+                redrawRoiCanvas();
+            };
+            img.onerror = () => {
+                if (overlay) {
+                    overlay.classList.remove('hidden');
+                    overlay.innerHTML = `
+                        <div class="text-center p-3">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-400 text-2xl mb-1"></i>
+                            <p class="text-xs text-slate-300 font-semibold">Chưa lấy được hình ảnh snapshot từ luồng RTSP.</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Bạn vẫn có thể chấm điểm tạo vùng ROI trên khung hình này.</p>
+                            <button type="button" onclick="refreshRoiSnapshot()" class="mt-2 px-3 py-1 bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-300 text-xs rounded-lg border border-cyan-500/40">
+                                <i class="fa-solid fa-arrows-rotate mr-1"></i>Thử Lại
+                            </button>
+                        </div>
+                    `;
+                }
+                syncCanvasResolution();
+                redrawRoiCanvas();
+            };
+            img.src = snapUrl;
+        }
+
+        function updateRoiUi() {
+            const count = roiPoints.length;
+            const badge = document.getElementById('roi-points-badge');
+            if (badge) {
+                if (count === 0) {
+                    badge.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700';
+                    badge.innerHTML = `<i class="fa-solid fa-expand text-blue-400 mr-1"></i>Toàn màn hình (0 điểm)`;
+                } else if (count < 3) {
+                    badge.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20';
+                    badge.innerHTML = `<i class="fa-solid fa-pen mr-1"></i>Đang vẽ: ${count} điểm (Cần tối thiểu 3 điểm)`;
+                } else {
+                    badge.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20';
+                    badge.innerHTML = `<i class="fa-solid fa-check text-cyan-400 mr-1"></i>Đa giác hợp lệ: ${count} điểm`;
+                }
+            }
+        }
+
+        function undoRoiPoint() {
+            if (roiPoints.length > 0) {
+                roiPoints.pop();
+                updateRoiUi();
+                redrawRoiCanvas();
+            }
+        }
+
+        function clearRoiPoints() {
+            roiPoints = [];
+            currentMousePos = null;
+            updateRoiUi();
+            redrawRoiCanvas();
+        }
+
+        async function resetToFullFrameRoi() {
+            if (!confirm("Bạn có chắc chắn muốn xóa vùng ROI để nhận diện toàn bộ khung hình camera không?")) return;
+            clearRoiPoints();
+            await saveRoiPoints();
+        }
+
+        function redrawRoiCanvas() {
+            const canvas = document.getElementById('roi-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            if (roiPoints.length === 0) {
+                ctx.fillStyle = "rgba(15, 23, 42, 0.65)";
+                ctx.fillRect(10, 10, 310, 32);
+                ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
+                ctx.strokeRect(10, 10, 310, 32);
+                ctx.fillStyle = "#38bdf8";
+                ctx.font = "12px sans-serif";
+                ctx.fillText("Click chuột lên màn hình để chấm các điểm góc ROI", 18, 30);
+                return;
+            }
+
+            const pts = roiPoints.map(p => ({ x: p.x * w, y: p.y * h }));
+
+            // 1. Tô màu vùng đa giác nếu có >= 3 điểm
+            if (pts.length >= 3) {
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < pts.length; i++) {
+                    ctx.lineTo(pts[i].x, pts[i].y);
+                }
+                ctx.closePath();
+                ctx.fillStyle = "rgba(6, 182, 212, 0.25)"; // Cyan fill
+                ctx.fill();
+            }
+
+            // 2. Vẽ các cạnh đa giác
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) {
+                ctx.lineTo(pts[i].x, pts[i].y);
+            }
+            if (pts.length >= 3) {
+                ctx.closePath();
+            }
+            ctx.strokeStyle = "#06b6d4"; // Cyan stroke
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            // 3. Đường nét đứt nối tới chuột
+            if (currentMousePos && pts.length > 0) {
+                const mx = currentMousePos.x * w;
+                const my = currentMousePos.y * h;
+                ctx.save();
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = "#fbbf24"; // Amber preview
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+                ctx.lineTo(mx, my);
+                if (pts.length >= 2) {
+                    ctx.lineTo(pts[0].x, pts[0].y);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 4. Vẽ các điểm góc (Handles) và số thứ tự
+            pts.forEach((p, idx) => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 6.5, 0, Math.PI * 2);
+                ctx.fillStyle = "#0891b2";
+                ctx.fill();
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.fill();
+
+                ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+                ctx.fillRect(p.x + 8, p.y - 12, 22, 16);
+                ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(p.x + 8, p.y - 12, 22, 16);
+                ctx.fillStyle = "#38bdf8";
+                ctx.font = "bold 10px monospace";
+                ctx.fillText(String(idx + 1), p.x + 12, p.y);
+            });
+        }
+
+        async function saveRoiPoints() {
+            if (!currentRoiCameraId) return;
+
+            if (roiPoints.length > 0 && roiPoints.length < 3) {
+                showToast("Vùng ROI đa giác phải có ít nhất 3 điểm!", "warning");
+                return;
+            }
+
+            const btn = document.getElementById('roi-save-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Đang lưu...`;
+            }
+
+            const detectionZoneVal = roiPoints.length >= 3 ? JSON.stringify(roiPoints) : null;
+
+            try {
+                const res = await fetch(`/api/v1/cameras/${currentRoiCameraId}`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ detection_zone: detectionZoneVal })
+                });
+
+                if (res.ok) {
+                    const updatedCam = await res.json();
+                    const idx = camerasList.findIndex(c => c.id === currentRoiCameraId);
+                    if (idx !== -1) {
+                        camerasList[idx] = updatedCam;
+                    }
+                    renderCameraTable();
+                    renderCameraGrid();
+                    showToast(
+                        detectionZoneVal ? `Đã lưu vùng ROI (${roiPoints.length} điểm) cho camera!` : "Đã chuyển sang nhận diện toàn khung hình!",
+                        "success"
+                    );
+                    closeRoiModal();
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi khi lưu ROI: " + (err.detail || "Không thành công"), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối máy chủ: " + err, "error");
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-floppy-disk mr-1"></i>Lưu Vùng ROI`;
+                }
             }
         }
 

@@ -213,8 +213,8 @@ def update_camera(camera_id: int, cam_in: CameraUpdate, db: Session = Depends(ge
         else:
             cam.action_group_rear_id = None
 
-    if cam_in.detection_zone is not None:
-        cam.detection_zone = cam_in.detection_zone
+    if "detection_zone" in cam_in.model_fields_set:
+        cam.detection_zone = cam_in.detection_zone.strip() if (cam_in.detection_zone and cam_in.detection_zone.strip()) else None
     if cam_in.traffic_direction is not None:
         cam.traffic_direction = cam_in.traffic_direction.strip().upper()
     if cam_in.webhook_events is not None:
