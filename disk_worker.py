@@ -834,22 +834,22 @@ class AsyncDiskWorker:
                 cam, vehicle_view
             )
 
+            action_status = "INFO"
+            summary = None
+
             if should_skip_webhook:
-                action_status = "INFO"
                 summary = "Bỏ qua Webhook (Quy tắc luồng làn xe)"
                 logger.info(f"Skipping Webhook for {plate_number} on {cam.camera_name}: {skip_reason}")
                 action_group = None
             else:
                 action_group = db.query(ActionGroup).filter(ActionGroup.id == target_ag_id, ActionGroup.is_active == True).first() if target_ag_id else None
 
-            action_status = action_status or "INFO"
             vehicle_classification = None
             barrier_action = "NONE"
             action_group_id = None
             action_group_name = None
             action_result_raw = None
             alert_level = "normal"
-            summary = summary or None
             voice_message = None
             push_condition = "DEFAULT"
             webhook_result_bool = None
