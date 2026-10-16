@@ -42,18 +42,18 @@ def resolve_camera_traffic_flow(camera: Camera, vehicle_view: str):
     
     Hỗ trợ 5 chế độ:
     1. TWO_WAY: Cổng 1 Camera (2 Chiều Tự Động)
-       - front -> Xe RA (Mặt trước / OUT / target_ag = front)
-       - rear  -> Xe VÀO (Mặt sau / IN / target_ag = rear)
+       - front -> Xe RA (Mặt trước / OUT / target_ag = front or default)
+       - rear  -> Xe VÀO (Mặt sau / IN / target_ag = rear or default)
     2. OUT_FRONT_ONLY: Cổng 1 làn hoặc cổng ra - Chiều RA Chỉ Đọc Mặt Trước
-       - front -> Xe RA (Mặt trước / OUT / target_ag = front)
-       - rear  -> BỎ QUA GỌI WEBHOOK (đuôi xe của xe đang vào bãi)
-    3. IN_FRONT_ONLY: Cổng 1 làn hoặc cổng vào - Chiều VÀO Chỉ Đọc Mặt Trước
-       - front -> Xe VÀO (Mặt sau / IN / target_ag = rear)
-       - rear  -> BỎ QUA GỌI WEBHOOK (đuôi xe của xe đang ra ngoài)
+       - Luôn tính là Xe RA (Mặt trước / OUT)
+       - Fallback Action Group an toàn: front -> default -> rear
+    3. IN_FRONT_ONLY: Cổng 1 làn hoặc cổng vào - Chiều VÀO Chỉ Đọc Mặt Trước (Sân cảm biến Làn Vào)
+       - Luôn tính là Xe VÀO (Mặt trước / IN)
+       - Fallback Action Group an toàn: front -> rear -> default
     4. OUT_ALL: Cổng 2 làn riêng - Làn RA riêng biệt
-       - Mọi góc chụp -> Xe RA (Mặt trước / OUT / target_ag = front)
+       - Mọi góc chụp -> Xe RA (Mặt trước / OUT / target_ag = front or rear or default)
     5. IN_ALL: Cổng 2 làn riêng - Làn VÀO riêng biệt
-       - Mọi góc chụp -> Xe VÀO (Mặt sau / IN / target_ag = rear)
+       - Mọi góc chụp -> Xe VÀO (Mặt trước / IN nếu chụp front, hoặc Mặt sau / IN)
     
     Returns:
         tuple: (target_ag_id, effective_su_kien, effective_direction, should_skip_webhook, skip_reason)
@@ -62,31 +62,33 @@ def resolve_camera_traffic_flow(camera: Camera, vehicle_view: str):
     view_lower = str(vehicle_view or "unknown").strip().lower()
 
     if cam_direction == "OUT_FRONT_ONLY":
-        if view_lower == "rear":
-            return (None, "mat_truoc", "OUT", True, f"Camera #{camera.id} '{camera.camera_name}' (OUT_FRONT_ONLY) bỏ qua biển số đuôi xe (rear) để tránh bắt nhầm xe đang vào bãi.")
-        target_ag_id = camera.action_group_front_id or camera.action_group_id
+        # Chiều RA chỉ chụp mặt trước: lấy ActionGroup Mặt Trước hoặc Mặc định
+        target_ag_id = camera.action_group_front_id or camera.action_group_id or camera.action_group_rear_id
         return (target_ag_id, "mat_truoc", "OUT", False, None)
 
     elif cam_direction == "IN_FRONT_ONLY":
-        if view_lower == "rear":
-            return (None, "mat_sau", "IN", True, f"Camera #{camera.id} '{camera.camera_name}' (IN_FRONT_ONLY) bỏ qua biển số đuôi xe (rear) để tránh bắt nhầm xe đang ra ngoài.")
-        target_ag_id = camera.action_group_rear_id or camera.action_group_id
-        return (target_ag_id, "mat_sau", "IN", False, None)
+        # Chiều VÀO chỉ chụp mặt trước: camera chụp mặt trước nhưng xe đang VÀO bãi/sân
+        target_ag_id = camera.action_group_front_id or camera.action_group_rear_id or camera.action_group_id
+        return (target_ag_id, "mat_truoc", "IN", False, None)
 
     elif cam_direction == "OUT_ALL":
-        target_ag_id = camera.action_group_front_id or camera.action_group_id
-        return (target_ag_id, "mat_truoc", "OUT", False, None)
+        # Làn RA độc lập: mọi phát hiện đều tính là Xe RA
+        target_ag_id = camera.action_group_front_id or camera.action_group_rear_id or camera.action_group_id
+        su_kien = "mat_sau" if view_lower == "rear" else "mat_truoc"
+        return (target_ag_id, su_kien, "OUT", False, None)
 
     elif cam_direction == "IN_ALL":
-        target_ag_id = camera.action_group_rear_id or camera.action_group_id
-        return (target_ag_id, "mat_sau", "IN", False, None)
+        # Làn VÀO độc lập: mọi phát hiện đều tính là Xe VÀO
+        target_ag_id = camera.action_group_front_id or camera.action_group_rear_id or camera.action_group_id
+        su_kien = "mat_truoc" if view_lower == "front" else "mat_sau"
+        return (target_ag_id, su_kien, "IN", False, None)
 
     else: # TWO_WAY (mặc định Cổng 1 Camera 2 chiều)
         if view_lower == "rear":
-            target_ag_id = camera.action_group_rear_id or camera.action_group_id
+            target_ag_id = camera.action_group_rear_id or camera.action_group_id or camera.action_group_front_id
             return (target_ag_id, "mat_sau", "IN", False, None)
         else:
-            target_ag_id = camera.action_group_front_id or camera.action_group_id
+            target_ag_id = camera.action_group_front_id or camera.action_group_id or camera.action_group_rear_id
             return (target_ag_id, "mat_truoc", "OUT", False, None)
 
 def execute_action_webhook(
@@ -310,6 +312,28 @@ def execute_action_webhook(
                         if not summary:
                             summary = data_obj.get("summary")
 
+                    # Xử lý chi tiết Lịch Thuê Xe (rental_schedule) nếu API trả về
+                    rental_schedule = None
+                    if isinstance(data_obj, dict):
+                        rental_schedule = data_obj.get("rental_schedule")
+                    if not rental_schedule and isinstance(parsed, dict):
+                        rental_schedule = parsed.get("rental_schedule")
+
+                    if rental_schedule and isinstance(rental_schedule, dict):
+                        t_start = rental_schedule.get("thoi_gian_bat_dau") or rental_schedule.get("start_time") or ""
+                        t_end = rental_schedule.get("thoi_gian_ket_thuc") or rental_schedule.get("end_time") or ""
+                        time_desc = ""
+                        if t_start or t_end:
+                            s_time = str(t_start).split(" ")[-1][:5] if " " in str(t_start) else str(t_start)[:5]
+                            e_time = str(t_end).split(" ")[-1][:5] if " " in str(t_end) else str(t_end)[:5]
+                            time_desc = f"{s_time} - {e_time}" if (s_time and e_time) else (s_time or e_time)
+
+                        if time_desc:
+                            if not summary or summary.strip().upper() in ["HỢP LỆ", "APPROVED", "VALID", "INFO", "XE CÓ LỊCH THUÊ SÂN"]:
+                                summary = f"Có lịch thuê: {time_desc}"
+                            elif "thuê" not in summary.lower():
+                                summary = f"{summary} ({time_desc})"
+
                     # Tự động chuẩn hóa vehicle_classification nếu API chưa trả về
                     if not vehicle_classification:
                         st_up = str(action_status).upper()
@@ -361,6 +385,7 @@ def execute_action_webhook(
                         "barrier_action": str(barrier_action).upper(),
                         "webhook_result_bool": res_bool,
                         "action_result_raw": resp_body,
+                        "rental_schedule": rental_schedule,
                         "sync_status": "SYNCED",
                         "standard_payload": standard_payload
                     }

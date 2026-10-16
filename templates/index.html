@@ -1859,6 +1859,10 @@
                     <div id="modal-sync-badge"></div>
                 </div>
             </div>
+            <div id="modal-rental-box" class="hidden mb-4 p-3 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-200 text-xs flex items-center space-x-2 font-medium">
+                <i class="fa-regular fa-calendar-check text-cyan-400 text-base flex-shrink-0"></i>
+                <span id="modal-rental-text"></span>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                     <div class="flex items-center justify-between mb-2">
@@ -4292,7 +4296,7 @@
                             <button onclick="openPlaybackForEvent(${item.camera_id}, '${item.detected_at}', '${item.plate_number}')" class="px-2.5 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
-                            <button onclick="openImageModal('${item.image_plate_path}', '${item.image_full_path}', '${item.plate_number}', '${(item.summary || '').replace(/'/g, "\\'")}', ${item.camera_id}, '${item.detected_at}', '${item.vehicle_classification || ''}', ${item.id}, '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${item.sync_status || ''}', '${(item.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                            <button onclick="openImageModal('${item.image_plate_path}', '${item.image_full_path}', '${item.plate_number}', '${(item.summary || '').replace(/'/g, "\\'")}', ${item.camera_id}, '${item.detected_at}', '${item.vehicle_classification || ''}', ${item.id}, '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${item.sync_status || ''}', '${(item.sync_error || '').replace(/'/g, "\\'")}', '${encodeURIComponent(item.action_result_raw || '')}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
                             ${(item.sync_status === 'PENDING_SYNC' || item.sync_status === 'SYNC_FAILED') ? `
                                 <button onclick="openWebhookSyncModal('queue')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Xem trong hàng đợi đồng bộ"><i class="fa-solid fa-cloud-arrow-up"></i></button>
                             ` : ''}
@@ -4309,6 +4313,10 @@
         function renderActionStatusBadge(status, summary, classification = null) {
             const cls = (classification || '').toUpperCase();
             const st = (status || 'INFO').toUpperCase();
+
+            if (summary && (summary.toLowerCase().includes('thuê') || summary.toLowerCase().includes('lịch thuê'))) {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 whitespace-nowrap"><i class="fa-regular fa-calendar-check mr-1"></i>${summary}</span>`;
+            }
 
             if (cls === 'INTERNAL_VALID' || (!cls && st === 'APPROVED')) {
                 return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1"></i>${summary || 'Có Kế Hoạch'}</span>`;
@@ -4376,7 +4384,7 @@
                             <button onclick="openPlaybackForEvent(${d.camera_id}, '${d.detected_at}', '${d.plate_number}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
-                            <button onclick="openImageModal('${d.image_plate_path}', '${d.image_full_path}', '${d.plate_number}', '${(d.summary || '').replace(/'/g, "\\'")}', ${d.camera_id}, '${d.detected_at}', '${d.vehicle_classification || ''}', ${d.id}, '${d.vehicle_view || 'front'}', '${d.vehicle_type || 'car'}', '${d.sync_status || ''}', '${(d.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                            <button onclick="openImageModal('${d.image_plate_path}', '${d.image_full_path}', '${d.plate_number}', '${(d.summary || '').replace(/'/g, "\\'")}', ${d.camera_id}, '${d.detected_at}', '${d.vehicle_classification || ''}', ${d.id}, '${d.vehicle_view || 'front'}', '${d.vehicle_type || 'car'}', '${d.sync_status || ''}', '${(d.sync_error || '').replace(/'/g, "\\'")}', '${encodeURIComponent(d.action_result_raw || '')}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
                             ${(d.sync_status === 'PENDING_SYNC' || d.sync_status === 'SYNC_FAILED') ? `
                                 <button onclick="openWebhookSyncModal('queue')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Xem hàng đợi đồng bộ"><i class="fa-solid fa-cloud-arrow-up"></i></button>
                             ` : ''}
@@ -5027,7 +5035,7 @@
         /* --- MODALS HANDLERS --- */
         let currentModalEvent = { cameraId: null, detectedAt: '', plateNumber: '', logId: null, vehicleView: 'front', vehicleType: 'car', platePath: '', fullPath: '', summary: '' };
 
-        function openImageModal(platePath, fullPath, plateNum, summary, cameraId = null, detectedAt = '', classification = '', logId = null, vehicleView = 'front', vehicleType = 'car', syncStatus = '', syncError = '') {
+        function openImageModal(platePath, fullPath, plateNum, summary, cameraId = null, detectedAt = '', classification = '', logId = null, vehicleView = 'front', vehicleType = 'car', syncStatus = '', syncError = '', actionResultRaw = '') {
             currentModalEvent = {
                 logId: logId,
                 cameraId: cameraId,
@@ -5070,6 +5078,33 @@
                 summaryBox.classList.remove('hidden');
             } else {
                 summaryBox.classList.add('hidden');
+            }
+
+            const rentalBox = document.getElementById('modal-rental-box');
+            if (rentalBox) {
+                let rentalInfo = '';
+                if (summary && (summary.toLowerCase().includes('thuê') || summary.toLowerCase().includes('lịch thuê'))) {
+                    rentalInfo = summary;
+                }
+                if (actionResultRaw) {
+                    try {
+                        const rawDecoded = decodeURIComponent(actionResultRaw);
+                        const rawObj = (typeof rawDecoded === 'string') ? JSON.parse(rawDecoded) : rawDecoded;
+                        const sch = (rawObj && rawObj.data && rawObj.data.rental_schedule) ? rawObj.data.rental_schedule : (rawObj && rawObj.rental_schedule ? rawObj.rental_schedule : null);
+                        if (sch) {
+                            const t1 = sch.thoi_gian_bat_dau || sch.start_time || '';
+                            const t2 = sch.thoi_gian_ket_thuc || sch.end_time || '';
+                            const h = sch.so_gio ? ` (${sch.so_gio} giờ)` : '';
+                            rentalInfo = `Lịch Thuê Sân: ${t1} - ${t2}${h}`;
+                        }
+                    } catch (e) {}
+                }
+                if (rentalInfo) {
+                    document.getElementById('modal-rental-text').innerText = rentalInfo;
+                    rentalBox.classList.remove('hidden');
+                } else {
+                    rentalBox.classList.add('hidden');
+                }
             }
 
             const videoBtn = document.getElementById('modal-btn-view-video');
@@ -5669,7 +5704,7 @@
                                 <button onclick="openPlaybackForEvent(${data.camera_id}, '${data.detected_at}', '${data.plate_number}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video">
                                     <i class="fa-solid fa-film mr-1"></i>Video
                                 </button>
-                                <button onclick="openImageModal('${data.image_plate_path}', '${data.image_full_path}', '${data.plate_number}', '${(data.summary || '').replace(/'/g, "\\'")}', ${data.camera_id}, '${data.detected_at}', '${data.vehicle_classification || ''}', ${data.id || ''}, '${data.vehicle_view || 'front'}', '${data.vehicle_type || 'car'}', '${data.sync_status || ''}', '${(data.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
+                                <button onclick="openImageModal('${data.image_plate_path}', '${data.image_full_path}', '${data.plate_number}', '${(data.summary || '').replace(/'/g, "\\'")}', ${data.camera_id}, '${data.detected_at}', '${data.vehicle_classification || ''}', ${data.id || ''}, '${data.vehicle_view || 'front'}', '${data.vehicle_type || 'car'}', '${data.sync_status || ''}', '${(data.sync_error || '').replace(/'/g, "\\'")}', '${encodeURIComponent(data.action_result_raw || '')}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
                                 ${data.id ? `<button onclick="openEditLogModal(${data.id}, '${data.plate_number}', '${data.vehicle_view || 'front'}', '${data.vehicle_type || 'car'}', '${(data.summary || '').replace(/'/g, "\\'")}', '${data.image_plate_path}', '${data.image_full_path}', 'dashboard', '${data.detected_at || ''}', '${(data.camera_name || '').replace(/'/g, "\\'")}')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
                             </td>
                         </tr>

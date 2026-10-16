@@ -1,4 +1,9 @@
 import os
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 # Cấu hình FFmpeg timeout 10 giây (10.000.000 microsecond) để hỗ trợ camera IP/RTSP qua mạng WAN/Internet và codec H.265
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;10000000|timeout;10000000"
@@ -13,7 +18,7 @@ class Settings:
     USE_SQLITE_FALLBACK: bool = True
 
     # MySQL v8 Settings
-    DB_HOST: str = os.getenv("DB_HOST", "localhost")
+    DB_HOST: str = os.getenv("DB_HOST", "127.0.0.1")
     DB_PORT: int = int(os.getenv("DB_PORT", 3306))
     DB_USER: str = os.getenv("DB_USER", "root")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")

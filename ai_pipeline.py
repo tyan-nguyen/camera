@@ -53,17 +53,27 @@ def parse_detection_zone(zone_str: Optional[str], frame_w: int, frame_h: int) ->
     return None
 
 def is_vehicle_in_zone(bbox: Tuple[int, int, int, int], zone_polygon: Optional[np.ndarray]) -> bool:
-    """Kiểm tra xem phương tiện (tâm xe hoặc cản trước/bánh xe) có nằm trong vùng ROI khoanh sẵn không"""
+    """
+    Kiểm tra xem phương tiện có nằm trong vùng ROI khoanh sẵn không.
+    Kiểm tra đa điểm neo (tâm xe, cản dưới, đầu trên xe, cạnh trái/phải)
+    để đảm bảo không bị bỏ sót khi xe chạy qua vùng ROI từ bất kỳ góc chụp nào.
+    """
     if zone_polygon is None or len(zone_polygon) < 3:
-        return True  # Nếu không khoanh vùng thì áp dụng mặc định
+        return True  # Nếu không khoanh vùng thì áp dụng toàn khung hình
     x1, y1, x2, y2 = bbox
     cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-    bottom_center = (cx, y2)
-    center = (cx, cy)
-    # Kiểm tra cả điểm cản dưới và tâm xe
-    in_bottom = cv2.pointPolygonTest(zone_polygon, (float(bottom_center[0]), float(bottom_center[1])), False) >= 0
-    in_center = cv2.pointPolygonTest(zone_polygon, (float(center[0]), float(center[1])), False) >= 0
-    return in_bottom or in_center
+    points_to_check = [
+        (cx, cy),                  # Tâm xe
+        (cx, y2),                  # Cản trước / đáy xe
+        (cx, y1),                  # Nóc / đầu trên xe
+        (x1, cy),                  # Mép trái
+        (x2, cy),                  # Mép phải
+        (cx, int(y1 * 0.3 + y2 * 0.7)) # Vị trí gắn biển số thông thường
+    ]
+    for pt in points_to_check:
+        if cv2.pointPolygonTest(zone_polygon, (float(pt[0]), float(pt[1])), False) >= 0:
+            return True
+    return False
 
 class VehicleTracker:
     """ByteTrack simulation / tracker interface for assigning unique Track IDs per vehicle pass"""
@@ -177,7 +187,7 @@ class VehicleTracker:
             if not track['ocr_triggered']:
                 if zone_polygon is not None:
                     # TRƯỜNG HỢP 1: CÓ KHOANH VÙNG ROI -> CHỈ CHỤP KHI XE VÀO VÙNG ĐÓ
-                    if in_zone and track.get('in_zone_hits', 0) >= 1 and bw >= 50 and bh >= 50:
+                    if in_zone and track.get('in_zone_hits', 0) >= 1 and bw >= 35 and bh >= 35:
                         track['ocr_triggered'] = True
                         return assigned_id, True
                 else:

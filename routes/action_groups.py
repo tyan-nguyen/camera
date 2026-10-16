@@ -15,6 +15,7 @@ from schemas import (
 )
 from auth_utils import require_roles, get_current_user
 from disk_worker import execute_action_webhook
+from webhook_service import webhook_circuit_breaker
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -107,6 +108,13 @@ def update_action_group(
 
     db.commit()
     db.refresh(ag)
+
+    # Tự động giải phóng Circuit Breaker khi cập nhật cấu hình API/Token
+    try:
+        webhook_circuit_breaker.force_reset(ag.id)
+    except Exception as e:
+        logger.debug(f"Error resetting circuit breaker on update: {e}")
+
     return ag
 
 @router.delete("/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -165,6 +173,12 @@ def test_action_group_webhook(
     except Exception:
         pass
 
+    if res.get("action_status") != "ERROR":
+        try:
+            webhook_circuit_breaker.force_reset(ag.id)
+        except Exception as e:
+            logger.debug(f"Error resetting circuit breaker on test success: {e}")
+
     return ActionGroupTestResponse(
         success=res.get("action_status") != "ERROR",
         status_code=200 if res.get("action_status") != "ERROR" else 500,
@@ -177,3 +191,22 @@ def test_action_group_webhook(
         message=res.get("message"),
         alert_level=res.get("alert_level", "normal")
     )
+
+@router.post("/{group_id}/reset-circuit")
+def reset_action_group_circuit(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(admin_only)
+):
+    """Đặt lại trạng thái Circuit Breaker về CLOSED / ONLINE cho Nhóm hành động"""
+    ag = db.query(ActionGroup).filter(ActionGroup.id == group_id).first()
+    if not ag:
+        raise HTTPException(status_code=404, detail="Không tìm thấy nhóm hành động.")
+    webhook_circuit_breaker.force_reset(group_id)
+    return {
+        "success": True,
+        "message": f"Đã đặt lại ngắt mạch cho nhóm '{ag.name}' về ONLINE thành công.",
+        "circuit_state": "CLOSED",
+        "status": "ONLINE"
+    }
+
