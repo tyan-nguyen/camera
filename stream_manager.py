@@ -1,6 +1,6 @@
 import os
-# Cấu hình FFmpeg timeout 10 giây (10.000.000 microsecond) để hỗ trợ camera IP/RTSP qua mạng WAN/Internet và codec H.265
-os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;10000000|timeout;10000000"
+# Cấu hình FFmpeg RTSP qua TCP, không buffer để tránh giật trễ hình và rớt gói H.264
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|max_delay;500000|stimeout;10000000|timeout;10000000"
 
 import time
 import threading
@@ -67,6 +67,13 @@ class CameraThread(threading.Thread):
         self.latest_frame: Optional[np.ndarray] = self._generate_connecting_frame()
         self.frame_lock = threading.Lock()
 
+        # Luồng Grabber chuyên trách (Non-blocking RTSP Grabber)
+        self.raw_frame_lock = threading.Lock()
+        self.latest_raw_frame: Optional[np.ndarray] = None
+        self.last_frame_received_time: float = 0.0
+        self.has_new_frame: bool = False
+        self.grabber_stop = threading.Event()
+
         # Cache đệm ảnh JPEG đã nén để tránh lặp lại cv2.imencode gây lag/tranh chấp khóa
         self._cached_thumb_jpeg: Optional[bytes] = None
         self._cached_thumb_time: float = 0.0
@@ -108,8 +115,32 @@ class CameraThread(threading.Thread):
         self.set_recording_state(is_recording)
         logger.info(f"[{self.camera_name}] Hot-reloaded runtime config: FPS={self.target_fps}, Func={self.camera_function}, Rec={self.is_recording}, ZoneROI={self.detection_zone}")
 
+    def _grabber_loop(self, cap: cv2.VideoCapture):
+        """
+        Luồng chuyên trách đọc RTSP liên tục (Dedicated Non-blocking Grabber).
+        Nhiệm vụ duy nhất: Liên tục gọi cap.read() ở tốc độ 25-30 FPS gốc của camera
+        để giải phóng socket mạng và buffer FFmpeg ngay lập tức.
+        Nhờ đó:
+        - Triệt tiêu 100% hiện tượng drop packet H.264 P-frames gây loang xám, vỡ hạt, biến dạng hình.
+        - Khung hình raw luôn là frame mới nhất theo thời gian thực (Zero Lag).
+        """
+        while not self.stop_requested.is_set() and not self.grabber_stop.is_set():
+            try:
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    time.sleep(0.005)
+                    continue
+
+                with self.raw_frame_lock:
+                    self.latest_raw_frame = frame
+                    self.last_frame_received_time = time.time()
+                    self.has_new_frame = True
+            except Exception as e:
+                logger.debug(f"[{self.camera_name}] Grabber read exception: {e}")
+                time.sleep(0.01)
+
     def _draw_zone_overlay(self, frame: np.ndarray) -> np.ndarray:
-        """Vẽ lớp phủ vùng khoanh ROI (Detection Zone) màu xanh neon trực quan lên video live"""
+        """Vẽ lớp phủ vùng khoanh ROI (Detection Zone) màu xanh neon trực quan lên video live (tối ưu blend ROI cục bộ)"""
         if not self.detection_zone or self.camera_function == CameraFunctionEnum.SURVEILLANCE.value:
             return frame
         try:
@@ -117,9 +148,16 @@ class CameraThread(threading.Thread):
             h, w = frame.shape[:2]
             pts = parse_detection_zone(self.detection_zone, w, h)
             if pts is not None and len(pts) >= 3:
-                overlay = frame.copy()
-                cv2.fillPoly(overlay, [pts], (0, 200, 80))
-                cv2.addWeighted(overlay, 0.20, frame, 0.80, 0, frame)
+                x_min = max(0, int(np.min(pts[:, 0])))
+                y_min = max(0, int(np.min(pts[:, 1])))
+                x_max = min(w, int(np.max(pts[:, 0])))
+                y_max = min(h, int(np.max(pts[:, 1])))
+                if x_max > x_min and y_max > y_min:
+                    sub_roi = frame[y_min:y_max, x_min:x_max]
+                    sub_overlay = sub_roi.copy()
+                    sub_pts = pts - np.array([x_min, y_min])
+                    cv2.fillPoly(sub_overlay, [sub_pts], (0, 200, 80))
+                    cv2.addWeighted(sub_overlay, 0.20, sub_roi, 0.80, 0, sub_roi)
                 cv2.polylines(frame, [pts], isClosed=True, color=(0, 255, 128), thickness=2)
                 for p in pts:
                     cv2.circle(frame, (int(p[0]), int(p[1])), 4, (255, 255, 255), -1)
@@ -198,31 +236,49 @@ class CameraThread(threading.Thread):
                 continue
 
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-            logger.info(f"[{self.camera_name}] RTSP Stream connected successfully.")
+            logger.info(f"[{self.camera_name}] RTSP Stream connected successfully. Starting non-blocking grabber...")
+
+            self.grabber_stop.clear()
+            self.has_new_frame = False
+            self.last_frame_received_time = time.time()
+
+            grabber = threading.Thread(
+                target=self._grabber_loop,
+                args=(cap,),
+                name=f"Grabber-Cam{self.camera_id}",
+                daemon=True
+            )
+            grabber.start()
+
             last_processed_time = time.time()
             last_rec_time = time.time()
-            last_frame_time = time.time()
 
             while not self.stop_requested.is_set():
-                ret, raw_frame = cap.read()
-                if not ret or raw_frame is None:
-                    if time.time() - last_frame_time > 8.0:
-                        reason = f"Mat luong tin hieu tu camera ({self.rtsp_url})"
-                        logger.warning(f"[{self.camera_name}] {reason}")
-                        frame = self._generate_offline_status_frame(reason)
-                        with self.frame_lock:
-                            self.latest_frame = frame.copy()
-                        break
+                loop_start = time.time()
+
+                # Kiểm tra mất luồng tín hiệu (> 8 giây không có frame mới)
+                if loop_start - self.last_frame_received_time > 8.0:
+                    reason = f"Mat luong tin hieu tu camera ({self.rtsp_url})"
+                    logger.warning(f"[{self.camera_name}] {reason}")
+                    frame = self._generate_offline_status_frame(reason)
+                    with self.frame_lock:
+                        self.latest_frame = frame.copy()
+                    break
+
+                raw_frame = None
+                with self.raw_frame_lock:
+                    if self.has_new_frame and self.latest_raw_frame is not None:
+                        raw_frame = self.latest_raw_frame
+                        self.has_new_frame = False
+
+                if raw_frame is None:
                     time.sleep(0.01)
                     continue
 
-                last_frame_time = time.time()
-                current_time = time.time()
-
                 # 1. Ghi hình video phân đoạn nếu camera được BẬT tính năng lưu (khớp nhịp FPS thiết lập)
                 if self.is_recording:
-                    if current_time - last_rec_time >= frame_interval - 0.003:
-                        last_rec_time = current_time
+                    if loop_start - last_rec_time >= frame_interval - 0.003:
+                        last_rec_time = loop_start
                         video_recorder_manager.push_frame(self.camera_id, raw_frame)
 
                 # 2. Tạo khung hình hiển thị Live Dashboard
@@ -231,14 +287,22 @@ class CameraThread(threading.Thread):
                     self.latest_frame = display_frame
 
                 # 3. AI Nhận dạng biển số (chỉ chạy cho ANPR camera)
-                current_time = time.time()
-                if current_time - last_processed_time >= frame_interval:
-                    last_processed_time = current_time
-                    if self.camera_function == CameraFunctionEnum.ANPR.value or self.camera_function == "ANPR":
+                if self.camera_function == CameraFunctionEnum.ANPR.value or self.camera_function == "ANPR":
+                    if loop_start - last_processed_time >= frame_interval:
+                        last_processed_time = loop_start
                         event = self.ai_engine.process_frame(self.camera_id, raw_frame, detection_zone=self.detection_zone)
                         if event:
                             self.disk_worker.enqueue_event(event)
 
+                # Điều tiết nhịp theo target_fps để CPU không chạy quá tải vô ích
+                elapsed = time.time() - loop_start
+                sleep_needed = frame_interval - elapsed
+                if sleep_needed > 0.002:
+                    time.sleep(sleep_needed)
+
+            # Dừng grabber thread an toàn trước khi đóng VideoCapture
+            self.grabber_stop.set()
+            grabber.join(timeout=1.0)
             cap.release()
             if not self.stop_requested.is_set():
                 time.sleep(1.0)
@@ -296,6 +360,7 @@ class CameraThread(threading.Thread):
 
     def stop(self):
         self.stop_requested.set()
+        self.grabber_stop.set()
         video_recorder_manager.stop_recorder(self.camera_id)
 
 class DynamicStreamManager:

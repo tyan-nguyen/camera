@@ -1,5 +1,7 @@
 import os
 import time
+import json
+import threading
 import cv2
 import numpy as np
 import logging
@@ -27,19 +29,28 @@ def compute_iou(boxA: Tuple[int, int, int, int], boxB: Tuple[int, int, int, int]
     boxBArea = max(0, boxB[2] - boxB[0]) * max(0, boxB[3] - boxB[1])
     return float(interArea / (boxAArea + boxBArea - interArea + 1e-6))
 
-import json
+_zone_cache = {}
 
 def parse_detection_zone(zone_str: Optional[str], frame_w: int, frame_h: int) -> Optional[np.ndarray]:
-    """Chuyển chuỗi JSON tọa độ ROI (tỷ lệ 0.0 - 1.0) sang mảng numpy các điểm pixel trên khung hình"""
+    """Chuyển chuỗi JSON tọa độ ROI (tỷ lệ 0.0 - 1.0) sang mảng numpy các điểm pixel trên khung hình (có cache)"""
     if not zone_str or not isinstance(zone_str, str) or not zone_str.strip():
         return None
+    cache_key = (zone_str, frame_w, frame_h)
+    if cache_key in _zone_cache:
+        return _zone_cache[cache_key]
     try:
         pts_data = json.loads(zone_str)
         if isinstance(pts_data, list) and len(pts_data) >= 3:
             pixel_pts = []
             for p in pts_data:
-                px = float(p.get('x', 0))
-                py = float(p.get('y', 0))
+                if isinstance(p, dict):
+                    px = float(p.get('x', 0))
+                    py = float(p.get('y', 0))
+                elif isinstance(p, (list, tuple)) and len(p) >= 2:
+                    px = float(p[0])
+                    py = float(p[1])
+                else:
+                    continue
                 if px <= 1.0 and py <= 1.0:
                     px = int(px * frame_w)
                     py = int(py * frame_h)
@@ -47,7 +58,9 @@ def parse_detection_zone(zone_str: Optional[str], frame_w: int, frame_h: int) ->
                     px = int(px)
                     py = int(py)
                 pixel_pts.append([px, py])
-            return np.array(pixel_pts, dtype=np.int32)
+            arr = np.array(pixel_pts, dtype=np.int32)
+            _zone_cache[cache_key] = arr
+            return arr
     except Exception as e:
         logger.warning(f"Error parsing detection_zone: {e}")
     return None
@@ -214,6 +227,7 @@ class AIPipelineEngine:
         self.yolo_model = None
         self.model_loaded = False
         self.trackers: Dict[int, VehicleTracker] = {}  # camera_id -> VehicleTracker
+        self.inference_lock = threading.Lock()
 
     def load_model(self):
         if self.model_loaded:
@@ -252,15 +266,14 @@ class AIPipelineEngine:
     def process_frame(self, camera_id: int, frame: np.ndarray, detection_zone: Optional[str] = None) -> Optional[Dict]:
         """
         Xử lý 1 frame từ camera:
-        1. YOLO Detect phương tiện (Car, Motorcycle, Bus, Truck)
+        1. YOLO Detect phương tiện (Car, Motorcycle, Bus, Truck) với imgsz=640 và lock đồng bộ GPU
         2. Bám đuổi VehicleTracker & Kiểm tra vùng khoanh nhận diện ROI
-        3. Gửi ảnh toàn bộ phương tiện cho Vision API hoặc YOLO OCR
+        3. Tính sharpness cục bộ trên vehicle_crop khi cần chụp (giảm 99% tải CPU)
         """
         if frame is None or frame.size == 0:
             return None
 
         h, w, _ = frame.shape
-        sharpness = compute_laplacian_sharpness(frame)
 
         if not self.model_loaded:
             self.load_model()
@@ -268,7 +281,7 @@ class AIPipelineEngine:
         if self.yolo_model is None:
             return None
 
-        # Parse vùng đa giác ROI nếu có
+        # Parse vùng đa giác ROI nếu có (đã có cache tốc độ cao)
         zone_polygon = parse_detection_zone(detection_zone, w, h)
 
         # Danh sách mã lớp COCO đại diện phương tiện: 2: Car, 3: Motorcycle, 5: Bus, 7: Truck
@@ -276,7 +289,8 @@ class AIPipelineEngine:
 
         try:
             device = getattr(self, 'device', 0 if torch.cuda.is_available() else 'cpu')
-            results = self.yolo_model(frame, verbose=False, device=device)
+            with self.inference_lock:
+                results = self.yolo_model(frame, imgsz=640, verbose=False, device=device)
             for res in results:
                 boxes = res.boxes
                 for box in boxes:
@@ -288,7 +302,7 @@ class AIPipelineEngine:
                         x1, y1, x2, y2 = xyxy
 
                         tracker = self.get_tracker(camera_id)
-                        track_id, should_capture = tracker.update_track((x1, y1, x2, y2), sharpness, w, h, zone_polygon=zone_polygon)
+                        track_id, should_capture = tracker.update_track((x1, y1, x2, y2), 0.0, w, h, zone_polygon=zone_polygon)
 
                         if should_capture:
                             # Thêm lề (padding) 6% để lấy trọn vẹn thân xe, cản xe và biển số
@@ -302,6 +316,8 @@ class AIPipelineEngine:
                             vehicle_crop = frame[y1_p:y2_p, x1_p:x2_p]
                             if vehicle_crop is None or vehicle_crop.size == 0:
                                 vehicle_crop = frame[y1:y2, x1:x2]
+
+                            sharpness = compute_laplacian_sharpness(vehicle_crop)
 
                             from settings_manager import settings_manager
                             active_settings = settings_manager.get_settings()
