@@ -216,6 +216,18 @@ def init_db():
                         pass
                 conn.commit()
                 logger.info("Successfully verified utf8mb4_unicode_ci encoding for MySQL tables.")
+
+                # Tự động dọn dẹp các bản ghi video zombie (status 'recording' cũ hơn 30 phút do khởi động lại đột ngột)
+                try:
+                    conn.execute(text("""
+                        UPDATE video_recordings 
+                        SET status = 'completed', 
+                            end_time = IFNULL(end_time, DATE_ADD(start_time, INTERVAL IFNULL(duration_seconds, 300) SECOND))
+                        WHERE status = 'recording' AND start_time < DATE_SUB(NOW(), INTERVAL 30 MINUTE);
+                    """))
+                    conn.commit()
+                except Exception as clean_err:
+                    logger.warning(f"Note on cleaning zombie recordings: {clean_err}")
         except Exception as e:
             logger.warning(f"Could not convert MySQL tables to utf8mb4: {e}")
 

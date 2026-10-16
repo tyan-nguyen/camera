@@ -131,27 +131,74 @@ def get_playback_timeline(
     )
 
 import subprocess
+import threading
+
+# Bộ nhớ đệm các file video đã xác minh chuẩn H.264 (tránh kiểm tra lại trên từng Range request)
+_h264_verified_paths = set()
+# Khóa tránh chạy đồng thời nhiều tiến trình FFmpeg trên cùng 1 file
+_transcoding_in_progress = set()
+_transcode_lock = threading.Lock()
 
 def open_video_file_absolute(file_path: str) -> str:
-    """Chuẩn hóa đường dẫn file video tuyệt đối trên ổ đĩa"""
-    if os.path.isabs(file_path):
-        abs_path = file_path
-    else:
-        abs_path = os.path.join(settings.BASE_DIR, file_path)
-    return abs_path
+    """
+    Chuẩn hóa đường dẫn file video tuyệt đối trên ổ đĩa kèm cơ chế fallback thông minh
+    (Hỗ trợ tự động tìm file khi chuyển đổi giữa ổ đĩa Production D:/ và thư mục cục bộ C:)
+    """
+    if not file_path:
+        return ""
+    
+    # 1. Kiểm tra trực tiếp đường dẫn nếu tồn tại
+    if os.path.isabs(file_path) and os.path.exists(file_path):
+        return file_path
+        
+    direct_rel = os.path.join(settings.BASE_DIR, file_path)
+    if os.path.exists(direct_rel):
+        return direct_rel
+
+    # 2. Tìm kiếm thông minh nếu đường dẫn gốc từ máy khác (vd: D:/Camera/storage/recordings/...)
+    norm_path = file_path.replace("\\", "/")
+    markers = ["storage/recordings/", "recordings/"]
+    for marker in markers:
+        if marker in norm_path:
+            sub = norm_path.split(marker, 1)[1]
+            candidate1 = os.path.join(settings.RECORDINGS_DIR, sub)
+            if os.path.exists(candidate1):
+                return candidate1
+            candidate2 = os.path.join(settings.STORAGE_DIR, "recordings", sub)
+            if os.path.exists(candidate2):
+                return candidate2
+
+    # 3. Thử tìm theo tên file trong folder recordings của hệ thống
+    filename = os.path.basename(file_path)
+    if os.path.exists(settings.RECORDINGS_DIR):
+        for root, dirs, files in os.walk(settings.RECORDINGS_DIR):
+            if filename in files:
+                return os.path.join(root, filename)
+
+    return os.path.join(settings.BASE_DIR, file_path) if not os.path.isabs(file_path) else file_path
 
 def ensure_h264_playable(abs_path: str) -> str:
     """Tự động chuyển đổi file MP4 sang chuẩn H.264 (+faststart + keyframe ngắn) nếu file chưa tương thích trình duyệt"""
-    if not os.path.exists(abs_path):
+    if not abs_path or not os.path.exists(abs_path):
         return abs_path
 
-    try:
-        import imageio_ffmpeg
-        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception:
-        ffmpeg_exe = "ffmpeg"
+    # Nếu file đã được kiểm tra và xác nhận phát tốt, bỏ qua kiểm tra codec để tối đa hóa tốc độ stream
+    if abs_path in _h264_verified_paths:
+        return abs_path
+
+    # Nếu file đang được tiến trình khác transcode, trả về file hiện tại để phục vụ Range request mà không block
+    with _transcode_lock:
+        if abs_path in _transcoding_in_progress:
+            return abs_path
+        _transcoding_in_progress.add(abs_path)
 
     try:
+        try:
+            import imageio_ffmpeg
+            ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception:
+            ffmpeg_exe = "ffmpeg"
+
         cap = cv2.VideoCapture(abs_path)
         fourcc_int = int(cap.get(cv2.CAP_PROP_FOURCC)) if cap.isOpened() else 0
         fourcc_str = ''.join([chr((fourcc_int >> 8 * i) & 0xFF) for i in range(4)]).lower()
@@ -159,13 +206,12 @@ def ensure_h264_playable(abs_path: str) -> str:
         
         # Nếu là FMP4 / mp4v không xem được trên web
         if fourcc_str in ['fmp4', 'mp4v', 'xvid', 'divx', '']:
-            import threading
             temp_path = f"{abs_path}.h264tmp_{os.getpid()}_{threading.get_ident()}.mp4"
             cmd = [
                 ffmpeg_exe, "-y",
                 "-i", abs_path,
                 "-c:v", "libx264",
-                "-preset", "veryfast",
+                "-preset", "ultrafast",
                 "-crf", "23",
                 "-g", "12",
                 "-keyint_min", "6",
@@ -176,16 +222,23 @@ def ensure_h264_playable(abs_path: str) -> str:
             ]
             res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if res.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
-                os.replace(temp_path, abs_path)
-                logger.info(f"Auto-transcoded on-demand to H.264 (+faststart, GOP=12): {abs_path}")
+                try:
+                    os.replace(temp_path, abs_path)
+                    logger.info(f"Auto-transcoded on-demand to H.264 (+faststart, GOP=12): {abs_path}")
+                except Exception as replace_err:
+                    logger.warning(f"Could not replace file after transcode (file locked): {replace_err}")
             else:
                 if os.path.exists(temp_path):
                     try:
                         os.remove(temp_path)
                     except Exception:
                         pass
+        _h264_verified_paths.add(abs_path)
     except Exception as e:
         logger.warning(f"ensure_h264_playable note for {abs_path}: {e}")
+    finally:
+        with _transcode_lock:
+            _transcoding_in_progress.discard(abs_path)
 
     return abs_path
 
@@ -277,6 +330,7 @@ def locate_recording_by_time(
     """
     Tìm file video phân đoạn chứa một mốc thời gian timestamp cụ thể (hoặc file gần nhất)
     để player tự động tải và nhảy tới đúng giây cần xem.
+    Loại bỏ triệt để các bản ghi rác cũ (ghost records) và hỗ trợ chốt file tức thì.
     """
     current_user = get_current_user_optional(request, db)
     if not check_camera_access(camera_id, current_user):
@@ -287,38 +341,52 @@ def locate_recording_by_time(
     except ValueError:
         raise HTTPException(status_code=400, detail="Thời gian timestamp không đúng định dạng.")
 
-    # 1. Tìm file bao trùm target_dt (bao gồm file đang ghi hình hoặc đã hoàn tất)
+    day_start = datetime.combine(target_dt.date(), datetime.min.time())
+    day_end = datetime.combine(target_dt.date(), datetime.max.time())
+
+    # 1. Tìm file đã hoàn tất bao trùm target_dt
     rec = db.query(VideoRecording).filter(
         VideoRecording.camera_id == camera_id,
         VideoRecording.start_time <= target_dt,
-        or_(
-            VideoRecording.end_time >= target_dt,
-            VideoRecording.end_time.is_(None),
-            VideoRecording.status == "recording"
-        )
+        VideoRecording.end_time >= target_dt,
+        VideoRecording.status == "completed"
     ).order_by(VideoRecording.start_time.desc()).first()
 
-    # Nếu sự kiện nằm trong file đang ghi hình hiện tại, yêu cầu rotate để chốt file MP4 có header moov đầy đủ
-    if rec and (rec.status == "recording" or rec.end_time is None):
-        try:
-            from video_recorder import video_recorder_manager
-            video_recorder_manager.rotate_camera_segment(camera_id)
-            import time
-            time.sleep(0.3)
-            db.refresh(rec)
-        except Exception as e:
-            logger.warning(f"Error rotating segment on locate: {e}")
+    # 2. Nếu không thấy, kiểm tra xem có phải sự kiện nằm trong file đang ghi hình hiện tại hay không
+    # (Chỉ xét nếu start_time trong cùng ngày và cách target_dt tối đa 15 phút)
+    if not rec:
+        active_rec = db.query(VideoRecording).filter(
+            VideoRecording.camera_id == camera_id,
+            VideoRecording.status == "recording",
+            VideoRecording.start_time <= target_dt,
+            VideoRecording.start_time >= (target_dt - timedelta(minutes=15))
+        ).order_by(VideoRecording.start_time.desc()).first()
 
-    # 2. Nếu không thấy file bao trùm, so sánh file gần nhất trước và file gần nhất sau để chọn file sát nhất
+        if active_rec:
+            # Yêu cầu chốt file tức thì và đợi writer hoàn tất ghi header moov (tối đa 1.5s)
+            try:
+                from video_recorder import video_recorder_manager
+                video_recorder_manager.rotate_camera_segment(camera_id, wait_timeout=1.5)
+                db.refresh(active_rec)
+            except Exception as e:
+                logger.warning(f"Error rotating segment on locate: {e}")
+            rec = active_rec
+
+    # 3. Nếu vẫn không thấy (ví dụ sự kiện rơi vào khoảng trống nhỏ giữa 2 phân đoạn),
+    # tìm file gần nhất trước và sau TRONG CÙNG NGÀY
     if not rec:
         closest_before = db.query(VideoRecording).filter(
             VideoRecording.camera_id == camera_id,
-            VideoRecording.start_time <= target_dt
+            VideoRecording.start_time >= day_start,
+            VideoRecording.start_time <= target_dt,
+            VideoRecording.status == "completed"
         ).order_by(VideoRecording.start_time.desc()).first()
 
         closest_after = db.query(VideoRecording).filter(
             VideoRecording.camera_id == camera_id,
-            VideoRecording.start_time >= target_dt
+            VideoRecording.start_time >= target_dt,
+            VideoRecording.start_time <= day_end,
+            VideoRecording.status.in_(["completed", "recording"])
         ).order_by(VideoRecording.start_time.asc()).first()
 
         if closest_before and closest_after:
@@ -332,18 +400,26 @@ def locate_recording_by_time(
             rec = closest_after
 
     if not rec:
-        raise HTTPException(status_code=404, detail="Không tìm thấy video nào tại mốc thời gian này.")
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Không tìm thấy đoạn video nào cho camera #{camera_id} vào ngày {target_dt.strftime('%d/%m/%Y')} quanh thời điểm {target_dt.strftime('%H:%M:%S')}."
+        )
 
-    # Tính toán vị trí giây cần tua (seek offset)
+    # 4. Kiểm tra file vật lý và tính toán vị trí giây cần tua (seek offset)
+    abs_file = open_video_file_absolute(rec.file_path)
+    if not os.path.exists(abs_file):
+        logger.warning(f"Video file for recording #{rec.id} not found at {abs_file}")
+
     if target_dt >= rec.start_time:
         raw_offset = (target_dt - rec.start_time).total_seconds()
+        # Lùi 3.0 giây để người xem thấy xe đang chạy tới
         seek_offset_seconds = max(0.0, raw_offset - 3.0)
     else:
         seek_offset_seconds = 0.0
 
     if rec.duration_seconds and rec.duration_seconds > 0:
         if seek_offset_seconds >= rec.duration_seconds:
-            seek_offset_seconds = max(0.0, float(rec.duration_seconds - 3.0))
+            seek_offset_seconds = max(0.0, float(rec.duration_seconds - 1.0))
 
     return {
         "recording_id": rec.id,

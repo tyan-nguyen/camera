@@ -4648,24 +4648,26 @@
         async function locateAndPlayTimestamp(cameraId, timestampStr, plateNumber = '') {
             if (!cameraId || !timestampStr) return;
             try {
-                const res = await fetch(`/api/v1/playback/locate?camera_id=${cameraId}&timestamp=${encodeURIComponent(timestampStr)}`);
+                const cleanTimestamp = timestampStr.replace('T', ' ').trim().split('.')[0];
+                const res = await fetch(`/api/v1/playback/locate?camera_id=${cameraId}&timestamp=${encodeURIComponent(cleanTimestamp)}`);
                 const data = await res.json();
                 if (res.ok && data.recording_id) {
                     playVideoRecording(data, data.seek_offset_seconds || 0);
                     const player = document.getElementById('playback-player-container');
                     if (player) player.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     if (plateNumber) {
-                        showToast(`🚗 Đang phát video sự kiện [${plateNumber}] lúc ${timestampStr.split(' ')[1] || timestampStr}`, "info", 4000);
+                        showToast(`🚗 Đang phát video sự kiện [${plateNumber}] lúc ${cleanTimestamp.split(' ')[1] || cleanTimestamp}`, "info", 4000);
                     }
                 } else if (res.ok && data.recording) {
                     playVideoRecording(data.recording, data.seek_offset_seconds || 0);
                     const player = document.getElementById('playback-player-container');
                     if (player) player.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     if (plateNumber) {
-                        showToast(`🚗 Đang phát video sự kiện [${plateNumber}] lúc ${timestampStr.split(' ')[1] || timestampStr}`, "info", 4000);
+                        showToast(`🚗 Đang phát video sự kiện [${plateNumber}] lúc ${cleanTimestamp.split(' ')[1] || cleanTimestamp}`, "info", 4000);
                     }
                 } else {
-                    showToast(`Không có đoạn video nào được lưu tại thời điểm [${timestampStr}] (Có thể camera chưa bật tính năng ghi hình).`, "warning", 4500);
+                    const errMsg = (data && data.detail) ? data.detail : `Không có đoạn video nào được lưu tại thời điểm [${cleanTimestamp}] (Có thể camera chưa bật tính năng ghi hình).`;
+                    showToast(errMsg, "warning", 5000);
                 }
             } catch (e) {
                 showToast("Lỗi khi tìm đoạn video: " + e, "error");
@@ -4712,7 +4714,7 @@
                 return;
             }
 
-            // Nạp luồng stream mới và tua đến đúng giây targetOffset
+            // Nạp luồng stream mới với Media Fragment #t=targetOffset để trình duyệt ưu tiên Range request đúng giây
             video.pause();
             video.onended = null; // Tạm ngắt onended để không bị nhận nhầm kết thúc luồng cũ
             video.onloadedmetadata = null;
@@ -4737,16 +4739,11 @@
                 }
             };
 
-            video.onloadedmetadata = () => {
-                applySeekOnce();
-            };
-
-            video.oncanplay = () => {
-                applySeekOnce();
-            };
+            video.onloadedmetadata = applySeekOnce;
+            video.oncanplay = applySeekOnce;
 
             video.playbackRate = playbackState.currentSpeed || 1;
-            video.src = streamUrl;
+            video.src = targetOffset > 0 ? `${streamUrl}#t=${targetOffset}` : streamUrl;
             video.load();
         }
 
@@ -5011,12 +5008,18 @@
             }
 
             if (detectedAt) {
-                const datePart = detectedAt.split(' ')[0];
+                // Chuẩn hóa chuỗi thời gian (hỗ trợ ISO '2026-10-15T13:47:01.000' hoặc '2026-10-15 13:47:01')
+                const cleanDt = detectedAt.replace('T', ' ').trim();
+                const parts = cleanDt.split(' ');
+                const datePart = parts[0];
+                const timePart = parts[1] ? parts[1].split('.')[0] : '00:00:00';
+                const normalizedTimestamp = `${datePart} ${timePart}`;
+
                 if (selectDate) selectDate.value = datePart;
                 playbackState.selectedDate = datePart;
 
                 await loadPlaybackTimeline();
-                await locateAndPlayTimestamp(cameraId, detectedAt, plateNumber);
+                await locateAndPlayTimestamp(cameraId, normalizedTimestamp, plateNumber);
             } else {
                 if (selectDate && !selectDate.value) {
                     const today = new Date().toISOString().split('T')[0];

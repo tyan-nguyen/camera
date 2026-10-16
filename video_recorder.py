@@ -34,7 +34,7 @@ def _async_convert_to_h264_faststart(file_path: str, recording_id: Optional[int]
             ffmpeg_exe, "-y",
             "-i", file_path,
             "-c:v", "libx264",
-            "-preset", "veryfast",
+            "-preset", "ultrafast",
             "-crf", "23",
             "-g", str(gop_size),
             "-keyint_min", str(max(2, int(gop_size / 2))),
@@ -89,6 +89,7 @@ class CameraVideoRecorder:
         self.frame_queue: queue.Queue = queue.Queue(maxsize=120)  # Bộ đệm tối đa 120 frame (~20 giây)
         self.stop_requested = threading.Event()
         self.rotate_requested = threading.Event()
+        self.rotation_done_event = threading.Event()
         self.worker_thread = threading.Thread(target=self._run_writer_loop, daemon=True)
         
         # State ghi hình
@@ -100,9 +101,11 @@ class CameraVideoRecorder:
         self.frame_count: int = 0
         self.is_active: bool = False
 
-    def request_rotation(self):
+    def request_rotation(self) -> threading.Event:
         """Kích hoạt chốt file segment hiện tại và mở file mới ngay lập tức"""
+        self.rotation_done_event.clear()
         self.rotate_requested.set()
+        return self.rotation_done_event
 
     def start(self):
         self.is_active = True
@@ -254,11 +257,19 @@ class CameraVideoRecorder:
         self.current_file_path = None
         self.segment_start_time = None
         self.frame_count = 0
+        self.rotation_done_event.set()
 
     def _run_writer_loop(self):
         while not self.stop_requested.is_set() or not self.frame_queue.empty():
+            # Nếu có yêu cầu rotate và file đang mở, chốt file ngay cả khi hàng đợi rỗng
+            if self.rotate_requested.is_set() and self.writer is not None:
+                self.rotate_requested.clear()
+                self._close_current_segment()
+                self.rotation_done_event.set()
+                continue
+
             try:
-                frame = self.frame_queue.get(timeout=0.5)
+                frame = self.frame_queue.get(timeout=0.3)
             except queue.Empty:
                 continue
 
@@ -275,8 +286,11 @@ class CameraVideoRecorder:
             )
 
             if need_new_segment:
+                had_rot = self.rotate_requested.is_set()
                 self.rotate_requested.clear()
                 success = self._open_new_segment(w, h)
+                if had_rot:
+                    self.rotation_done_event.set()
                 if not success:
                     time.sleep(0.5)
                     continue
@@ -290,6 +304,7 @@ class CameraVideoRecorder:
 
         # Khi vòng lặp kết thúc, đóng file segment hiện tại
         self._close_current_segment()
+        self.rotation_done_event.set()
         logger.info(f"[{self.camera_name}] Video recording worker loop stopped.")
 
     def stop(self):
@@ -331,12 +346,14 @@ class VideoRecorderManager:
                 recorder.stop()
                 logger.info(f"Stopped video recording for Camera ID: {camera_id}")
 
-    def rotate_camera_segment(self, camera_id: int):
-        """Kích hoạt hoàn tất file video hiện tại và bắt đầu file mới để video có thể xem lại ngay lập tức"""
+    def rotate_camera_segment(self, camera_id: int, wait_timeout: float = 2.0) -> bool:
+        """Kích hoạt hoàn tất file video hiện tại và đợi chốt file có header moov để xem được ngay"""
         with self.lock:
             recorder = self.recorders.get(camera_id)
-            if recorder and recorder.is_active:
-                recorder.request_rotation()
+        if recorder and recorder.is_active:
+            evt = recorder.request_rotation()
+            return evt.wait(timeout=wait_timeout)
+        return False
 
     def push_frame(self, camera_id: int, frame: np.ndarray):
         recorder = self.recorders.get(camera_id)
