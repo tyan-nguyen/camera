@@ -2,6 +2,9 @@
 title ANPR Camera Server - Auto Restart Watchdog
 color 0A
 
+:: Ep CUDA Driver JIT bien dich kernel tu dong cho cac dong GPU the he moi (RTX 50 series Blackwell)
+set CUDA_FORCE_PTX_JIT=1
+
 :loop
 echo ========================================================
 echo [%date% %time%] Khoi chay he thong ANPR Camera Server...

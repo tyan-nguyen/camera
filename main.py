@@ -1,4 +1,6 @@
 import os
+# Ép CUDA Driver tự động biên dịch kernel PTX JIT cho các thế hệ GPU mới nhất (RTX 50 series Blackwell sm_120)
+os.environ["CUDA_FORCE_PTX_JIT"] = "1"
 # Cấu hình FFmpeg RTSP qua TCP, timeout 5 giây, nobuffer để tránh giật hình và tự phục hồi nhanh khi rớt mạng
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|max_delay;500000|stimeout;5000000|timeout;5000000"
 
