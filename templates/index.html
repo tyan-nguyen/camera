@@ -1699,22 +1699,6 @@
                             </button>
                         </div>
 
-                        <!-- KHỐI THÔNG TIN TRẠNG THÁI NGHIỆP VỤ & ĐỒNG BỘ WEBHOOK -->
-                        <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 flex flex-wrap items-center justify-between gap-2.5 shadow-sm">
-                            <div class="flex items-center space-x-2">
-                                <span class="text-xs text-slate-400 font-semibold flex items-center">
-                                    <i class="fa-solid fa-traffic-light text-amber-400 mr-1.5"></i>Trạng thái:
-                                </span>
-                                <span id="edit-log-status-detail">--</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <span class="text-xs text-slate-400 font-semibold flex items-center">
-                                    <i class="fa-solid fa-cloud-arrow-up text-blue-400 mr-1.5"></i>Đồng bộ:
-                                </span>
-                                <span id="edit-log-sync-detail">--</span>
-                            </div>
-                        </div>
-
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
                                 <span>Biển Số Xe Đã Nhận Dạng:</span>
@@ -1749,14 +1733,6 @@
                             <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ghi Chú / Trạng Thái (Summary):</label>
                             <input type="text" id="edit-log-summary" placeholder="Ví dụ: Xe nội bộ về bãi, Xe đi bảo dưỡng..."
                                 class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:border-amber-500 text-slate-200">
-                            <!-- Gợi ý nhanh các trạng thái thường dùng -->
-                            <div class="flex flex-wrap items-center gap-1.5 mt-2">
-                                <span class="text-[10px] text-slate-400">Gợi ý nhanh:</span>
-                                <button type="button" onclick="setEditLogSummary('Xe nội bộ về bãi')" class="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">Xe nội bộ về bãi</button>
-                                <button type="button" onclick="setEditLogSummary('Xe nội bộ ra cổng')" class="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">Xe nội bộ ra cổng</button>
-                                <button type="button" onclick="setEditLogSummary('Xe đi bảo dưỡng')" class="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">Xe đi bảo dưỡng</button>
-                                <button type="button" onclick="setEditLogSummary('Xe đi đăng kiểm')" class="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">Xe đi đăng kiểm</button>
-                            </div>
                         </div>
                         <div class="p-3 rounded-xl bg-blue-500/10 border border-blue-500/25 text-[11px] text-blue-300 flex items-start space-x-2">
                             <i class="fa-solid fa-cloud-arrow-up text-blue-400 mt-0.5 flex-shrink-0"></i>
@@ -5273,14 +5249,6 @@
             if (btnNextFooter) btnNextFooter.disabled = isLast;
         }
 
-        function setEditLogSummary(text) {
-            const el = document.getElementById('edit-log-summary');
-            if (el) {
-                el.value = text;
-                el.focus();
-            }
-        }
-
         function populateEditModalWithItem(item) {
             if (!item) return;
             const logIdEl = document.getElementById('edit-log-id');
@@ -5302,26 +5270,18 @@
                 camEl.innerText = item.camera_name || (item.camera_id ? `Camera #${item.camera_id}` : 'Camera');
             }
 
-            // Hiển thị Trạng thái nghiệp vụ (ví dụ: Xe nội bộ về bãi, Có kế hoạch, Không kế hoạch...)
+            // Hiển thị Trạng thái nghiệp vụ trên Header (ví dụ: Xe nội bộ về bãi, Có kế hoạch, Không kế hoạch...)
             const statusBadgeHtml = renderActionStatusBadge(item.action_status, item.summary, item.vehicle_classification);
             const statusBadgeEl = document.getElementById('edit-log-status-badge');
             if (statusBadgeEl) {
                 statusBadgeEl.innerHTML = statusBadgeHtml;
             }
-            const statusDetailEl = document.getElementById('edit-log-status-detail');
-            if (statusDetailEl) {
-                statusDetailEl.innerHTML = statusBadgeHtml;
-            }
 
-            // Hiển thị Trạng thái đồng bộ (Đã sync, Chờ sync, Lỗi sync)
+            // Hiển thị Trạng thái đồng bộ trên Header (Đã sync, Chờ sync, Lỗi sync)
             const syncBadgeHtml = renderSyncStatusBadge(item.sync_status, item.sync_error) || '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20 whitespace-nowrap"><i class="fa-solid fa-circle-info mr-1 text-[9px]"></i>Chưa sync</span>';
             const syncBadgeEl = document.getElementById('edit-log-sync-badge');
             if (syncBadgeEl) {
                 syncBadgeEl.innerHTML = syncBadgeHtml;
-            }
-            const syncDetailEl = document.getElementById('edit-log-sync-detail');
-            if (syncDetailEl) {
-                syncDetailEl.innerHTML = syncBadgeHtml;
             }
 
             const plateInput = document.getElementById('edit-log-plate');
