@@ -1654,6 +1654,10 @@
                                 <i class="fa-solid fa-video text-blue-400"></i>
                                 <span id="edit-log-cam-name">Camera</span>
                             </span>
+                            <!-- TRẠNG THÁI NGHIỆP VỤ (VÍ DỤ: XE NỘI BỘ VỀ BÃI) -->
+                            <span id="edit-log-status-badge"></span>
+                            <!-- TRẠNG THÁI ĐỒNG BỘ (VÍ DỤ: ĐÃ SYNC) -->
+                            <span id="edit-log-sync-badge"></span>
                         </div>
                     </div>
                 </div>
@@ -1694,6 +1698,23 @@
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
                         </div>
+
+                        <!-- KHỐI THÔNG TIN TRẠNG THÁI NGHIỆP VỤ & ĐỒNG BỘ WEBHOOK -->
+                        <div class="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 flex flex-wrap items-center justify-between gap-2.5 shadow-sm">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-slate-400 font-semibold flex items-center">
+                                    <i class="fa-solid fa-traffic-light text-amber-400 mr-1.5"></i>Trạng thái:
+                                </span>
+                                <span id="edit-log-status-detail">--</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-slate-400 font-semibold flex items-center">
+                                    <i class="fa-solid fa-cloud-arrow-up text-blue-400 mr-1.5"></i>Đồng bộ:
+                                </span>
+                                <span id="edit-log-sync-detail">--</span>
+                            </div>
+                        </div>
+
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
                                 <span>Biển Số Xe Đã Nhận Dạng:</span>
@@ -1726,8 +1747,16 @@
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ghi Chú / Trạng Thái (Summary):</label>
-                            <input type="text" id="edit-log-summary" placeholder="Ghi chú sự kiện..."
+                            <input type="text" id="edit-log-summary" placeholder="Ví dụ: Xe nội bộ về bãi, Xe đi bảo dưỡng..."
                                 class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:border-amber-500 text-slate-200">
+                            <!-- Gợi ý nhanh các trạng thái thường dùng -->
+                            <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                                <span class="text-[10px] text-slate-400">Gợi ý nhanh:</span>
+                                <button type="button" onclick="setEditLogSummary('Xe nội bộ về bãi')" class="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">Xe nội bộ về bãi</button>
+                                <button type="button" onclick="setEditLogSummary('Xe nội bộ ra cổng')" class="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">Xe nội bộ ra cổng</button>
+                                <button type="button" onclick="setEditLogSummary('Xe đi bảo dưỡng')" class="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">Xe đi bảo dưỡng</button>
+                                <button type="button" onclick="setEditLogSummary('Xe đi đăng kiểm')" class="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">Xe đi đăng kiểm</button>
+                            </div>
                         </div>
                         <div class="p-3 rounded-xl bg-blue-500/10 border border-blue-500/25 text-[11px] text-blue-300 flex items-start space-x-2">
                             <i class="fa-solid fa-cloud-arrow-up text-blue-400 mt-0.5 flex-shrink-0"></i>
@@ -4296,12 +4325,11 @@
                             <button onclick="openPlaybackForEvent(${item.camera_id}, '${item.detected_at}', '${item.plate_number}')" class="px-2.5 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
-                            <button onclick="openImageModal('${item.image_plate_path}', '${item.image_full_path}', '${item.plate_number}', '${(item.summary || '').replace(/'/g, "\\'")}', ${item.camera_id}, '${item.detected_at}', '${item.vehicle_classification || ''}', ${item.id}, '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${item.sync_status || ''}', '${(item.sync_error || '').replace(/'/g, "\\'")}', '${encodeURIComponent(item.action_result_raw || '')}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
                             ${(item.sync_status === 'PENDING_SYNC' || item.sync_status === 'SYNC_FAILED') ? `
                                 <button onclick="openWebhookSyncModal('queue')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Xem trong hàng đợi đồng bộ"><i class="fa-solid fa-cloud-arrow-up"></i></button>
                             ` : ''}
+                            <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${(item.summary || '').replace(/'/g, "\\'")}', '${item.image_plate_path}', '${item.image_full_path}', 'history', '${item.detected_at || ''}', '${(item.camera_name || '').replace(/'/g, "\\'")}', '${item.action_status || ''}', '${item.vehicle_classification || ''}', '${item.sync_status || ''}', '${(item.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>
                             ${currentUser && (currentUser.role === 'admin' || currentUser.role === 'quan_ly') ? `
-                                <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${(item.summary || '').replace(/'/g, "\\'")}', '${item.image_plate_path}', '${item.image_full_path}', 'history', '${item.detected_at || ''}', '${(item.camera_name || '').replace(/'/g, "\\'")}')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 rounded-lg" title="Chỉnh sửa"><i class="fa-solid fa-pen-to-square"></i></button>
                                 <button onclick="deleteVehicleLog(${item.id}, '${item.plate_number}')" class="px-2 py-1 text-xs bg-rose-600/20 text-rose-400 rounded-lg" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
                             ` : ''}
                         </td>
@@ -4384,11 +4412,10 @@
                             <button onclick="openPlaybackForEvent(${d.camera_id}, '${d.detected_at}', '${d.plate_number}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
-                            <button onclick="openImageModal('${d.image_plate_path}', '${d.image_full_path}', '${d.plate_number}', '${(d.summary || '').replace(/'/g, "\\'")}', ${d.camera_id}, '${d.detected_at}', '${d.vehicle_classification || ''}', ${d.id}, '${d.vehicle_view || 'front'}', '${d.vehicle_type || 'car'}', '${d.sync_status || ''}', '${(d.sync_error || '').replace(/'/g, "\\'")}', '${encodeURIComponent(d.action_result_raw || '')}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
                             ${(d.sync_status === 'PENDING_SYNC' || d.sync_status === 'SYNC_FAILED') ? `
                                 <button onclick="openWebhookSyncModal('queue')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Xem hàng đợi đồng bộ"><i class="fa-solid fa-cloud-arrow-up"></i></button>
                             ` : ''}
-                            <button onclick="openEditLogModal(${d.id}, '${d.plate_number}', '${d.vehicle_view || 'front'}', '${d.vehicle_type || 'car'}', '${(d.summary || '').replace(/'/g, "\\'")}', '${d.image_plate_path}', '${d.image_full_path}', 'dashboard', '${d.detected_at || ''}', '${(d.camera_name || '').replace(/'/g, "\\'")}')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="openEditLogModal(${d.id}, '${d.plate_number}', '${d.vehicle_view || 'front'}', '${d.vehicle_type || 'car'}', '${(d.summary || '').replace(/'/g, "\\'")}', '${d.image_plate_path}', '${d.image_full_path}', 'dashboard', '${d.detected_at || ''}', '${(d.camera_name || '').replace(/'/g, "\\'")}', '${d.action_status || ''}', '${d.vehicle_classification || ''}', '${d.sync_status || ''}', '${(d.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>
                         </td>
                     </tr>
                 `).join('');
@@ -5246,6 +5273,14 @@
             if (btnNextFooter) btnNextFooter.disabled = isLast;
         }
 
+        function setEditLogSummary(text) {
+            const el = document.getElementById('edit-log-summary');
+            if (el) {
+                el.value = text;
+                el.focus();
+            }
+        }
+
         function populateEditModalWithItem(item) {
             if (!item) return;
             const logIdEl = document.getElementById('edit-log-id');
@@ -5265,6 +5300,28 @@
             const camEl = document.getElementById('edit-log-cam-name');
             if (camEl) {
                 camEl.innerText = item.camera_name || (item.camera_id ? `Camera #${item.camera_id}` : 'Camera');
+            }
+
+            // Hiển thị Trạng thái nghiệp vụ (ví dụ: Xe nội bộ về bãi, Có kế hoạch, Không kế hoạch...)
+            const statusBadgeHtml = renderActionStatusBadge(item.action_status, item.summary, item.vehicle_classification);
+            const statusBadgeEl = document.getElementById('edit-log-status-badge');
+            if (statusBadgeEl) {
+                statusBadgeEl.innerHTML = statusBadgeHtml;
+            }
+            const statusDetailEl = document.getElementById('edit-log-status-detail');
+            if (statusDetailEl) {
+                statusDetailEl.innerHTML = statusBadgeHtml;
+            }
+
+            // Hiển thị Trạng thái đồng bộ (Đã sync, Chờ sync, Lỗi sync)
+            const syncBadgeHtml = renderSyncStatusBadge(item.sync_status, item.sync_error) || '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20 whitespace-nowrap"><i class="fa-solid fa-circle-info mr-1 text-[9px]"></i>Chưa sync</span>';
+            const syncBadgeEl = document.getElementById('edit-log-sync-badge');
+            if (syncBadgeEl) {
+                syncBadgeEl.innerHTML = syncBadgeHtml;
+            }
+            const syncDetailEl = document.getElementById('edit-log-sync-detail');
+            if (syncDetailEl) {
+                syncDetailEl.innerHTML = syncBadgeHtml;
             }
 
             const plateInput = document.getElementById('edit-log-plate');
@@ -5317,7 +5374,7 @@
             populateEditModalWithItem(currentEditList[currentEditIndex]);
         }
 
-        function openEditLogModal(logId, currentPlate, currentView, currentType, currentSummary, imagePlatePath, imageFullPath, source = null, detectedAt = null, cameraName = null) {
+        function openEditLogModal(logId, currentPlate, currentView, currentType, currentSummary, imagePlatePath, imageFullPath, source = null, detectedAt = null, cameraName = null, actionStatus = null, classification = null, syncStatus = null, syncError = null) {
             const numericId = parseInt(logId, 10);
 
             // Xác định danh sách nguồn hiện hành (History logs hoặc Dashboard logs)
@@ -5350,7 +5407,11 @@
                     image_plate_path: imagePlatePath || '',
                     image_full_path: imageFullPath || '',
                     detected_at: detectedAt || (currentModalEvent ? currentModalEvent.detectedAt : ''),
-                    camera_name: cameraName || ''
+                    camera_name: cameraName || '',
+                    action_status: actionStatus || '',
+                    vehicle_classification: classification || '',
+                    sync_status: syncStatus || '',
+                    sync_error: syncError || ''
                 });
                 idx = currentEditList.length - 1;
             } else {
@@ -5359,6 +5420,18 @@
                 }
                 if (cameraName && !currentEditList[idx].camera_name) {
                     currentEditList[idx].camera_name = cameraName;
+                }
+                if (actionStatus && !currentEditList[idx].action_status) {
+                    currentEditList[idx].action_status = actionStatus;
+                }
+                if (classification && !currentEditList[idx].vehicle_classification) {
+                    currentEditList[idx].vehicle_classification = classification;
+                }
+                if (syncStatus && !currentEditList[idx].sync_status) {
+                    currentEditList[idx].sync_status = syncStatus;
+                }
+                if (syncError && !currentEditList[idx].sync_error) {
+                    currentEditList[idx].sync_error = syncError;
                 }
             }
 
@@ -5450,6 +5523,9 @@
                         currentEditList[currentEditIndex].vehicle_type = updated.vehicle_type;
                         currentEditList[currentEditIndex].summary = updated.summary;
                         currentEditList[currentEditIndex].vehicle_classification = updated.vehicle_classification;
+                        currentEditList[currentEditIndex].action_status = updated.action_status;
+                        currentEditList[currentEditIndex].sync_status = updated.sync_status;
+                        currentEditList[currentEditIndex].sync_error = updated.sync_error;
                         currentEditList[currentEditIndex].is_edited = true;
                     }
 
@@ -5457,6 +5533,11 @@
                     loadRecentDashboardLogs();
                     if (typeof currentTab !== 'undefined' && currentTab === 'history') {
                         fetchHistoryLogs(currentHistoryPage || 1);
+                    }
+
+                    // Cập nhật lại thông tin trạng thái & đồng bộ trên giao diện modal hiện tại
+                    if (!isAdvanceNext && currentEditList && currentEditIndex >= 0 && currentEditIndex < currentEditList.length) {
+                        populateEditModalWithItem(currentEditList[currentEditIndex]);
                     }
 
                     const cls = updated.vehicle_classification;
@@ -5707,8 +5788,7 @@
                                 <button onclick="openPlaybackForEvent(${data.camera_id}, '${data.detected_at}', '${data.plate_number}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video">
                                     <i class="fa-solid fa-film mr-1"></i>Video
                                 </button>
-                                <button onclick="openImageModal('${data.image_plate_path}', '${data.image_full_path}', '${data.plate_number}', '${(data.summary || '').replace(/'/g, "\\'")}', ${data.camera_id}, '${data.detected_at}', '${data.vehicle_classification || ''}', ${data.id || ''}, '${data.vehicle_view || 'front'}', '${data.vehicle_type || 'car'}', '${data.sync_status || ''}', '${(data.sync_error || '').replace(/'/g, "\\'")}', '${encodeURIComponent(data.action_result_raw || '')}')" class="px-2.5 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg">Chi Tiết</button>
-                                ${data.id ? `<button onclick="openEditLogModal(${data.id}, '${data.plate_number}', '${data.vehicle_view || 'front'}', '${data.vehicle_type || 'car'}', '${(data.summary || '').replace(/'/g, "\\'")}', '${data.image_plate_path}', '${data.image_full_path}', 'dashboard', '${data.detected_at || ''}', '${(data.camera_name || '').replace(/'/g, "\\'")}')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square"></i></button>` : ''}
+                                ${data.id ? `<button onclick="openEditLogModal(${data.id}, '${data.plate_number}', '${data.vehicle_view || 'front'}', '${data.vehicle_type || 'car'}', '${(data.summary || '').replace(/'/g, "\\'")}', '${data.image_plate_path}', '${data.image_full_path}', 'dashboard', '${data.detected_at || ''}', '${(data.camera_name || '').replace(/'/g, "\\'")}', '${data.action_status || ''}', '${data.vehicle_classification || ''}', '${data.sync_status || ''}', '${(data.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>` : ''}
                             </td>
                         </tr>
                     `;
