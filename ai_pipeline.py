@@ -290,7 +290,17 @@ class AIPipelineEngine:
         try:
             device = getattr(self, 'device', 0 if torch.cuda.is_available() else 'cpu')
             with self.inference_lock:
-                results = self.yolo_model(frame, imgsz=640, verbose=False, device=device)
+                try:
+                    results = self.yolo_model(frame, imgsz=640, verbose=False, device=device)
+                except Exception as cuda_err:
+                    err_msg = str(cuda_err).lower()
+                    if "cuda" in err_msg or "kernel image" in err_msg:
+                        logger.warning(f"CUDA execution failed on GPU ({cuda_err}). Auto-falling back to CPU for YOLO inference.")
+                        self.device = 'cpu'
+                        device = 'cpu'
+                        results = self.yolo_model(frame, imgsz=640, verbose=False, device='cpu')
+                    else:
+                        raise cuda_err
             for res in results:
                 boxes = res.boxes
                 for box in boxes:
