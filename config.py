@@ -5,8 +5,8 @@ try:
 except Exception:
     pass
 
-# Cấu hình FFmpeg timeout 10 giây (10.000.000 microsecond) để hỗ trợ camera IP/RTSP qua mạng WAN/Internet và codec H.265
-os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;10000000|timeout;10000000"
+# Cấu hình FFmpeg RTSP qua TCP, timeout 5 giây, nobuffer để tránh giật hình và tự phục hồi nhanh khi rớt mạng
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|max_delay;500000|stimeout;5000000|timeout;5000000"
 
 class Settings:
     APP_NAME: str = "ANPR 5-Camera Monitoring System"

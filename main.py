@@ -1,6 +1,6 @@
 import os
-# Cấu hình FFmpeg timeout 10 giây (10.000.000 microsecond) trước khi load bất kỳ module OpenCV nào
-os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|stimeout;10000000|timeout;10000000"
+# Cấu hình FFmpeg RTSP qua TCP, timeout 5 giây, nobuffer để tránh giật hình và tự phục hồi nhanh khi rớt mạng
+os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|fflags;nobuffer|max_delay;500000|stimeout;5000000|timeout;5000000"
 
 import asyncio
 import logging
@@ -99,8 +99,22 @@ def seed_default_cameras():
     finally:
         db.close()
 
+def prevent_windows_sleep():
+    """Ngăn Windows tự động đi vào trạng thái Sleep/Hibernate khi chạy server camera qua đêm"""
+    import sys
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ES_CONTINUOUS = 0x80000000
+            ES_SYSTEM_REQUIRED = 0x00000001
+            ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+            logger.info("Windows Sleep Prevention enabled: System will remain awake 24/7.")
+        except Exception as e:
+            logger.debug(f"Could not set Windows execution state: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    prevent_windows_sleep()
     logger.info("Starting ANPR Multi-Zone Monitoring System...")
     init_db()
     settings_manager.reload_from_db()
