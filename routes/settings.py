@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from schemas import SystemSettingsResponse, SystemSettingsUpdate, TestVisionRequest
 from settings_manager import settings_manager
@@ -28,7 +29,7 @@ def get_system_settings():
         video_segment_minutes=current.get("video_segment_minutes", 5),
         video_retention_days=current.get("video_retention_days", 15),
         auto_cleanup_disk=current.get("auto_cleanup_disk", True),
-        updated_at="2026-08-19T00:00:00"
+        updated_at=datetime.utcnow()
     )
 
 @router.put("", response_model=SystemSettingsResponse)
@@ -51,7 +52,7 @@ def update_system_settings(settings_in: SystemSettingsUpdate, current_user=Depen
         video_segment_minutes=updated.get("video_segment_minutes", 5),
         video_retention_days=updated.get("video_retention_days", 15),
         auto_cleanup_disk=updated.get("auto_cleanup_disk", True),
-        updated_at="2026-08-19T00:00:00"
+        updated_at=datetime.utcnow()
     )
 
 @router.post("/test-vision")

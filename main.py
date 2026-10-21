@@ -23,6 +23,8 @@ from notification_service import notification_service
 from routes import camera, history, settings as settings_route, tts, auth, users, action_groups, devices, playback, webhook_sync
 from settings_manager import settings_manager
 from webhook_sync_worker import webhook_sync_worker
+from video_recorder import recover_orphaned_recordings
+from disk_cleanup import disk_cleanup_scheduler
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -128,12 +130,18 @@ async def lifespan(app: FastAPI):
     
     disk_worker.start()
     webhook_sync_worker.start()
+    disk_cleanup_scheduler.start()
+    recover_orphaned_recordings()
     stream_manager.start_all_active_cameras()
     
     try:
         yield
     finally:
         logger.info("Stopping ANPR System components...")
+        try:
+            disk_cleanup_scheduler.stop()
+        except Exception as e:
+            logger.warning(f"Error stopping disk_cleanup_scheduler: {e}")
         try:
             webhook_sync_worker.stop()
         except Exception as e:

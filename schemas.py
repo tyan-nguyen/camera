@@ -299,8 +299,22 @@ class VideoExportResponse(BaseModel):
     duration_seconds: int
     status: str
     created_at: datetime
+    success: bool = True
+    message: Optional[str] = "Cắt và xuất video thành công"
 
     model_config = ConfigDict(from_attributes=True)
+
+class StorageStatusResponse(BaseModel):
+    storage_path: str
+    total_gb: float
+    used_gb: float
+    free_gb: float
+    used_percent: float
+    recordings_size_gb: float
+    recordings_count: int
+    retention_days: int
+    auto_cleanup_disk: bool
+    is_disk_low: bool = False
 
 # ==========================================
 # 6. User & Permission Schemas

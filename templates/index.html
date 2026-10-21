@@ -490,6 +490,39 @@
 
         <!-- TAB 3: VIDEO PLAYBACK & NVR TIMELINE -->
         <div id="page-playback" class="hidden space-y-4 sm:space-y-6">
+            <!-- Storage & Disk Usage Banner -->
+            <div id="playback-storage-banner" class="glass-panel rounded-2xl p-3.5 sm:p-4 border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="flex items-center space-x-3 w-full sm:w-auto">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center text-base shadow-sm flex-shrink-0">
+                        <i class="fa-solid fa-hard-drive"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-white text-xs sm:text-sm">Bộ Nhớ & Ổ Đĩa Ghi Hình</span>
+                            <span id="storage-status-path" class="text-[10px] text-slate-400 font-mono hidden sm:inline">(storage/recordings)</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5" id="storage-status-text">
+                            Đang tải tình trạng dung lượng ổ đĩa...
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                    <div class="w-40 sm:w-56 space-y-1">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                            <span>Đã dùng:</span>
+                            <span id="storage-status-percent" class="font-bold text-cyan-400">0%</span>
+                        </div>
+                        <div class="w-full h-2 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+                            <div id="storage-status-bar" class="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-500" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <button onclick="loadPlaybackStorageStatus()" class="p-2 px-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1.5 shadow" title="Làm mới trạng thái dung lượng ổ đĩa">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span class="hidden sm:inline text-[11px]">Làm mới</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- Filter & Controls Header Bar -->
             <div class="glass-panel rounded-2xl p-3.5 sm:p-5 flex flex-wrap items-center justify-between gap-3 border border-slate-800">
                 <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -577,6 +610,10 @@
                                     class="w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/30 transition-all">
                                     <i class="fa-solid fa-play" id="playback-icon-play"></i>
                                 </button>
+                                <button onclick="stepPlaybackFrame(-1)" title="Lùi 1 khung hình (Frame step back)"
+                                    class="p-2 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white transition-all text-xs">
+                                    <i class="fa-solid fa-backward-step"></i>
+                                </button>
                                 <button onclick="seekPlaybackRelative(-10)" title="Tua lùi 10 giây"
                                     class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
                                     <i class="fa-solid fa-rotate-left"></i>
@@ -586,6 +623,10 @@
                                     class="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
                                     <span class="font-mono text-[11px]">+10s</span>
                                     <i class="fa-solid fa-rotate-right"></i>
+                                </button>
+                                <button onclick="stepPlaybackFrame(1)" title="Tiến 1 khung hình (Frame step forward)"
+                                    class="p-2 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white transition-all text-xs">
+                                    <i class="fa-solid fa-forward-step"></i>
                                 </button>
                                 <div class="px-3 py-1.5 rounded-xl bg-slate-950 font-mono text-slate-300 text-xs border border-slate-800">
                                     <span id="playback-current-time-text">00:00:00</span>
@@ -617,41 +658,61 @@
 
                             <!-- Right Tools -->
                             <div class="flex items-center space-x-1.5">
+                                <button onclick="capturePlaybackSnapshot()" title="Chụp ảnh khung hình hiện tại tải về máy"
+                                    class="p-2 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-500 text-slate-300 hover:text-cyan-400 transition-all text-xs flex items-center gap-1">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <span class="hidden xl:inline text-[11px]">Chụp ảnh</span>
+                                </button>
+                                <button onclick="togglePlaybackPiP()" title="Hình trong hình (Picture-in-Picture)"
+                                    class="p-2 rounded-xl bg-slate-900 border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-blue-400 transition-all text-xs">
+                                    <i class="fa-solid fa-window-restore"></i>
+                                </button>
                                 <button onclick="setExportMarkersFromCurrentTime()" title="Đặt mốc thời gian này vào bộ cắt video"
                                     class="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl font-semibold flex items-center gap-1.5 transition-all">
                                     <i class="fa-solid fa-scissors"></i>
                                     <span class="hidden sm:inline">Cắt Đoạn Này</span>
                                 </button>
                                 <button onclick="togglePlaybackFullscreen()" title="Toàn màn hình"
-                                    class="p-2 rounded-xl bg-slate-900 border border-slate-700 hover:text-white text-slate-400 transition-all">
+                                    class="p-2 rounded-xl bg-slate-900 border border-slate-700 hover:text-white text-slate-400 transition-all text-xs">
                                     <i class="fa-solid fa-expand"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 24-Hour Interactive Timeline Ruler Component -->
+                    <!-- Interactive Timeline Ruler Component -->
                     <div class="glass-panel rounded-2xl p-3 sm:p-4 border border-slate-800 space-y-2 select-none">
-                        <div class="flex items-center justify-between text-xs">
+                        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
                             <div class="flex items-center space-x-3">
                                 <span class="font-bold text-white flex items-center gap-1.5">
                                     <i class="fa-solid fa-timeline text-blue-400"></i>
-                                    <span>Timeline 24 Giờ:</span>
+                                    <span id="timeline-title-text">Timeline 24 Giờ:</span>
                                 </span>
                                 <span class="text-slate-400 text-[11px]" id="timeline-hover-time">Rê chuột để xem giờ</span>
                             </div>
-                            <div class="flex items-center space-x-3 text-[11px]">
-                                <span class="flex items-center gap-1 text-slate-300">
-                                    <span class="w-3 h-2 rounded bg-emerald-500/80 inline-block"></span> Có Video
-                                </span>
-                                <span class="flex items-center gap-1 text-slate-300">
-                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span> Xe Vào/Ra
-                                </span>
+
+                            <!-- Timeline Zoom & Navigation Controls -->
+                            <div class="flex items-center space-x-2">
+                                <div id="timeline-zoom-nav" class="hidden items-center space-x-1">
+                                    <button onclick="shiftTimelineWindow(-1)" class="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white text-[10px]" title="Khoảng trước">
+                                        <i class="fa-solid fa-chevron-left mr-0.5"></i>Trước
+                                    </button>
+                                    <span id="timeline-window-label" class="text-[10px] font-mono text-cyan-400 px-1 font-bold">00:00 - 04:00</span>
+                                    <button onclick="shiftTimelineWindow(1)" class="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white text-[10px]" title="Khoảng sau">
+                                        Sau<i class="fa-solid fa-chevron-right ml-0.5"></i>
+                                    </button>
+                                </div>
+                                <div class="flex items-center space-x-0.5 bg-slate-900 p-0.5 rounded-xl border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 font-bold px-1.5 hidden sm:inline">ZOOM:</span>
+                                    <button onclick="setTimelineZoom(24)" id="zoom-btn-24" class="timeline-zoom-btn px-2 py-0.5 rounded-lg font-bold font-mono text-[10px] bg-blue-600 text-white shadow">24H</button>
+                                    <button onclick="setTimelineZoom(4)" id="zoom-btn-4" class="timeline-zoom-btn px-2 py-0.5 rounded-lg font-bold font-mono text-[10px] text-slate-400 hover:text-white">4H</button>
+                                    <button onclick="setTimelineZoom(1)" id="zoom-btn-1" class="timeline-zoom-btn px-2 py-0.5 rounded-lg font-bold font-mono text-[10px] text-slate-400 hover:text-white">1H</button>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- 24H Ruler Scale Marks (00:00 -> 24:00) -->
-                        <div class="relative w-full h-4 text-[9px] font-mono text-slate-500 flex justify-between px-0.5 pointer-events-none">
+                        <!-- Ruler Scale Marks -->
+                        <div id="timeline-scale-marks" class="relative w-full h-4 text-[9px] font-mono text-slate-500 flex justify-between px-0.5 pointer-events-none">
                             <span>00:00</span>
                             <span>03:00</span>
                             <span>06:00</span>
@@ -2350,6 +2411,7 @@
                     loadPlaybackCameras();
                 }
                 loadExportedClips();
+                loadPlaybackStorageStatus();
             }
             if (tabId === 'history') fetchHistoryLogs(1);
             if (tabId === 'settings') loadSettingsValues();
@@ -4407,8 +4469,44 @@
             timelineData: { blocks: [], events: [], date: '', camera_id: null },
             currentRecording: null,
             currentSpeed: 1,
-            currentAbsTimeSec: 0
+            currentAbsTimeSec: 0,
+            zoomHours: 24,       // 24, 4, 1
+            zoomStartHour: 0     // 0..23
         };
+
+        async function loadPlaybackStorageStatus() {
+            try {
+                const res = await fetch('/api/v1/playback/storage-status');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const pathEl = document.getElementById('storage-status-path');
+                if (pathEl) pathEl.innerText = `(${data.storage_path})`;
+
+                const textEl = document.getElementById('storage-status-text');
+                if (textEl) {
+                    const recGb = data.recordings_size_gb !== undefined ? data.recordings_size_gb : (data.total_recordings_size_gb || 0);
+                    textEl.innerHTML = `Đĩa còn trống <strong class="text-white">${data.free_gb} GB</strong> / ${data.total_gb} GB (Tổng video: <strong class="text-emerald-400">${recGb} GB</strong> / ${data.recordings_count} clips)`;
+                }
+
+                const percentEl = document.getElementById('storage-status-percent');
+                if (percentEl) percentEl.innerText = `${data.used_percent}%`;
+
+                const barEl = document.getElementById('storage-status-bar');
+                if (barEl) {
+                    barEl.style.width = `${Math.min(100, Math.max(0, data.used_percent))}%`;
+                    if (data.is_disk_low) {
+                        barEl.className = 'h-full bg-rose-500 animate-pulse transition-all duration-500';
+                    } else if (data.used_percent > 80) {
+                        barEl.className = 'h-full bg-amber-500 transition-all duration-500';
+                    } else {
+                        barEl.className = 'h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-500';
+                    }
+                }
+            } catch (e) {
+                console.error("Lỗi khi tải thông tin bộ nhớ:", e);
+            }
+        }
 
         async function loadPlaybackCameras() {
             if (!camerasList || camerasList.length === 0) {
@@ -4484,13 +4582,134 @@
             }
         }
 
+        function setTimelineZoom(hours) {
+            playbackState.zoomHours = hours;
+            const nav = document.getElementById('timeline-zoom-nav');
+            const title = document.getElementById('timeline-title-text');
+
+            if (hours === 24) {
+                playbackState.zoomStartHour = 0;
+                if (nav) {
+                    nav.classList.add('hidden');
+                    nav.classList.remove('flex');
+                }
+                if (title) title.innerText = 'Timeline 24 Giờ:';
+            } else {
+                if (nav) {
+                    nav.classList.remove('hidden');
+                    nav.classList.add('flex');
+                }
+                if (playbackState.currentAbsTimeSec > 0) {
+                    const currentHour = Math.floor(playbackState.currentAbsTimeSec / 3600);
+                    if (hours === 4) {
+                        playbackState.zoomStartHour = Math.max(0, Math.min(20, Math.floor(currentHour / 2) * 2));
+                    } else {
+                        playbackState.zoomStartHour = Math.max(0, Math.min(23, currentHour));
+                    }
+                } else if (playbackState.zoomStartHour + hours > 24) {
+                    playbackState.zoomStartHour = Math.max(0, 24 - hours);
+                }
+                if (title) title.innerText = `Timeline Phóng Đại ${hours}H:`;
+            }
+
+            [24, 4, 1].forEach(h => {
+                const btn = document.getElementById(`zoom-btn-${h}`);
+                if (btn) {
+                    if (h === hours) {
+                        btn.className = 'timeline-zoom-btn px-2 py-0.5 rounded-lg font-bold font-mono text-[10px] bg-blue-600 text-white shadow';
+                    } else {
+                        btn.className = 'timeline-zoom-btn px-2 py-0.5 rounded-lg font-bold font-mono text-[10px] text-slate-400 hover:text-white';
+                    }
+                }
+            });
+
+            updateTimelineRulerAndScale();
+            renderPlaybackTimeline(playbackState.timelineData);
+            if (playbackState.currentAbsTimeSec > 0) {
+                updateTimelinePlayhead(playbackState.currentAbsTimeSec);
+            }
+        }
+
+        function shiftTimelineWindow(direction) {
+            const step = (playbackState.zoomHours === 1 ? 1 : 2);
+            playbackState.zoomStartHour = Math.max(0, Math.min(24 - playbackState.zoomHours, playbackState.zoomStartHour + (direction * step)));
+            updateTimelineRulerAndScale();
+            renderPlaybackTimeline(playbackState.timelineData);
+            if (playbackState.currentAbsTimeSec > 0) {
+                updateTimelinePlayhead(playbackState.currentAbsTimeSec);
+            }
+        }
+
+        function updateTimelineRulerAndScale() {
+            const endHour = Math.min(24, playbackState.zoomStartHour + playbackState.zoomHours);
+            const sH = String(playbackState.zoomStartHour).padStart(2, '0') + ':00';
+            const eH = String(endHour).padStart(2, '0') + ':00';
+            const label = document.getElementById('timeline-window-label');
+            if (label) label.innerText = `${sH} - ${eH}`;
+
+            const marksContainer = document.getElementById('timeline-scale-marks');
+            if (!marksContainer) return;
+
+            if (playbackState.zoomHours === 24) {
+                marksContainer.innerHTML = `
+                    <span>00:00</span><span>03:00</span><span>06:00</span><span>09:00</span>
+                    <span>12:00</span><span>15:00</span><span>18:00</span><span>21:00</span><span>24:00</span>
+                `;
+            } else if (playbackState.zoomHours === 4) {
+                const h0 = playbackState.zoomStartHour;
+                let html = '';
+                for (let i = 0; i <= 8; i++) {
+                    const totalMin = (h0 * 60) + (i * 30);
+                    const h = String(Math.floor(totalMin / 60)).padStart(2, '0');
+                    const m = String(totalMin % 60).padStart(2, '0');
+                    html += `<span>${h}:${m}</span>`;
+                }
+                marksContainer.innerHTML = html;
+            } else if (playbackState.zoomHours === 1) {
+                const h0 = playbackState.zoomStartHour;
+                let html = '';
+                for (let i = 0; i <= 6; i++) {
+                    const totalMin = (h0 * 60) + (i * 10);
+                    const h = String(Math.floor(totalMin / 60)).padStart(2, '0');
+                    const m = String(totalMin % 60).padStart(2, '0');
+                    html += `<span>${h}:${m}</span>`;
+                }
+                marksContainer.innerHTML = html;
+            }
+        }
+
+        function updateTimelinePlayhead(absSec) {
+            const playhead = document.getElementById('timeline-playhead');
+            if (!playhead) return;
+            const zoomHours = playbackState.zoomHours || 24;
+            const startHour = playbackState.zoomStartHour || 0;
+            const windowStartSec = startHour * 3600;
+            const windowDurSec = zoomHours * 3600;
+
+            if (absSec < windowStartSec || absSec > (windowStartSec + windowDurSec)) {
+                playhead.style.opacity = '0.2';
+                const pct = absSec < windowStartSec ? 0 : 100;
+                playhead.style.left = `${pct}%`;
+            } else {
+                playhead.style.opacity = '1';
+                const playheadPercent = Math.max(0, Math.min(100, ((absSec - windowStartSec) / windowDurSec) * 100));
+                playhead.style.left = `${playheadPercent}%`;
+            }
+        }
+
         function renderPlaybackTimeline(data) {
+            if (!data) return;
             const blocksLayer = document.getElementById('timeline-recording-blocks-layer');
             const eventsLayer = document.getElementById('timeline-events-layer');
             const tableBody = document.getElementById('playback-recordings-table-body');
             const tableCount = document.getElementById('recordings-table-count');
 
-            // 1. Render Video Recording Blocks (Green Bars on 24H Ruler)
+            const zoomHours = playbackState.zoomHours || 24;
+            const startHour = playbackState.zoomStartHour || 0;
+            const windowStartSec = startHour * 3600;
+            const windowDurSec = zoomHours * 3600;
+
+            // 1. Render Video Recording Blocks (Green Bars on Ruler)
             if (blocksLayer) {
                 if (!data.blocks || data.blocks.length === 0) {
                     blocksLayer.innerHTML = '';
@@ -4498,8 +4717,15 @@
                     blocksLayer.innerHTML = data.blocks.map(b => {
                         const startSec = (b.start_seconds !== undefined) ? b.start_seconds : (b.start_second || 0);
                         const endSec = (b.end_seconds !== undefined) ? b.end_seconds : (b.end_second || (startSec + (b.duration_seconds || 60)));
-                        const leftPercent = Math.max(0, Math.min(100, (startSec / 86400) * 100));
-                        const widthPercent = Math.max(0.25, Math.min(100 - leftPercent, ((endSec - startSec) / 86400) * 100));
+
+                        if (endSec <= windowStartSec || startSec >= (windowStartSec + windowDurSec)) {
+                            return '';
+                        }
+                        const visStart = Math.max(windowStartSec, startSec);
+                        const visEnd = Math.min(windowStartSec + windowDurSec, endSec);
+
+                        const leftPercent = Math.max(0, Math.min(100, ((visStart - windowStartSec) / windowDurSec) * 100));
+                        const widthPercent = Math.max(0.3, Math.min(100 - leftPercent, ((visEnd - visStart) / windowDurSec) * 100));
                         const startTimeShort = b.start_time ? b.start_time.split(' ')[1] : '';
                         const endTimeShort = b.end_time ? b.end_time.split(' ')[1] : '';
                         return `
@@ -4520,7 +4746,10 @@
                 } else {
                     eventsLayer.innerHTML = data.events.map(evt => {
                         const sec = (evt.seconds_in_day !== undefined) ? evt.seconds_in_day : (evt.second_of_day || 0);
-                        const leftPercent = Math.max(0, Math.min(100, (sec / 86400) * 100));
+                        if (sec < windowStartSec || sec > (windowStartSec + windowDurSec)) {
+                            return '';
+                        }
+                        const leftPercent = Math.max(0, Math.min(100, ((sec - windowStartSec) / windowDurSec) * 100));
                         const timeShort = evt.detected_at ? evt.detected_at.split(' ')[1] : '';
                         return `
                             <div class="absolute top-0 bottom-0 w-3 -ml-1.5 flex items-center justify-center group/evt cursor-pointer pointer-events-auto"
@@ -4610,7 +4839,12 @@
             if (!container) return;
             const rect = container.getBoundingClientRect();
             const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            const secondOfDay = Math.floor(clickRatio * 86400);
+
+            const zoomHours = playbackState.zoomHours || 24;
+            const startHour = playbackState.zoomStartHour || 0;
+            const windowStartSec = startHour * 3600;
+            const windowDurSec = zoomHours * 3600;
+            const secondOfDay = Math.max(0, Math.min(86399, Math.floor(windowStartSec + clickRatio * windowDurSec)));
 
             const h = String(Math.floor(secondOfDay / 3600)).padStart(2, '0');
             const m = String(Math.floor((secondOfDay % 3600) / 60)).padStart(2, '0');
@@ -4625,7 +4859,12 @@
             if (!container) return;
             const rect = container.getBoundingClientRect();
             const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            const secondOfDay = Math.floor(ratio * 86400);
+
+            const zoomHours = playbackState.zoomHours || 24;
+            const startHour = playbackState.zoomStartHour || 0;
+            const windowStartSec = startHour * 3600;
+            const windowDurSec = zoomHours * 3600;
+            const secondOfDay = Math.max(0, Math.min(86399, Math.floor(windowStartSec + ratio * windowDurSec)));
 
             const h = String(Math.floor(secondOfDay / 3600)).padStart(2, '0');
             const m = String(Math.floor((secondOfDay % 3600) / 60)).padStart(2, '0');
@@ -4719,7 +4958,7 @@
 
             // Nạp luồng stream mới với Media Fragment #t=targetOffset để trình duyệt ưu tiên Range request đúng giây
             video.pause();
-            video.onended = null; // Tạm ngắt onended để không bị nhận nhầm kết thúc luồng cũ
+            video.onended = null;
             video.onloadedmetadata = null;
             video.oncanplay = null;
 
@@ -4786,6 +5025,62 @@
             video.currentTime = Math.max(0, Math.min(video.duration || 0, video.currentTime + sec));
         }
 
+        function stepPlaybackFrame(step) {
+            const video = document.getElementById('playback-video-element');
+            if (!video || !video.src) return;
+            video.pause();
+            const frameDuration = 0.04; // ~25-30 fps
+            const target = Math.max(0, Math.min(video.duration || 0, video.currentTime + (step * frameDuration)));
+            video.currentTime = target;
+        }
+
+        function capturePlaybackSnapshot() {
+            const video = document.getElementById('playback-video-element');
+            if (!video || !video.src || video.videoWidth === 0) {
+                showToast("Không có video đang phát để chụp ảnh.", "warning");
+                return;
+            }
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const camName = (playbackState.selectedCameraId ? `cam${playbackState.selectedCameraId}` : 'camera');
+                const osdTime = document.getElementById('playback-osd-time');
+                const timeStr = (osdTime && osdTime.innerText ? osdTime.innerText.replace(/[: -]/g, '_') : 'snapshot');
+                const filename = `snapshot_${camName}_${timeStr}.png`;
+
+                const dataUrl = canvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast(`📸 Đã chụp và lưu ảnh: ${filename}`, "success");
+            } catch (e) {
+                showToast("Lỗi khi chụp ảnh: " + e, "error");
+            }
+        }
+
+        async function togglePlaybackPiP() {
+            const video = document.getElementById('playback-video-element');
+            if (!video || !video.src) return;
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else if (document.pictureInPictureEnabled) {
+                    await video.requestPictureInPicture();
+                } else {
+                    showToast("Trình duyệt không hỗ trợ Picture-in-Picture.", "warning");
+                }
+            } catch (err) {
+                console.warn("PiP error:", err);
+            }
+        }
+
         function updatePlayPauseIcon(isPlaying) {
             const icon = document.getElementById('playback-icon-play');
             if (icon) {
@@ -4829,11 +5124,7 @@
                 const osdTime = document.getElementById('playback-osd-time');
                 if (osdTime) osdTime.innerText = `${recStartParts[0]} ${absH}:${absM}:${absS}`;
 
-                const playhead = document.getElementById('timeline-playhead');
-                if (playhead) {
-                    const playheadPercent = Math.max(0, Math.min(100, (currentAbsSec / 86400) * 100));
-                    playhead.style.left = `${playheadPercent}%`;
-                }
+                updateTimelinePlayhead(currentAbsSec);
             } catch (e) { }
         }
 
@@ -4932,8 +5223,8 @@
                     })
                 });
                 const data = await res.json();
-                if (res.ok && data.success) {
-                    const mb = (data.file_size_bytes / (1024 * 1024)).toFixed(2);
+                if (res.ok && (data.success || data.id)) {
+                    const mb = data.file_size_mb || (data.file_size_bytes ? (data.file_size_bytes / (1024 * 1024)).toFixed(2) : '0');
                     showToast(`✅ Đã xuất đoạn video thành công (${mb} MB)!`, "success", 5000);
                     loadExportedClips();
                 } else {
@@ -4960,23 +5251,26 @@
                     return;
                 }
 
-                container.innerHTML = items.map(c => `
-                    <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 flex items-center justify-between text-xs transition-all">
-                        <div class="truncate mr-2">
-                            <div class="font-bold text-white truncate">${c.title || c.file_name}</div>
-                            <div class="text-[10px] text-slate-400 font-mono mt-0.5">${c.start_time} ➔ ${c.end_time.split(' ')[1]}</div>
-                            <div class="text-[10px] text-slate-500 font-mono">${(c.file_size_bytes / (1024 * 1024)).toFixed(1)} MB • ${Math.round(c.duration_seconds)}s</div>
+                container.innerHTML = items.map(c => {
+                    const mb = c.file_size_mb !== undefined ? `${c.file_size_mb} MB` : (c.file_size_bytes ? `${(c.file_size_bytes / (1024 * 1024)).toFixed(1)} MB` : '0 MB');
+                    return `
+                        <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 flex items-center justify-between text-xs transition-all">
+                            <div class="truncate mr-2">
+                                <div class="font-bold text-white truncate">${c.title || c.file_name}</div>
+                                <div class="text-[10px] text-slate-400 font-mono mt-0.5">${c.start_time} ➔ ${c.end_time.split(' ')[1]}</div>
+                                <div class="text-[10px] text-slate-500 font-mono">${mb} • ${Math.round(c.duration_seconds || 0)}s</div>
+                            </div>
+                            <div class="flex items-center space-x-1 flex-shrink-0">
+                                <a href="/api/v1/playback/download/${c.id}" download class="p-1.5 px-2 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 font-semibold" title="Tải file MP4">
+                                    <i class="fa-solid fa-download"></i>
+                                </a>
+                                <button onclick="deleteExportedClip(${c.id})" class="p-1.5 px-2 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600/30" title="Xóa clip">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-1 flex-shrink-0">
-                            <a href="/api/v1/playback/download/${c.id}" download class="p-1.5 px-2 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 font-semibold" title="Tải file MP4">
-                                <i class="fa-solid fa-download"></i>
-                            </a>
-                            <button onclick="deleteExportedClip(${c.id})" class="p-1.5 px-2 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600/30" title="Xóa clip">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (e) { }
         }
 
