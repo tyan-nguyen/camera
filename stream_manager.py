@@ -9,12 +9,14 @@ import socket
 import cv2
 import numpy as np
 from typing import Dict, Optional
+from datetime import datetime
 
 from database import SessionLocal
 from models import Camera, CameraFunctionEnum
 from ai_pipeline import AIPipelineEngine
 from disk_worker import AsyncDiskWorker
 from video_recorder import video_recorder_manager
+from event_video_manager import event_video_manager
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +86,9 @@ class CameraThread(threading.Thread):
         if self.is_recording:
             video_recorder_manager.start_recorder(self.camera_id, self.camera_name, self.target_fps)
 
+        # Khởi tạo Rolling Pre-Buffer cho video clip sự kiện (-5s)
+        event_video_manager.init_camera_buffer(self.camera_id, self.target_fps)
+
     def set_recording_state(self, is_recording: bool):
         """Bật/Tắt chế độ lưu video trực tiếp mà không ngắt luồng live stream"""
         self.is_recording = bool(is_recording)
@@ -113,6 +118,7 @@ class CameraThread(threading.Thread):
         self.camera_function = camera_function or "ANPR"
         self.detection_zone = detection_zone
         self.set_recording_state(is_recording)
+        event_video_manager.init_camera_buffer(self.camera_id, self.target_fps)
         logger.info(f"[{self.camera_name}] Hot-reloaded runtime config: FPS={self.target_fps}, Func={self.camera_function}, Rec={self.is_recording}, ZoneROI={self.detection_zone}")
 
     def _grabber_loop(self):
@@ -280,6 +286,9 @@ class CameraThread(threading.Thread):
                 time.sleep(0.01)
                 continue
 
+            # Đẩy khung hình vào bộ đệm vòng (Rolling Pre-Buffer) phục vụ trích xuất clip sự kiện (-5s đến +5s)
+            event_video_manager.push_camera_frame(self.camera_id, raw_frame)
+
             # 1. Ghi hình video phân đoạn nếu camera được BẬT tính năng lưu (khớp nhịp FPS thiết lập)
             if self.is_recording:
                 if loop_start - last_rec_time >= frame_interval - 0.003:
@@ -297,6 +306,15 @@ class CameraThread(threading.Thread):
                     last_processed_time = loop_start
                     event = self.ai_engine.process_frame(self.camera_id, raw_frame, detection_zone=self.detection_zone)
                     if event:
+                        event_token = f"evt_{self.camera_id}_{int(time.time() * 1000)}"
+                        event["event_token"] = event_token
+                        rel_video = event_video_manager.trigger_event_clip(
+                            camera_id=self.camera_id,
+                            event_token=event_token,
+                            plate_number=event.get("plate_number", "UNKNOWN"),
+                            detected_at=datetime.now()
+                        )
+                        event["expected_video_path"] = rel_video
                         self.disk_worker.enqueue_event(event)
 
             # Điều tiết nhịp theo target_fps để CPU không chạy quá tải vô ích

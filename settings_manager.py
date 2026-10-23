@@ -33,7 +33,10 @@ class DynamicSettingsManager:
             "video_storage_path": "storage/recordings",
             "video_segment_minutes": 5,
             "video_retention_days": 15,
-            "auto_cleanup_disk": True
+            "auto_cleanup_disk": True,
+            "enable_event_video_clip": True,
+            "event_video_pre_seconds": 5,
+            "event_video_post_seconds": 5
         }
         self.reload_from_db()
 
@@ -80,7 +83,10 @@ class DynamicSettingsManager:
                         "video_storage_path": settings_obj.video_storage_path or "storage/recordings",
                         "video_segment_minutes": settings_obj.video_segment_minutes if settings_obj.video_segment_minutes is not None else 5,
                         "video_retention_days": settings_obj.video_retention_days if settings_obj.video_retention_days is not None else 15,
-                        "auto_cleanup_disk": settings_obj.auto_cleanup_disk if settings_obj.auto_cleanup_disk is not None else True
+                        "auto_cleanup_disk": settings_obj.auto_cleanup_disk if settings_obj.auto_cleanup_disk is not None else True,
+                        "enable_event_video_clip": getattr(settings_obj, "enable_event_video_clip", None) if getattr(settings_obj, "enable_event_video_clip", None) is not None else True,
+                        "event_video_pre_seconds": getattr(settings_obj, "event_video_pre_seconds", None) if getattr(settings_obj, "event_video_pre_seconds", None) is not None else 5,
+                        "event_video_post_seconds": getattr(settings_obj, "event_video_post_seconds", None) if getattr(settings_obj, "event_video_post_seconds", None) is not None else 5
                     }
                 logger.info(f"System settings loaded. Active OCR Engine: [{self.cache['ocr_engine_type']}]")
             except Exception as inner_e:
@@ -130,6 +136,12 @@ class DynamicSettingsManager:
                 settings_obj.video_retention_days = int(new_settings["video_retention_days"])
             if "auto_cleanup_disk" in new_settings and new_settings["auto_cleanup_disk"] is not None:
                 settings_obj.auto_cleanup_disk = bool(new_settings["auto_cleanup_disk"])
+            if "enable_event_video_clip" in new_settings and new_settings["enable_event_video_clip"] is not None:
+                settings_obj.enable_event_video_clip = bool(new_settings["enable_event_video_clip"])
+            if "event_video_pre_seconds" in new_settings and new_settings["event_video_pre_seconds"] is not None:
+                settings_obj.event_video_pre_seconds = int(new_settings["event_video_pre_seconds"])
+            if "event_video_post_seconds" in new_settings and new_settings["event_video_post_seconds"] is not None:
+                settings_obj.event_video_post_seconds = int(new_settings["event_video_post_seconds"])
 
             db.commit()
             db.refresh(settings_obj)
@@ -149,7 +161,10 @@ class DynamicSettingsManager:
                     "video_storage_path": settings_obj.video_storage_path or "storage/recordings",
                     "video_segment_minutes": settings_obj.video_segment_minutes if settings_obj.video_segment_minutes is not None else 5,
                     "video_retention_days": settings_obj.video_retention_days if settings_obj.video_retention_days is not None else 15,
-                    "auto_cleanup_disk": settings_obj.auto_cleanup_disk if settings_obj.auto_cleanup_disk is not None else True
+                    "auto_cleanup_disk": settings_obj.auto_cleanup_disk if settings_obj.auto_cleanup_disk is not None else True,
+                    "enable_event_video_clip": getattr(settings_obj, "enable_event_video_clip", None) if getattr(settings_obj, "enable_event_video_clip", None) is not None else True,
+                    "event_video_pre_seconds": getattr(settings_obj, "event_video_pre_seconds", None) if getattr(settings_obj, "event_video_pre_seconds", None) is not None else 5,
+                    "event_video_post_seconds": getattr(settings_obj, "event_video_post_seconds", None) if getattr(settings_obj, "event_video_post_seconds", None) is not None else 5
                 }
             logger.info(f"System settings updated (Hot-reloaded). Active OCR: [{self.cache['ocr_engine_type']}], Video Path: [{self.cache['video_storage_path']}]")
             return self.cache.copy()

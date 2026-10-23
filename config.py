@@ -40,6 +40,11 @@ class Settings:
     TARGET_VRAM_MB: int = 3500
     WEBP_QUALITY: int = 85
 
+    # Event Video Clip Settings (-5s to +5s)
+    ENABLE_EVENT_VIDEO_CLIP: bool = True
+    EVENT_VIDEO_PRE_SECONDS: int = 5
+    EVENT_VIDEO_POST_SECONDS: int = 5
+
 settings = Settings()
 
 os.makedirs(settings.CAPTURES_DIR, exist_ok=True)

@@ -29,6 +29,9 @@ def get_system_settings():
         video_segment_minutes=current.get("video_segment_minutes", 5),
         video_retention_days=current.get("video_retention_days", 15),
         auto_cleanup_disk=current.get("auto_cleanup_disk", True),
+        enable_event_video_clip=current.get("enable_event_video_clip", True),
+        event_video_pre_seconds=current.get("event_video_pre_seconds", 5),
+        event_video_post_seconds=current.get("event_video_post_seconds", 5),
         updated_at=datetime.utcnow()
     )
 
@@ -52,6 +55,9 @@ def update_system_settings(settings_in: SystemSettingsUpdate, current_user=Depen
         video_segment_minutes=updated.get("video_segment_minutes", 5),
         video_retention_days=updated.get("video_retention_days", 15),
         auto_cleanup_disk=updated.get("auto_cleanup_disk", True),
+        enable_event_video_clip=updated.get("enable_event_video_clip", True),
+        event_video_pre_seconds=updated.get("event_video_pre_seconds", 5),
+        event_video_post_seconds=updated.get("event_video_post_seconds", 5),
         updated_at=datetime.utcnow()
     )
 

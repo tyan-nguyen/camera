@@ -19,6 +19,7 @@ from models import VehicleLog, Camera, ActionGroup
 from vision_api import call_openai_vision_api, call_gemini_vision_api, call_lmstudio_vision_api
 from notification_service import notification_service
 from webhook_service import webhook_circuit_breaker, enqueue_webhook_event
+from event_video_manager import event_video_manager
 
 logger = logging.getLogger(__name__)
 
@@ -933,6 +934,14 @@ class AsyncDiskWorker:
             db.commit()
             db.refresh(log_entry)
 
+            # Gắn ID sự kiện vào bộ thu thập video clip (-5s đến +5s)
+            event_token = event.get("event_token")
+            if event_token:
+                try:
+                    event_video_manager.attach_log_id(event_token, log_entry.id)
+                except Exception as ev_err:
+                    logger.warning(f"Failed to attach log_id {log_entry.id} to event_video_manager: {ev_err}")
+
             # Nếu webhook khi nhận diện bị hoãn/lỗi, lưu ngay vào hàng đợi outbox với ID bản ghi thực tế
             if sync_status == "PENDING_SYNC" and standard_payload and action_group:
                 try:
@@ -976,6 +985,8 @@ class AsyncDiskWorker:
                 "webhook_result_bool": webhook_result_bool,
                 "image_full_path": f"/static/captures/{rel_full_path}",
                 "image_plate_path": f"/static/captures/{rel_plate_path}",
+                "video_path": f"/static/captures/{log_entry.video_path}" if log_entry.video_path else None,
+                "has_event_clip": bool(event.get("event_token")),
                 "detected_at": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "sync_status": sync_status,
                 "sync_error": sync_error

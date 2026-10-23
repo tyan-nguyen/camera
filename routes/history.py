@@ -114,6 +114,7 @@ def search_vehicle_logs(
         res.camera_name = cam_dict.get(item.camera_id, f"Cam #{item.camera_id}")
         res.image_full_path = f"/static/captures/{item.image_full_path}"
         res.image_plate_path = f"/static/captures/{item.image_plate_path}"
+        res.video_path = f"/static/captures/{item.video_path}" if item.video_path else None
         response_items.append(res)
 
     return PaginatedVehicleLogs(
@@ -206,6 +207,7 @@ def update_vehicle_log(
     res.camera_name = cam.camera_name if cam else f"Cam #{log_item.camera_id}"
     res.image_full_path = f"/static/captures/{log_item.image_full_path}"
     res.image_plate_path = f"/static/captures/{log_item.image_plate_path}"
+    res.video_path = f"/static/captures/{log_item.video_path}" if log_item.video_path else None
 
     # Phát thông báo WebSocket tới tất cả client Web
     try:
@@ -341,6 +343,7 @@ def restore_vehicle_log(
     res.camera_name = cam.camera_name if cam else f"Cam #{log_item.camera_id}"
     res.image_full_path = f"/static/captures/{log_item.image_full_path}"
     res.image_plate_path = f"/static/captures/{log_item.image_plate_path}"
+    res.video_path = f"/static/captures/{log_item.video_path}" if log_item.video_path else None
 
     # Phát thông báo WebSocket vehicle_restored
     try:

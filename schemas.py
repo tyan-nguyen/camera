@@ -121,6 +121,7 @@ class VehicleLogBase(BaseModel):
     confidence_score: float = 0.0
     image_full_path: str
     image_plate_path: str
+    video_path: Optional[str] = None
     zone_code: Optional[str] = None
     action_group_id: Optional[int] = None
     action_group_name: Optional[str] = None
@@ -165,6 +166,7 @@ class VehicleLogUpdate(BaseModel):
     action_status: Optional[str] = None
     vehicle_classification: Optional[str] = None
     alert_level: Optional[str] = None
+    video_path: Optional[str] = None
 
 # ==========================================
 # 4. Device Token Schemas (FCM Push Notification)
@@ -208,6 +210,9 @@ class SystemSettingsBase(BaseModel):
     video_segment_minutes: Optional[int] = 5
     video_retention_days: Optional[int] = 15
     auto_cleanup_disk: Optional[bool] = True
+    enable_event_video_clip: Optional[bool] = True
+    event_video_pre_seconds: Optional[int] = 5
+    event_video_post_seconds: Optional[int] = 5
 
 class SystemSettingsUpdate(BaseModel):
     ocr_engine_type: Optional[str] = None
@@ -224,6 +229,9 @@ class SystemSettingsUpdate(BaseModel):
     video_segment_minutes: Optional[int] = None
     video_retention_days: Optional[int] = None
     auto_cleanup_disk: Optional[bool] = None
+    enable_event_video_clip: Optional[bool] = None
+    event_video_pre_seconds: Optional[int] = None
+    event_video_post_seconds: Optional[int] = None
 
 class SystemSettingsResponse(SystemSettingsBase):
     id: int

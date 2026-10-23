@@ -25,6 +25,7 @@ from settings_manager import settings_manager
 from webhook_sync_worker import webhook_sync_worker
 from video_recorder import recover_orphaned_recordings
 from disk_cleanup import disk_cleanup_scheduler
+from event_video_manager import event_video_manager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -146,6 +147,10 @@ async def lifespan(app: FastAPI):
             webhook_sync_worker.stop()
         except Exception as e:
             logger.warning(f"Error stopping webhook_sync_worker: {e}")
+        try:
+            event_video_manager.stop_all()
+        except Exception as e:
+            logger.warning(f"Error stopping event_video_manager: {e}")
         try:
             stream_manager.stop_all()
         except Exception as e:

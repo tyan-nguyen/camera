@@ -1136,9 +1136,45 @@
                         <div class="flex items-center pt-5">
                             <label class="flex items-center space-x-2.5 cursor-pointer">
                                 <input type="checkbox" id="input-auto-cleanup" class="w-4 h-4 rounded text-cyan-600 focus:ring-cyan-500 bg-slate-950 border-slate-700">
-                                <span class="text-xs text-slate-300 font-medium">Tự động xóa video cũ nhất khi ổ đĩa gần đầy (< 10% trống)</span>
+                                <span class="text-xs text-slate-300 font-medium">Tự động xóa video cũ nhất khi ổ đĩa gần đầy (&lt; 10% trống)</span>
                             </label>
                         </div>
+                    </div>
+
+                    <!-- Event Video Clip Configuration (Clip sự kiện -5s đến +5s) -->
+                    <div class="border-t border-slate-800/80 pt-3.5 mt-2">
+                        <div class="flex items-center justify-between mb-2.5">
+                            <label class="flex items-center space-x-2.5 cursor-pointer">
+                                <input type="checkbox" id="input-enable-event-clip" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 bg-slate-950 border-slate-700">
+                                <span class="text-xs text-white font-semibold flex items-center gap-1.5">
+                                    <i class="fa-solid fa-film text-blue-400"></i>
+                                    <span>Tự Động Lưu Video Clip Sự Kiện Khi Nhận Diện Xe (10 Giây MP4)</span>
+                                </span>
+                            </label>
+                            <span class="text-[10px] text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/50">H.264 HTML5</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Thời Gian Trước Sự Kiện (Pre-roll Giây):</label>
+                                <select id="input-event-pre-seconds" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-cyan-500">
+                                    <option value="3">3 Giây trước</option>
+                                    <option value="5" selected>5 Giây trước (Khuyên dùng)</option>
+                                    <option value="7">7 Giây trước</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Thời Gian Sau Sự Kiện (Post-roll Giây):</label>
+                                <select id="input-event-post-seconds" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-cyan-500">
+                                    <option value="3">3 Giây sau</option>
+                                    <option value="5" selected>5 Giây sau (Khuyên dùng)</option>
+                                    <option value="7">7 Giây sau</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-2">
+                            <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i>
+                            Hệ thống duy trì bộ đệm vòng (Rolling Pre-Buffer). Khi AI phát hiện xe, clip MP4 được ghép từ 5s trước và 5s sau để lưu lại toàn bộ diễn biến xe đi qua barrier.
+                        </p>
                     </div>
                 </div>
 
@@ -1890,6 +1926,24 @@
                                 </div>
                             </button>
                         </div>
+                        <!-- Video Clip Sự Kiện nếu có -->
+                        <div id="edit-log-video-container" class="mt-2.5 hidden">
+                            <div class="flex items-center justify-between p-2.5 rounded-xl bg-blue-950/40 border border-blue-800/50">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center text-sm">
+                                        <i class="fa-solid fa-film"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-semibold text-blue-200">Video Clip Sự Kiện (10 Giây)</div>
+                                        <div class="text-[10px] text-slate-400">Được quay từ 5s trước đến 5s sau khi chụp</div>
+                                    </div>
+                                </div>
+                                <button type="button" id="edit-log-play-video-btn" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow flex items-center space-x-1.5 transition-all">
+                                    <i class="fa-solid fa-circle-play text-[11px]"></i>
+                                    <span>Xem Video Clip</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1908,6 +1962,10 @@
                     <button id="modal-btn-edit-event" onclick="editFromDetailModal()" class="px-3.5 py-1.5 bg-amber-600/90 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow flex items-center space-x-1.5 transition-all">
                         <i class="fa-solid fa-pen-to-square"></i>
                         <span>Sửa Sự Kiện</span>
+                    </button>
+                    <button id="modal-btn-event-clip" onclick="viewEventClipFromModal()" class="hidden px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md flex items-center space-x-1.5 transition-all">
+                        <i class="fa-solid fa-circle-play"></i>
+                        <span>Clip Sự Kiện 10s</span>
                     </button>
                     <button id="modal-btn-view-video" onclick="viewVideoFromModal()" class="self-start sm:self-auto px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md flex items-center space-x-1.5 transition-all">
                         <i class="fa-solid fa-film"></i>
@@ -1946,6 +2004,102 @@
                     <div class="relative group cursor-zoom-in overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-inner"
                         onclick="openImageViewer(document.getElementById('modal-full-img').src, 'Ảnh Toàn Cảnh')">
                         <img id="modal-full-img" class="w-full h-44 sm:h-56 object-cover" src="" alt="Full Frame">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- EVENT VIDEO PLAYER MODAL (-5s to +5s) -->
+    <!-- ========================================== -->
+    <div id="event-video-modal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto flex flex-col">
+            <button onclick="closeEventVideoModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1 z-10 transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-700/80 pr-8">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-circle-play text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="text-base sm:text-lg font-bold text-white leading-tight">Video Clip Sự Kiện Nhận Dạng (10 Giây)</h3>
+                            <span id="event-video-plate-badge" class="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">--</span>
+                            <span class="text-[10px] font-semibold text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/50">H.264 MP4</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-400">
+                            <span class="inline-flex items-center space-x-1">
+                                <i class="fa-regular fa-clock text-amber-400"></i>
+                                <span id="event-video-time">--:--:--</span>
+                            </span>
+                            <span class="inline-flex items-center space-x-1">
+                                <i class="fa-solid fa-video text-blue-400"></i>
+                                <span id="event-video-cam-name">Camera</span>
+                            </span>
+                            <span class="inline-flex items-center space-x-1 text-slate-400">
+                                <i class="fa-solid fa-arrows-left-right text-emerald-400"></i>
+                                <span>-5s trước đến +5s sau</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2 self-start sm:self-auto">
+                    <a id="event-video-download-btn" href="#" download class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700 shadow flex items-center space-x-1.5 transition-all">
+                        <i class="fa-solid fa-download text-cyan-400"></i>
+                        <span>Tải MP4</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Video Player Display -->
+            <div class="relative w-full rounded-2xl overflow-hidden bg-black border border-slate-800 shadow-2xl flex items-center justify-center aspect-video max-h-[58vh]">
+                <video id="event-video-player" class="w-full h-full object-contain" controls autoplay loop playsinline preload="auto">
+                    Trình duyệt của bạn không hỗ trợ thẻ video HTML5.
+                </video>
+            </div>
+
+            <!-- Player Controls & Secondary Info -->
+            <div class="mt-3.5 flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-800/80">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-slate-400">Tốc độ:</span>
+                    <button type="button" onclick="setEventVideoSpeed(0.5)" id="speed-btn-05" class="px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300">0.5x</button>
+                    <button type="button" onclick="setEventVideoSpeed(1.0)" id="speed-btn-10" class="px-2 py-1 text-[11px] rounded bg-blue-600 text-white font-bold">1.0x</button>
+                    <button type="button" onclick="setEventVideoSpeed(1.5)" id="speed-btn-15" class="px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300">1.5x</button>
+                    <button type="button" onclick="setEventVideoSpeed(2.0)" id="speed-btn-20" class="px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300">2.0x</button>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="stepEventVideoFrame(-1)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" title="Lùi 1 khung hình (hoặc phím ←)">
+                        <i class="fa-solid fa-backward-step mr-1"></i>Lùi Frame
+                    </button>
+                    <button type="button" onclick="stepEventVideoFrame(1)" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" title="Tới 1 khung hình (hoặc phím →)">
+                        Tới Frame<i class="fa-solid fa-forward-step ml-1"></i>
+                    </button>
+                    <button type="button" onclick="toggleEventVideoLoop()" id="event-video-loop-btn" class="px-2.5 py-1 text-xs rounded-lg bg-blue-600/30 text-blue-300 border border-blue-500/40" title="Bật/Tắt lặp lại vô tận">
+                        <i class="fa-solid fa-repeat mr-1"></i>Lặp lại: BẬT
+                    </button>
+                </div>
+            </div>
+
+            <!-- Side-by-side Snapshot Cross-check Preview (Collapsible) -->
+            <div id="event-video-thumbs-row" class="mt-3 grid grid-cols-2 gap-3 pt-3 border-t border-slate-800">
+                <div class="flex items-center space-x-2.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <img id="event-video-thumb-crop" src="" alt="Biển số" class="h-10 w-24 object-contain rounded bg-slate-950 border border-slate-700 flex-shrink-0 cursor-zoom-in" onclick="openImageViewer(this.src, 'Ảnh Cắt Biển Số')">
+                    <div class="overflow-hidden">
+                        <div class="text-[11px] font-semibold text-amber-300 truncate">Ảnh Crop Biển Số</div>
+                        <div class="text-[10px] text-slate-400">Thời điểm AI nhận diện</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <img id="event-video-thumb-full" src="" alt="Toàn cảnh" class="h-10 w-24 object-cover rounded bg-slate-950 border border-slate-700 flex-shrink-0 cursor-zoom-in" onclick="openImageViewer(this.src, 'Ảnh Toàn Cảnh')">
+                    <div class="overflow-hidden">
+                        <div class="text-[11px] font-semibold text-blue-300 truncate">Ảnh Toàn Cảnh</div>
+                        <div class="text-[10px] text-slate-400">Góc nhìn đầy đủ của camera</div>
                     </div>
                 </div>
             </div>
@@ -4047,6 +4201,10 @@
                     if (document.getElementById('input-video-segment')) document.getElementById('input-video-segment').value = data.video_segment_minutes || 5;
                     if (document.getElementById('input-video-retention')) document.getElementById('input-video-retention').value = data.video_retention_days || 15;
                     if (document.getElementById('input-auto-cleanup')) document.getElementById('input-auto-cleanup').checked = data.auto_cleanup_disk !== false;
+
+                    if (document.getElementById('input-enable-event-clip')) document.getElementById('input-enable-event-clip').checked = data.enable_event_video_clip !== false;
+                    if (document.getElementById('input-event-pre-seconds')) document.getElementById('input-event-pre-seconds').value = data.event_video_pre_seconds || 5;
+                    if (document.getElementById('input-event-post-seconds')) document.getElementById('input-event-post-seconds').value = data.event_video_post_seconds || 5;
                 }
             } catch (e) { }
         }
@@ -4110,7 +4268,10 @@
                 video_storage_path: document.getElementById('input-video-path') ? document.getElementById('input-video-path').value.trim() : 'storage/recordings',
                 video_segment_minutes: document.getElementById('input-video-segment') ? (parseInt(document.getElementById('input-video-segment').value, 10) || 5) : 5,
                 video_retention_days: document.getElementById('input-video-retention') ? (parseInt(document.getElementById('input-video-retention').value, 10) || 15) : 15,
-                auto_cleanup_disk: document.getElementById('input-auto-cleanup') ? document.getElementById('input-auto-cleanup').checked : true
+                auto_cleanup_disk: document.getElementById('input-auto-cleanup') ? document.getElementById('input-auto-cleanup').checked : true,
+                enable_event_video_clip: document.getElementById('input-enable-event-clip') ? document.getElementById('input-enable-event-clip').checked : true,
+                event_video_pre_seconds: document.getElementById('input-event-pre-seconds') ? (parseInt(document.getElementById('input-event-pre-seconds').value, 10) || 5) : 5,
+                event_video_post_seconds: document.getElementById('input-event-post-seconds') ? (parseInt(document.getElementById('input-event-post-seconds').value, 10) || 5) : 5
             };
 
             try {
@@ -4360,13 +4521,18 @@
                             <img src="${item.image_plate_path}" onclick="openImageViewer('${item.image_plate_path}', 'Biển số: ${item.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform">
                         </td>
                         <td class="p-3 text-right space-x-1 whitespace-nowrap">
+                            ${item.video_path ? `
+                                <button onclick="openEventVideoModal('${item.video_path}', '${item.plate_number}', '${item.detected_at}', '${(item.camera_name || '').replace(/'/g, "\\'")}', '${item.image_full_path}', '${item.image_plate_path}')" class="px-2.5 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all" title="Xem clip 10s sự kiện (-5s đến +5s)">
+                                    <i class="fa-solid fa-circle-play mr-1 text-blue-400"></i>Clip 10s
+                                </button>
+                            ` : ''}
                             <button onclick="openPlaybackForEvent(${item.camera_id}, '${item.detected_at}', '${item.plate_number}')" class="px-2.5 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
                             ${(item.sync_status === 'PENDING_SYNC' || item.sync_status === 'SYNC_FAILED') ? `
                                 <button onclick="openWebhookSyncModal('queue')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Xem trong hàng đợi đồng bộ"><i class="fa-solid fa-cloud-arrow-up"></i></button>
                             ` : ''}
-                            <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${(item.summary || '').replace(/'/g, "\\'")}', '${item.image_plate_path}', '${item.image_full_path}', 'history', '${item.detected_at || ''}', '${(item.camera_name || '').replace(/'/g, "\\'")}', '${item.action_status || ''}', '${item.vehicle_classification || ''}', '${item.sync_status || ''}', '${(item.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>
+                            <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${(item.summary || '').replace(/'/g, "\\'")}', '${item.image_plate_path}', '${item.image_full_path}', 'history', '${item.detected_at || ''}', '${(item.camera_name || '').replace(/'/g, "\\'")}', '${item.action_status || ''}', '${item.vehicle_classification || ''}', '${item.sync_status || ''}', '${(item.sync_error || '').replace(/'/g, "\\'")}', '${item.video_path || ''}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>
                             ${currentUser && (currentUser.role === 'admin' || currentUser.role === 'quan_ly') ? `
                                 <button onclick="deleteVehicleLog(${item.id}, '${item.plate_number}')" class="px-2 py-1 text-xs bg-rose-600/20 text-rose-400 rounded-lg" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
                             ` : ''}
@@ -4446,14 +4612,19 @@
                         <td class="p-2.5 sm:p-3">${renderVehicleViewBadge(d.vehicle_view)}</td>
                         <td class="p-2.5 sm:p-3 text-xs text-slate-400 font-mono">${(d.confidence_score * 100).toFixed(1)}%</td>
                         <td class="p-2.5 sm:p-3"><img src="${d.image_plate_path}" onclick="openImageViewer('${d.image_plate_path}', 'Biển số: ${d.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform"></td>
-                        <td class="p-2.5 sm:p-3 text-right whitespace-nowrap space-x-1">
+                        <td class="p-2.5 sm:p-3 text-right whitespace-nowrap space-x-1" id="dash-row-actions-${d.id}">
+                            ${d.video_path ? `
+                                <button onclick="openEventVideoModal('${d.video_path}', '${d.plate_number}', '${d.detected_at}', '${(d.camera_name || '').replace(/'/g, "\\'")}', '${d.image_full_path}', '${d.image_plate_path}')" class="btn-event-video px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all" title="Xem clip 10s sự kiện (-5s đến +5s)">
+                                    <i class="fa-solid fa-circle-play mr-1 text-blue-400"></i>Clip 10s
+                                </button>
+                            ` : ''}
                             <button onclick="openPlaybackForEvent(${d.camera_id}, '${d.detected_at}', '${d.plate_number}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
                             ${(d.sync_status === 'PENDING_SYNC' || d.sync_status === 'SYNC_FAILED') ? `
                                 <button onclick="openWebhookSyncModal('queue')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Xem hàng đợi đồng bộ"><i class="fa-solid fa-cloud-arrow-up"></i></button>
                             ` : ''}
-                            <button onclick="openEditLogModal(${d.id}, '${d.plate_number}', '${d.vehicle_view || 'front'}', '${d.vehicle_type || 'car'}', '${(d.summary || '').replace(/'/g, "\\'")}', '${d.image_plate_path}', '${d.image_full_path}', 'dashboard', '${d.detected_at || ''}', '${(d.camera_name || '').replace(/'/g, "\\'")}', '${d.action_status || ''}', '${d.vehicle_classification || ''}', '${d.sync_status || ''}', '${(d.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>
+                            <button onclick="openEditLogModal(${d.id}, '${d.plate_number}', '${d.vehicle_view || 'front'}', '${d.vehicle_type || 'car'}', '${(d.summary || '').replace(/'/g, "\\'")}', '${d.image_plate_path}', '${d.image_full_path}', 'dashboard', '${d.detected_at || ''}', '${(d.camera_name || '').replace(/'/g, "\\'")}', '${d.action_status || ''}', '${d.vehicle_classification || ''}', '${d.sync_status || ''}', '${(d.sync_error || '').replace(/'/g, "\\'")}', '${d.video_path || ''}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>
                         </td>
                     </tr>
                 `).join('');
@@ -5333,12 +5504,13 @@
         }
 
         /* --- MODALS HANDLERS --- */
-        let currentModalEvent = { cameraId: null, detectedAt: '', plateNumber: '', logId: null, vehicleView: 'front', vehicleType: 'car', platePath: '', fullPath: '', summary: '' };
+        let currentModalEvent = { cameraId: null, cameraName: '', detectedAt: '', plateNumber: '', logId: null, vehicleView: 'front', vehicleType: 'car', platePath: '', fullPath: '', summary: '', videoPath: null };
 
-        function openImageModal(platePath, fullPath, plateNum, summary, cameraId = null, detectedAt = '', classification = '', logId = null, vehicleView = 'front', vehicleType = 'car', syncStatus = '', syncError = '', actionResultRaw = '') {
+        function openImageModal(platePath, fullPath, plateNum, summary, cameraId = null, detectedAt = '', classification = '', logId = null, vehicleView = 'front', vehicleType = 'car', syncStatus = '', syncError = '', actionResultRaw = '', videoPath = null, cameraName = '') {
             currentModalEvent = {
                 logId: logId,
                 cameraId: cameraId,
+                cameraName: cameraName,
                 detectedAt: detectedAt,
                 plateNumber: plateNum,
                 summary: summary,
@@ -5346,7 +5518,8 @@
                 vehicleType: vehicleType,
                 platePath: platePath,
                 fullPath: fullPath,
-                classification: classification
+                classification: classification,
+                videoPath: videoPath
             };
 
             document.getElementById('modal-title').innerText = `Chi Tiết Sự Kiện - Biển Số: ${plateNum}`;
@@ -5407,6 +5580,15 @@
                 }
             }
 
+            const clipBtn = document.getElementById('modal-btn-event-clip');
+            if (clipBtn) {
+                if (videoPath) {
+                    clipBtn.classList.remove('hidden');
+                } else {
+                    clipBtn.classList.add('hidden');
+                }
+            }
+
             const videoBtn = document.getElementById('modal-btn-view-video');
             if (videoBtn) {
                 if (cameraId && detectedAt) {
@@ -5437,6 +5619,21 @@
             }
         }
 
+        function viewEventClipFromModal() {
+            if (currentModalEvent && currentModalEvent.videoPath) {
+                openEventVideoModal(
+                    currentModalEvent.videoPath,
+                    currentModalEvent.plateNumber,
+                    currentModalEvent.detectedAt,
+                    currentModalEvent.cameraName || '',
+                    currentModalEvent.fullPath,
+                    currentModalEvent.platePath
+                );
+            } else {
+                showToast("Sự kiện này không có video clip 10s.", "info");
+            }
+        }
+
         function editFromDetailModal() {
             if (!currentModalEvent || !currentModalEvent.logId) {
                 showToast("Không tìm thấy mã sự kiện để chỉnh sửa.", "warning");
@@ -5445,7 +5642,7 @@
             const evt = currentModalEvent;
             closeImageModal();
             const src = (typeof currentTab !== 'undefined' && currentTab === 'history') ? 'history' : 'dashboard';
-            openEditLogModal(evt.logId, evt.plateNumber, evt.vehicleView, evt.vehicleType, evt.summary, evt.platePath, evt.fullPath, src, evt.detectedAt, evt.cameraName || '');
+            openEditLogModal(evt.logId, evt.plateNumber, evt.vehicleView, evt.vehicleType, evt.summary, evt.platePath, evt.fullPath, src, evt.detectedAt, evt.cameraName || '', '', '', '', '', evt.videoPath || '');
         }
 
         function closeImageModal() {
@@ -5460,6 +5657,112 @@
 
         function closeImageViewer() {
             document.getElementById('image-viewer-modal').classList.add('hidden');
+        }
+
+        /* --- EVENT VIDEO PLAYER MODAL (-5s to +5s) --- */
+        function openEventVideoModal(videoUrl, plateNumber, detectedAt, camName, fullImg, plateImg) {
+            if (!videoUrl) {
+                showToast("Video clip sự kiện chưa hoàn tất hoặc không khả dụng.", "warning");
+                return;
+            }
+
+            const modal = document.getElementById('event-video-modal');
+            const player = document.getElementById('event-video-player');
+            const plateBadge = document.getElementById('event-video-plate-badge');
+            const timeEl = document.getElementById('event-video-time');
+            const camEl = document.getElementById('event-video-cam-name');
+            const downloadBtn = document.getElementById('event-video-download-btn');
+            const thumbCrop = document.getElementById('event-video-thumb-crop');
+            const thumbFull = document.getElementById('event-video-thumb-full');
+            const thumbsRow = document.getElementById('event-video-thumbs-row');
+
+            if (plateBadge) plateBadge.innerText = plateNumber || 'UNKNOWN';
+            if (timeEl) timeEl.innerText = detectedAt || '';
+            if (camEl) camEl.innerText = camName || 'Camera';
+            if (downloadBtn) {
+                downloadBtn.href = videoUrl;
+                downloadBtn.download = `${plateNumber || 'vehicle'}_event_clip.mp4`;
+            }
+
+            if (thumbCrop && plateImg) {
+                thumbCrop.src = plateImg;
+                thumbCrop.style.display = 'block';
+            } else if (thumbCrop) {
+                thumbCrop.style.display = 'none';
+            }
+
+            if (thumbFull && fullImg) {
+                thumbFull.src = fullImg;
+                thumbFull.style.display = 'block';
+            } else if (thumbFull) {
+                thumbFull.style.display = 'none';
+            }
+
+            if (thumbsRow) {
+                thumbsRow.style.display = (plateImg || fullImg) ? 'grid' : 'none';
+            }
+
+            if (player) {
+                player.src = videoUrl;
+                player.playbackRate = 1.0;
+                player.loop = true;
+                player.load();
+                player.play().catch(e => {
+                    console.log("Autoplay blocked, user interaction required:", e);
+                });
+            }
+
+            setEventVideoSpeed(1.0);
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeEventVideoModal() {
+            const modal = document.getElementById('event-video-modal');
+            const player = document.getElementById('event-video-player');
+            if (player) {
+                player.pause();
+                player.src = '';
+            }
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function setEventVideoSpeed(speed) {
+            const player = document.getElementById('event-video-player');
+            if (player) player.playbackRate = speed;
+            ['05', '10', '15', '20'].forEach(s => {
+                const btn = document.getElementById(`speed-btn-${s}`);
+                if (btn) {
+                    const val = s === '05' ? 0.5 : (s === '10' ? 1.0 : (s === '15' ? 1.5 : 2.0));
+                    if (val === speed) {
+                        btn.className = 'px-2 py-1 text-[11px] rounded bg-blue-600 text-white font-bold';
+                    } else {
+                        btn.className = 'px-2 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300';
+                    }
+                }
+            });
+        }
+
+        function stepEventVideoFrame(direction) {
+            const player = document.getElementById('event-video-player');
+            if (player) {
+                player.pause();
+                // 6 FPS: mỗi frame tương đương ~0.16s
+                player.currentTime = Math.max(0, player.currentTime + direction * 0.16);
+            }
+        }
+
+        function toggleEventVideoLoop() {
+            const player = document.getElementById('event-video-player');
+            const btn = document.getElementById('event-video-loop-btn');
+            if (!player || !btn) return;
+            player.loop = !player.loop;
+            if (player.loop) {
+                btn.className = 'px-2.5 py-1 text-xs rounded-lg bg-blue-600/30 text-blue-300 border border-blue-500/40';
+                btn.innerHTML = '<i class="fa-solid fa-repeat mr-1"></i>Lặp lại: BẬT';
+            } else {
+                btn.className = 'px-2.5 py-1 text-xs rounded-lg bg-slate-800 text-slate-400 border border-slate-700';
+                btn.innerHTML = '<i class="fa-solid fa-repeat mr-1"></i>Lặp lại: TẮT';
+            }
         }
 
         function openZoomModal(camId) {
@@ -5607,6 +5910,27 @@
             // Cập nhật khung xem ảnh lớn
             switchEditLogImage(currentEditActiveType || 'crop');
 
+            // Hiển thị khung xem Video Clip sự kiện nếu bản ghi có video_path
+            const videoContainer = document.getElementById('edit-log-video-container');
+            const playVideoBtn = document.getElementById('edit-log-play-video-btn');
+            if (videoContainer && playVideoBtn) {
+                if (item.video_path) {
+                    videoContainer.classList.remove('hidden');
+                    playVideoBtn.onclick = () => {
+                        openEventVideoModal(
+                            item.video_path,
+                            item.plate_number,
+                            item.detected_at,
+                            item.camera_name,
+                            item.image_full_path,
+                            item.image_plate_path
+                        );
+                    };
+                } else {
+                    videoContainer.classList.add('hidden');
+                }
+            }
+
             // Cập nhật trạng thái các nút lùi / tới
             updateEditNavButtons();
 
@@ -5628,7 +5952,7 @@
             populateEditModalWithItem(currentEditList[currentEditIndex]);
         }
 
-        function openEditLogModal(logId, currentPlate, currentView, currentType, currentSummary, imagePlatePath, imageFullPath, source = null, detectedAt = null, cameraName = null, actionStatus = null, classification = null, syncStatus = null, syncError = null) {
+        function openEditLogModal(logId, currentPlate, currentView, currentType, currentSummary, imagePlatePath, imageFullPath, source = null, detectedAt = null, cameraName = null, actionStatus = null, classification = null, syncStatus = null, syncError = null, videoPath = null) {
             const numericId = parseInt(logId, 10);
 
             // Xác định danh sách nguồn hiện hành (History logs hoặc Dashboard logs)
@@ -5660,6 +5984,7 @@
                     summary: currentSummary || '',
                     image_plate_path: imagePlatePath || '',
                     image_full_path: imageFullPath || '',
+                    video_path: videoPath || '',
                     detected_at: detectedAt || (currentModalEvent ? currentModalEvent.detectedAt : ''),
                     camera_name: cameraName || '',
                     action_status: actionStatus || '',
@@ -5669,6 +5994,9 @@
                 });
                 idx = currentEditList.length - 1;
             } else {
+                if (videoPath && !currentEditList[idx].video_path) {
+                    currentEditList[idx].video_path = videoPath;
+                }
                 if (detectedAt && !currentEditList[idx].detected_at) {
                     currentEditList[idx].detected_at = detectedAt;
                 }
@@ -5870,6 +6198,31 @@
         // Lắng nghe phím tắt điều hướng nhanh trong cửa sổ chỉnh sửa sự kiện:
         // Alt + ← (Bản ghi trước), Alt + → (Bản ghi sau), Ctrl + Enter (Lưu & Tiếp)
         document.addEventListener('keydown', function (e) {
+            const vModal = document.getElementById('event-video-modal');
+            if (vModal && !vModal.classList.contains('hidden')) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeEventVideoModal();
+                    return;
+                } else if (e.key === ' ' || e.code === 'Space') {
+                    e.preventDefault();
+                    const player = document.getElementById('event-video-player');
+                    if (player) {
+                        if (player.paused) player.play();
+                        else player.pause();
+                    }
+                    return;
+                } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    stepEventVideoFrame(-1);
+                    return;
+                } else if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    stepEventVideoFrame(1);
+                    return;
+                }
+            }
+
             const modal = document.getElementById('edit-log-modal');
             if (modal && !modal.classList.contains('hidden')) {
                 if (e.altKey && e.key === 'ArrowLeft') {
@@ -6038,11 +6391,20 @@
                             <td class="p-2.5 sm:p-3">
                                 <img src="${data.image_plate_path}" onclick="openImageViewer('${data.image_plate_path}', 'Biển số: ${data.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform">
                             </td>
-                            <td class="p-2.5 sm:p-3 text-right whitespace-nowrap space-x-1">
+                            <td class="p-2.5 sm:p-3 text-right whitespace-nowrap space-x-1" id="dash-row-actions-${data.id}">
+                                ${data.video_path ? `
+                                    <button onclick="openEventVideoModal('${data.video_path}', '${data.plate_number}', '${data.detected_at}', '${(data.camera_name || '').replace(/'/g, "\\'")}', '${data.image_full_path}', '${data.image_plate_path}')" class="btn-event-video px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all" title="Xem clip 10s sự kiện (-5s đến +5s)">
+                                        <i class="fa-solid fa-circle-play mr-1 text-blue-400"></i>Clip 10s
+                                    </button>
+                                ` : (data.has_event_clip ? `
+                                    <span id="dash-row-clip-pending-${data.id}" class="inline-flex items-center px-1.5 py-0.5 text-[10px] text-cyan-400 bg-cyan-950/60 border border-cyan-800/40 rounded animate-pulse" title="Đang thu thập 5s sau sự kiện...">
+                                        <i class="fa-solid fa-spinner fa-spin mr-1 text-cyan-400"></i>Clip...
+                                    </span>
+                                ` : '')}
                                 <button onclick="openPlaybackForEvent(${data.camera_id}, '${data.detected_at}', '${data.plate_number}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video">
                                     <i class="fa-solid fa-film mr-1"></i>Video
                                 </button>
-                                ${data.id ? `<button onclick="openEditLogModal(${data.id}, '${data.plate_number}', '${data.vehicle_view || 'front'}', '${data.vehicle_type || 'car'}', '${(data.summary || '').replace(/'/g, "\\'")}', '${data.image_plate_path}', '${data.image_full_path}', 'dashboard', '${data.detected_at || ''}', '${(data.camera_name || '').replace(/'/g, "\\'")}', '${data.action_status || ''}', '${data.vehicle_classification || ''}', '${data.sync_status || ''}', '${(data.sync_error || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>` : ''}
+                                ${data.id ? `<button onclick="openEditLogModal(${data.id}, '${data.plate_number}', '${data.vehicle_view || 'front'}', '${data.vehicle_type || 'car'}', '${(data.summary || '').replace(/'/g, "\\'")}', '${data.image_plate_path}', '${data.image_full_path}', 'dashboard', '${data.detected_at || ''}', '${(data.camera_name || '').replace(/'/g, "\\'")}', '${data.action_status || ''}', '${data.vehicle_classification || ''}', '${data.sync_status || ''}', '${(data.sync_error || '').replace(/'/g, "\\'")}', '${data.video_path || ''}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>` : ''}
                             </td>
                         </tr>
                     `;
@@ -6123,6 +6485,52 @@
                         loadRecentDashboardLogs();
                     }
                     if (typeof updateWebhookHeaderStatus === 'function') updateWebhookHeaderStatus();
+                } else if (msg.event === 'vehicle_log_video_ready') {
+                    const data = msg.data;
+                    const logId = data.id;
+                    const videoUrl = data.video_url || data.video_path;
+
+                    // Cập nhật bộ nhớ đệm Dashboard logs
+                    if (currentDashboardLogs && currentDashboardLogs.length > 0) {
+                        const targetItem = currentDashboardLogs.find(x => x.id === logId);
+                        if (targetItem) targetItem.video_path = videoUrl;
+                    }
+
+                    // Cập nhật bộ nhớ đệm History logs nếu đang mở tab Lịch sử
+                    if (typeof currentHistoryLogs !== 'undefined' && currentHistoryLogs && currentHistoryLogs.length > 0) {
+                        const targetHist = currentHistoryLogs.find(x => x.id === logId);
+                        if (targetHist) targetHist.video_path = videoUrl;
+                    }
+
+                    // Cập nhật nút Clip 10s trong Dashboard
+                    const pendingBadge = document.getElementById(`dash-row-clip-pending-${logId}`);
+                    const actionCell = document.getElementById(`dash-row-actions-${logId}`);
+                    if (actionCell && !actionCell.querySelector('.btn-event-video')) {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-event-video px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all animate-bounce';
+                        btn.title = 'Xem clip 10s sự kiện (-5s đến +5s)';
+                        btn.innerHTML = '<i class="fa-solid fa-circle-play mr-1 text-blue-400"></i>Clip 10s';
+                        btn.onclick = () => openEventVideoModal(videoUrl, data.plate_number, '', '', '', '');
+                        if (pendingBadge) {
+                            pendingBadge.replaceWith(btn);
+                        } else {
+                            actionCell.insertBefore(btn, actionCell.firstChild);
+                        }
+                        setTimeout(() => btn.classList.remove('animate-bounce'), 4000);
+                    }
+
+                    // Cập nhật nếu cửa sổ Edit Modal đang mở đúng bản ghi này
+                    const currentEditingId = document.getElementById('edit-log-id') ? parseInt(document.getElementById('edit-log-id').value, 10) : null;
+                    if (currentEditingId === logId) {
+                        const videoContainer = document.getElementById('edit-log-video-container');
+                        const playVideoBtn = document.getElementById('edit-log-play-video-btn');
+                        if (videoContainer && playVideoBtn) {
+                            videoContainer.classList.remove('hidden');
+                            playVideoBtn.onclick = () => openEventVideoModal(videoUrl, data.plate_number, '', '', '', '');
+                        }
+                    }
+
+                    showToast(`🎥 Đã tạo xong video clip 10s cho xe [${data.plate_number}]!`, "info", 3500);
                 }
             };
         }

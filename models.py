@@ -146,6 +146,7 @@ class VehicleLog(Base):
     confidence_score = Column(Float, default=0.0)
     image_full_path = Column(String(500), nullable=False)
     image_plate_path = Column(String(500), nullable=False)
+    video_path = Column(String(500), nullable=True)                    # Đường dẫn video clip ngắn (-5s đến +5s)
     
     # Thông tin phân loại & hành động tại thời điểm ghi nhận
     zone_code = Column(String(50), nullable=True, index=True)
@@ -223,6 +224,9 @@ class SystemSettings(Base):
     video_segment_minutes = Column(Integer, default=5, nullable=True)      # Thời lượng phân đoạn video (5, 10, 15 phút)
     video_retention_days = Column(Integer, default=15, nullable=True)      # Tự động dọn dẹp sau N ngày
     auto_cleanup_disk = Column(Boolean, default=True, nullable=True)       # Tự động dọn dẹp khi ổ đĩa đầy
+    enable_event_video_clip = Column(Boolean, default=True, nullable=True) # Lưu kèm video clip ngắn (-5s đến +5s)
+    event_video_pre_seconds = Column(Integer, default=5, nullable=True)    # Số giây trước sự kiện
+    event_video_post_seconds = Column(Integer, default=5, nullable=True)   # Số giây sau sự kiện
 
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

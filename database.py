@@ -146,7 +146,8 @@ def init_db():
                 ("deleted_by", "VARCHAR(100) NULL"),
                 ("sync_status", "VARCHAR(30) DEFAULT 'SYNCED'"),
                 ("last_sync_at", "DATETIME NULL"),
-                ("sync_error", "TEXT NULL")
+                ("sync_error", "TEXT NULL"),
+                ("video_path", "VARCHAR(500) NULL")
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE vehicle_logs ADD COLUMN {col} {col_type};"))
@@ -182,7 +183,7 @@ def init_db():
                 except Exception:
                     pass
 
-            # 3. Bảng system_settings: lmstudio_base_url, lmstudio_model_name, lmstudio_api_key, fcm_server_key, fcm_project_id, video_storage_path, video_segment_minutes, video_retention_days, auto_cleanup_disk
+            # 4. Bảng system_settings: lmstudio_base_url, lmstudio_model_name, lmstudio_api_key, fcm_server_key, fcm_project_id, video_storage_path, video_segment_minutes, video_retention_days, auto_cleanup_disk, event video clip
             for col, col_type in [
                 ("lmstudio_base_url", "VARCHAR(500) DEFAULT 'http://localhost:1234/v1'"),
                 ("lmstudio_model_name", "VARCHAR(100) DEFAULT 'default'"),
@@ -192,7 +193,10 @@ def init_db():
                 ("video_storage_path", "VARCHAR(500) DEFAULT 'storage/recordings'"),
                 ("video_segment_minutes", "INT DEFAULT 5"),
                 ("video_retention_days", "INT DEFAULT 15"),
-                ("auto_cleanup_disk", "BOOLEAN DEFAULT TRUE")
+                ("auto_cleanup_disk", "BOOLEAN DEFAULT TRUE"),
+                ("enable_event_video_clip", "BOOLEAN DEFAULT TRUE"),
+                ("event_video_pre_seconds", "INT DEFAULT 5"),
+                ("event_video_post_seconds", "INT DEFAULT 5")
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE system_settings ADD COLUMN {col} {col_type};"))
