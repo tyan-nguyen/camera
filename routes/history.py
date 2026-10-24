@@ -1,3 +1,6 @@
+import json
+import urllib.request
+import urllib.parse
 from typing import Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query, HTTPException, Request, status
@@ -8,6 +11,7 @@ from database import get_db
 from models import VehicleLog, Camera, UserRoleEnum
 from schemas import PaginatedVehicleLogs, VehicleLogResponse, VehicleLogUpdate
 from auth_utils import get_current_user_optional, require_roles
+from settings_manager import settings_manager
 
 router = APIRouter(prefix="/api/v1/vehicle-logs", tags=["Vehicle Logs History"])
 
@@ -87,20 +91,33 @@ def search_vehicle_logs(
         clean_type = vehicle_type.strip().lower()
         query = query.filter(VehicleLog.vehicle_type == clean_type)
 
-    # 9. Bộ lọc theo Thời gian
+    # 9. Bộ lọc theo Thời gian (Hỗ trợ định dạng YYYY-MM-DD từ datepicker, YYYY-MM-DD HH:MM:SS, ISO)
+    def _parse_filter_date(d_str: str, is_end: bool = False) -> Optional[datetime]:
+        if not d_str:
+            return None
+        clean_d = d_str.strip().replace("T", " ").rstrip("Z")
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+            try:
+                dt = datetime.strptime(clean_d, fmt)
+                if fmt == "%Y-%m-%d":
+                    if is_end:
+                        return dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+                    else:
+                        return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                return dt
+            except ValueError:
+                continue
+        return None
+
     if start_date:
-        try:
-            dt_start = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
+        dt_start = _parse_filter_date(start_date, is_end=False)
+        if dt_start:
             query = query.filter(VehicleLog.detected_at >= dt_start)
-        except ValueError:
-            pass
 
     if end_date:
-        try:
-            dt_end = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
+        dt_end = _parse_filter_date(end_date, is_end=True)
+        if dt_end:
             query = query.filter(VehicleLog.detected_at <= dt_end)
-        except ValueError:
-            pass
 
     total = query.count()
     logs = query.order_by(desc(VehicleLog.detected_at)).offset((page - 1) * page_size).limit(page_size).all()
@@ -123,6 +140,67 @@ def search_vehicle_logs(
         page_size=page_size,
         items=response_items
     )
+
+@router.get("/lookup-plate-by-number")
+def lookup_plate_by_number(
+    number: str = Query(..., description="Mã số xe sát hạch (VD: 01, 05, 12...)"),
+    current_user=Depends(manager_or_admin)
+):
+    """
+    Tra cứu biển số xe từ mã số xe sát hạch / đào tạo qua API đối tác.
+    Được cấu hình động trong System Settings (vehicle_lookup_api_url, vehicle_lookup_api_token).
+    """
+    clean_number = number.strip()
+    if not clean_number:
+        return {"success": False, "plate_number": None, "message": "Vui lòng cung cấp mã số xe."}
+
+    current_settings = settings_manager.get_settings()
+    api_url = (current_settings.get("vehicle_lookup_api_url") or "http://localhost:9999/api2/take-plate-by-number").strip()
+    api_token = (current_settings.get("vehicle_lookup_api_token") or "truonglai_camera_secure_token_2026").strip()
+
+    if not api_url:
+        return {"success": False, "plate_number": None, "message": "Hệ thống chưa được cấu hình URL API tra cứu xe sát hạch."}
+
+    delimiter = "&" if "?" in api_url else "?"
+    query_str = urllib.parse.urlencode({"number": clean_number, "token": api_token})
+    target_url = f"{api_url}{delimiter}{query_str}"
+
+    try:
+        req_obj = urllib.request.Request(
+            target_url,
+            headers={"User-Agent": "CameraANPR-System/1.0", "Accept": "application/json"}
+        )
+        with urllib.request.urlopen(req_obj, timeout=3.5) as response:
+            body_text = response.read().decode("utf-8").strip()
+
+            try:
+                parsed_data = json.loads(body_text)
+            except Exception:
+                parsed_data = body_text.strip('"')
+
+            if parsed_data and str(parsed_data).lower() != "null":
+                plate_str = str(parsed_data).strip().upper()
+                return {
+                    "success": True,
+                    "plate_number": plate_str,
+                    "message": f"Tìm thấy biển số [{plate_str}] cho xe số [{clean_number}]"
+                }
+            else:
+                return {
+                    "success": True,
+                    "plate_number": None,
+                    "message": f"Không tìm thấy biển số cho mã số xe [{clean_number}]"
+                }
+    except urllib.error.HTTPError as he:
+        if he.code == 401:
+            return {"success": False, "plate_number": None, "message": "Lỗi 401 Unauthorized: API Token tra cứu xe không đúng hoặc đã hết hạn."}
+        elif he.code == 404:
+            return {"success": False, "plate_number": None, "message": f"Lỗi 404 Not Found: Không tìm thấy đường dẫn API ({api_url})."}
+        return {"success": False, "plate_number": None, "message": f"Lỗi từ máy chủ API (HTTP {he.code}): {he.reason}"}
+    except urllib.error.URLError as ue:
+        return {"success": False, "plate_number": None, "message": f"Không thể kết nối đến máy chủ API: {ue.reason}"}
+    except Exception as e:
+        return {"success": False, "plate_number": None, "message": f"Lỗi khi tra cứu biển số: {str(e)}"}
 
 from disk_worker import (
     dispatch_vehicle_log_update_webhook,

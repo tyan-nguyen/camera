@@ -228,6 +228,10 @@ class SystemSettings(Base):
     event_video_pre_seconds = Column(Integer, default=5, nullable=True)    # Số giây trước sự kiện
     event_video_post_seconds = Column(Integer, default=5, nullable=True)   # Số giây sau sự kiện
 
+    # Cấu hình Tích hợp API Tra cứu Biển số theo Mã xe sát hạch
+    vehicle_lookup_api_url = Column(String(500), default="http://localhost:9999/api2/take-plate-by-number", nullable=True)
+    vehicle_lookup_api_token = Column(String(255), default="truonglai_camera_secure_token_2026", nullable=True)
+
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class UserRoleEnum(str, enum.Enum):

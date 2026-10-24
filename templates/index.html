@@ -393,13 +393,50 @@
 
             <!-- Filter Bar -->
             <div class="glass-panel rounded-2xl p-3.5 sm:p-5">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2.5 sm:gap-3 items-center w-full">
-                    <div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 items-center w-full">
+                    <!-- 1. Biển số xe -->
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </div>
                         <input type="text" id="filter-plate" placeholder="Nhập biển số xe..."
                             onkeydown="if(event.key==='Enter') fetchHistoryLogs(1)"
-                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200 placeholder-slate-500">
                     </div>
 
+                    <!-- 2. Từ ngày -->
+                    <div class="relative">
+                        <div class="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus-within:border-blue-500">
+                            <span class="text-[11px] text-slate-400 font-medium whitespace-nowrap mr-2 flex items-center gap-1.5">
+                                <i class="fa-regular fa-calendar text-blue-400"></i> Từ:
+                            </span>
+                            <input type="date" id="filter-start-date" title="Lọc từ ngày"
+                                onchange="fetchHistoryLogs(1)"
+                                class="w-full bg-transparent text-xs sm:text-sm text-slate-200 focus:outline-none [color-scheme:dark] cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- 3. Đến ngày -->
+                    <div class="relative">
+                        <div class="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus-within:border-blue-500">
+                            <span class="text-[11px] text-slate-400 font-medium whitespace-nowrap mr-2 flex items-center gap-1.5">
+                                <i class="fa-regular fa-calendar-check text-blue-400"></i> Đến:
+                            </span>
+                            <input type="date" id="filter-end-date" title="Lọc đến ngày"
+                                onchange="fetchHistoryLogs(1)"
+                                class="w-full bg-transparent text-xs sm:text-sm text-slate-200 focus:outline-none [color-scheme:dark] cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- 4. Nguồn Camera -->
+                    <div>
+                        <select id="filter-camera" onchange="fetchHistoryLogs(1)"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                            <option value="">-- Tất cả Camera --</option>
+                        </select>
+                    </div>
+
+                    <!-- 5. Khu vực / Vùng -->
                     <div>
                         <select id="filter-zone" onchange="fetchHistoryLogs(1)"
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
@@ -409,6 +446,7 @@
                         </select>
                     </div>
 
+                    <!-- 6. Loại xe -->
                     <div>
                         <select id="filter-vehicle-type" onchange="fetchHistoryLogs(1)"
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
@@ -418,40 +456,45 @@
                         </select>
                     </div>
 
-                    <div>
-                        <select id="filter-camera" onchange="fetchHistoryLogs(1)"
-                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
-                            <option value="">-- Tất cả Camera --</option>
-                        </select>
-                    </div>
-
+                    <!-- 7. Đối Tượng Xe -->
                     <div>
                         <select id="filter-classification" onchange="fetchHistoryLogs(1)"
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
                             <option value="">-- Đối Tượng Xe --</option>
                             <option value="INTERNAL_VALID">🟢 Xe Nội Bộ (Có Kế Hoạch)</option>
-                            <option value="INTERNAL_UNPLANNED">🔴 Xe Nội Bộ (Không Kế Hoạch)</option>
+                            <option value="INTERNAL_UNPLANNED">⚠️ Xe Nội Bộ (Không Kế Hoạch)</option>
                             <option value="EXTERNAL_UNKNOWN">⚪ Xe Lạ / Ngoài Danh Sách</option>
                         </select>
                     </div>
 
+                    <!-- 8. Trạng Thái Hành Động -->
                     <div>
                         <select id="filter-action-status" onchange="fetchHistoryLogs(1)"
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
                             <option value="">-- Tất cả Trạng Thái --</option>
                             <option value="APPROVED">✅ Hợp Lệ (Approved)</option>
-                            <option value="UNPLANNED">⚠️ Xe Không Kế Hoạch</option>
+                            <option value="UNPLANNED">⚠️ Xe Không Kế Hoạch (Unplanned)</option>
                             <option value="REJECTED">❌ Từ Chối (Rejected)</option>
                             <option value="WARNING">⚡ Cảnh Báo (Warning)</option>
                             <option value="INFO">ℹ️ Thông Tin (Info)</option>
                         </select>
                     </div>
 
+                    <!-- 9. Nút Tìm kiếm -->
                     <div>
                         <button onclick="fetchHistoryLogs(1)"
-                            class="w-full px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 transition-all">
+                            class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 transition-all">
                             <i class="fa-solid fa-magnifying-glass"></i>
                             <span>Tìm kiếm</span>
+                        </button>
+                    </div>
+
+                    <!-- 10. Nút Đặt lại (Reset) -->
+                    <div>
+                        <button onclick="resetHistoryFilters()"
+                            class="w-full px-4 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-300 hover:text-white border border-slate-700 hover:border-slate-600 text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center space-x-2 transition-all">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Đặt lại</span>
                         </button>
                     </div>
                 </div>
@@ -1178,6 +1221,39 @@
                     </div>
                 </div>
 
+                <!-- 4. Vehicle Lookup API Integration Section -->
+                <div class="p-3.5 sm:p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs sm:text-sm font-semibold text-emerald-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-car-tunnel text-emerald-400"></i>
+                            <span>4. Cấu Hình API Tra Cứu Biển Số Theo Mã Xe Sát Hạch / Đào Tạo</span>
+                        </h3>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">API REST</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400">Dùng để tự động tra cứu và lấy biển số xe từ mã số xe sát hạch (nhìn thấy trên mui/thân xe) trong form chỉnh sửa sự kiện.</p>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Đường Dẫn API Tra Cứu (Endpoint URL):</label>
+                            <input type="text" id="input-vehicle-lookup-url" placeholder="http://localhost:9999/api2/take-plate-by-number"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">API Security Token (Khóa xác thực):</label>
+                            <input type="password" id="input-vehicle-lookup-token" placeholder="truonglai_camera_secure_token_2026"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-200 focus:border-emerald-500">
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex items-center justify-between">
+                        <button type="button" onclick="testVehicleLookupConnection()"
+                            class="px-3.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-semibold text-xs rounded-xl flex items-center space-x-1.5 transition-all">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>Kiểm Tra Thử Nghiệm Kết Nối API (Mã xe 01)</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Action Button -->
                 <div class="pt-2 flex justify-end">
                     <button onclick="saveSystemSettings()"
@@ -1794,6 +1870,33 @@
                             <button type="button" onclick="document.getElementById('edit-log-save-alert').classList.add('hidden')" class="text-emerald-400 hover:text-white text-xs px-1">
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
+                        </div>
+
+                        <!-- Field Mã Số Xe Sát Hạch (Kích thước nhỏ, hỗ trợ tra cứu lấy biển số qua API) -->
+                        <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="text-[11px] font-semibold text-cyan-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-car-side text-[10px]"></i>
+                                    <span>Mã Số Xe Sát Hạch / Đào Tạo:</span>
+                                </label>
+                                <span class="text-[10px] text-slate-500 font-normal">Nhập mã &rarr; Enter / Kính lúp</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="relative flex-1">
+                                    <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-500">
+                                        <i class="fa-solid fa-hashtag text-xs"></i>
+                                    </span>
+                                    <input type="text" id="edit-log-vehicle-code" placeholder="VD: 01, 05, 12..."
+                                        class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-7 pr-2.5 py-1.5 text-xs font-mono font-bold text-cyan-300 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 placeholder-slate-600 uppercase"
+                                        onkeydown="if(event.key === 'Enter'){ event.preventDefault(); lookupPlateByVehicleCode(); }">
+                                </div>
+                                <button type="button" id="btn-lookup-plate" onclick="lookupPlateByVehicleCode()"
+                                    title="Tra cứu biển số từ mã số xe sát hạch"
+                                    class="px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 active:scale-95 text-cyan-300 border border-cyan-500/40 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition-all">
+                                    <i class="fa-solid fa-magnifying-glass text-xs" id="btn-lookup-plate-icon"></i>
+                                    <span class="hidden sm:inline">Lấy Biển Số</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div>
@@ -4205,6 +4308,9 @@
                     if (document.getElementById('input-enable-event-clip')) document.getElementById('input-enable-event-clip').checked = data.enable_event_video_clip !== false;
                     if (document.getElementById('input-event-pre-seconds')) document.getElementById('input-event-pre-seconds').value = data.event_video_pre_seconds || 5;
                     if (document.getElementById('input-event-post-seconds')) document.getElementById('input-event-post-seconds').value = data.event_video_post_seconds || 5;
+
+                    if (document.getElementById('input-vehicle-lookup-url')) document.getElementById('input-vehicle-lookup-url').value = data.vehicle_lookup_api_url || 'http://localhost:9999/api2/take-plate-by-number';
+                    if (document.getElementById('input-vehicle-lookup-token')) document.getElementById('input-vehicle-lookup-token').value = data.vehicle_lookup_api_token || 'truonglai_camera_secure_token_2026';
                 }
             } catch (e) { }
         }
@@ -4251,6 +4357,38 @@
             }
         }
 
+        async function testVehicleLookupConnection() {
+            const apiUrl = document.getElementById('input-vehicle-lookup-url') ? document.getElementById('input-vehicle-lookup-url').value.trim() : '';
+            const apiToken = document.getElementById('input-vehicle-lookup-token') ? document.getElementById('input-vehicle-lookup-token').value.trim() : '';
+
+            if (!apiUrl) {
+                showToast("Vui lòng nhập đường dẫn API tra cứu.", "warning");
+                return;
+            }
+
+            showToast("Đang kiểm tra kết nối API tra cứu biển số (mã xe 01)...", "info");
+
+            try {
+                const res = await fetch('/api/v1/settings/test-vehicle-lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        api_url: apiUrl,
+                        api_token: apiToken,
+                        test_number: '01'
+                    })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(data.message, "success", 6000);
+                } else {
+                    showToast(data.message || (data.detail || "Kiểm tra kết nối thất bại."), "error", 6000);
+                }
+            } catch (err) {
+                showToast("Lỗi khi kiểm tra kết nối API: " + err, "error");
+            }
+        }
+
         async function saveSystemSettings() {
             const checkedRadio = document.querySelector('input[name="ocr_engine"]:checked');
             const engine = checkedRadio ? checkedRadio.value : 'yolo_local';
@@ -4271,7 +4409,9 @@
                 auto_cleanup_disk: document.getElementById('input-auto-cleanup') ? document.getElementById('input-auto-cleanup').checked : true,
                 enable_event_video_clip: document.getElementById('input-enable-event-clip') ? document.getElementById('input-enable-event-clip').checked : true,
                 event_video_pre_seconds: document.getElementById('input-event-pre-seconds') ? (parseInt(document.getElementById('input-event-pre-seconds').value, 10) || 5) : 5,
-                event_video_post_seconds: document.getElementById('input-event-post-seconds') ? (parseInt(document.getElementById('input-event-post-seconds').value, 10) || 5) : 5
+                event_video_post_seconds: document.getElementById('input-event-post-seconds') ? (parseInt(document.getElementById('input-event-post-seconds').value, 10) || 5) : 5,
+                vehicle_lookup_api_url: document.getElementById('input-vehicle-lookup-url') ? document.getElementById('input-vehicle-lookup-url').value.trim() : 'http://localhost:9999/api2/take-plate-by-number',
+                vehicle_lookup_api_token: document.getElementById('input-vehicle-lookup-token') ? document.getElementById('input-vehicle-lookup-token').value.trim() : 'truonglai_camera_secure_token_2026'
             };
 
             try {
@@ -4281,7 +4421,7 @@
                     body: JSON.stringify(payload)
                 });
                 if (res.ok) {
-                    showToast("Đã lưu cấu hình Hệ Thống & Lưu Trữ Video thành công!", "success");
+                    showToast("Đã lưu cấu hình Hệ Thống & Tích Hợp API thành công!", "success");
                 }
             } catch (err) {
                 showToast("Lỗi khi lưu cấu hình: " + err, "error");
@@ -4375,12 +4515,19 @@
 
         async function fetchHistoryLogs(page = 1) {
             currentHistoryPage = page;
-            const plate = document.getElementById('filter-plate').value.trim();
-            const zone = document.getElementById('filter-zone').value;
-            const camId = document.getElementById('filter-camera').value;
-            const status = document.getElementById('filter-action-status').value;
+            const plate = document.getElementById('filter-plate') ? document.getElementById('filter-plate').value.trim() : '';
+            const startDate = document.getElementById('filter-start-date') ? document.getElementById('filter-start-date').value.trim() : '';
+            const endDate = document.getElementById('filter-end-date') ? document.getElementById('filter-end-date').value.trim() : '';
+            const zone = document.getElementById('filter-zone') ? document.getElementById('filter-zone').value : '';
+            const camId = document.getElementById('filter-camera') ? document.getElementById('filter-camera').value : '';
+            const status = document.getElementById('filter-action-status') ? document.getElementById('filter-action-status').value : '';
             const vtype = document.getElementById('filter-vehicle-type') ? document.getElementById('filter-vehicle-type').value : '';
             const classification = document.getElementById('filter-classification') ? document.getElementById('filter-classification').value : '';
+
+            if (startDate && endDate && startDate > endDate) {
+                showToast("Khoảng thời gian không hợp lệ: 'Từ ngày' phải nhỏ hơn hoặc bằng 'Đến ngày'!", "warning");
+                return;
+            }
 
             let url = `/api/v1/vehicle-logs?page=${page}&page_size=20`;
             if (currentHistoryMode === 'trash') {
@@ -4390,6 +4537,8 @@
             }
 
             if (plate) url += `&plate_number=${encodeURIComponent(plate)}`;
+            if (startDate) url += `&start_date=${encodeURIComponent(startDate)}`;
+            if (endDate) url += `&end_date=${encodeURIComponent(endDate)}`;
             if (zone) url += `&zone_code=${encodeURIComponent(zone)}`;
             if (camId) url += `&camera_id=${encodeURIComponent(camId)}`;
             if (status) url += `&action_status=${encodeURIComponent(status)}`;
@@ -4409,6 +4558,28 @@
                 renderHistoryTable(data.items);
                 renderPagination(data.page, data.total, data.page_size);
             } catch (err) { }
+        }
+
+        function resetHistoryFilters() {
+            const elPlate = document.getElementById('filter-plate');
+            const elStart = document.getElementById('filter-start-date');
+            const elEnd = document.getElementById('filter-end-date');
+            const elZone = document.getElementById('filter-zone');
+            const elCam = document.getElementById('filter-camera');
+            const elType = document.getElementById('filter-vehicle-type');
+            const elClass = document.getElementById('filter-classification');
+            const elStatus = document.getElementById('filter-action-status');
+
+            if (elPlate) elPlate.value = '';
+            if (elStart) elStart.value = '';
+            if (elEnd) elEnd.value = '';
+            if (elZone) elZone.value = '';
+            if (elCam) elCam.value = '';
+            if (elType) elType.value = '';
+            if (elClass) elClass.value = '';
+            if (elStatus) elStatus.value = '';
+
+            fetchHistoryLogs(1);
         }
 
         function renderVehicleTypeBadge(type) {
@@ -4545,23 +4716,51 @@
         function renderActionStatusBadge(status, summary, classification = null) {
             const cls = (classification || '').toUpperCase();
             const st = (status || 'INFO').toUpperCase();
+            const sumLower = (summary || '').toLowerCase();
 
-            if (summary && (summary.toLowerCase().includes('thuê') || summary.toLowerCase().includes('lịch thuê'))) {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 whitespace-nowrap"><i class="fa-regular fa-calendar-check mr-1"></i>${summary}</span>`;
+            // 1. Xe có lịch thuê sân (Ưu tiên kiểm tra lịch thuê)
+            if (sumLower.includes('thuê') || sumLower.includes('lịch thuê')) {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 whitespace-nowrap"><i class="fa-regular fa-calendar-check mr-1 text-cyan-400"></i>${summary || 'Có Lịch Thuê'}</span>`;
             }
 
-            if (cls === 'INTERNAL_VALID' || (!cls && st === 'APPROVED')) {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1"></i>${summary || 'Có Kế Hoạch'}</span>`;
-            } else if (cls === 'INTERNAL_UNPLANNED' || (!cls && st === 'UNPLANNED')) {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 whitespace-nowrap animate-pulse"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${summary || 'Không Kế Hoạch'}</span>`;
-            } else if (cls === 'EXTERNAL_UNKNOWN') {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-500/20 text-slate-300 border border-slate-500/30 whitespace-nowrap"><i class="fa-solid fa-car-side mr-1"></i>${summary || 'Xe Bên Ngoài'}</span>`;
-            } else if (st === 'REJECTED') {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600/30 text-rose-200 border border-rose-600/40 whitespace-nowrap"><i class="fa-solid fa-circle-xmark mr-1"></i>${summary || 'Từ Chối'}</span>`;
-            } else if (st === 'WARNING') {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap"><i class="fa-solid fa-bolt mr-1"></i>${summary || 'Cảnh Báo'}</span>`;
+            // 2. Xe KHÔNG KẾ HOẠCH (Đồng bộ tuyệt đối class text-rose-300)
+            const isUnplanned = cls === 'INTERNAL_UNPLANNED' || 
+                                st === 'UNPLANNED' || 
+                                sumLower.includes('không kế hoạch') || 
+                                sumLower.includes('khong ke hoach') || 
+                                sumLower.includes('ngoài kế hoạch') ||
+                                sumLower.includes('ngoai ke hoach');
+            if (isUnplanned) {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 whitespace-nowrap animate-pulse"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-400"></i>${summary || 'Không Kế Hoạch'}</span>`;
             }
-            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20 whitespace-nowrap">${summary || 'Ghi nhận'}</span>`;
+
+            // 3. Xe CÓ KẾ HOẠCH / HỢP LỆ (Hệ màu emerald)
+            const isValid = cls === 'INTERNAL_VALID' || 
+                            st === 'APPROVED' || 
+                            st === 'VALID' ||
+                            sumLower.includes('có kế hoạch') || 
+                            sumLower.includes('hợp lệ');
+            if (isValid) {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap"><i class="fa-solid fa-circle-check mr-1 text-emerald-400"></i>${summary || 'Có Kế Hoạch'}</span>`;
+            }
+
+            // 4. BỊ TỪ CHỐI (REJECTED / DANGER)
+            if (st === 'REJECTED' || st === 'DANGER') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600/30 text-rose-200 border border-rose-600/40 whitespace-nowrap"><i class="fa-solid fa-circle-xmark mr-1 text-rose-300"></i>${summary || 'Từ Chối'}</span>`;
+            }
+
+            // 5. CẢNH BÁO (WARNING)
+            if (st === 'WARNING') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap"><i class="fa-solid fa-bolt mr-1 text-amber-400"></i>${summary || 'Cảnh Báo'}</span>`;
+            }
+
+            // 6. XE BÊN NGOÀI (EXTERNAL_UNKNOWN)
+            if (cls === 'EXTERNAL_UNKNOWN' || cls === 'GUEST') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-500/20 text-slate-300 border border-slate-500/30 whitespace-nowrap"><i class="fa-solid fa-car-side mr-1 text-slate-400"></i>${summary || 'Xe Bên Ngoài'}</span>`;
+            }
+
+            // 7. GHI NHẬN / THÔNG TIN MẶC ĐỊNH (INFO)
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20 whitespace-nowrap"><i class="fa-solid fa-circle-info mr-1 text-blue-400"></i>${summary || 'Ghi nhận'}</span>`;
         }
 
         function renderVehicleViewBadge(view) {
@@ -5530,16 +5729,7 @@
             const syncBadgeEl = document.getElementById('modal-sync-badge');
 
             if (classBadgeEl) {
-                const cls = (classification || '').toUpperCase();
-                if (cls === 'INTERNAL_VALID') {
-                    classBadgeEl.innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"><i class="fa-solid fa-circle-check mr-1"></i>Xe Nội Bộ Có Kế Hoạch</span>`;
-                } else if (cls === 'INTERNAL_UNPLANNED') {
-                    classBadgeEl.innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Xe Nội Bộ Không Kế Hoạch</span>`;
-                } else if (cls === 'EXTERNAL_UNKNOWN') {
-                    classBadgeEl.innerHTML = `<span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-500/20 text-slate-300 border border-slate-500/40"><i class="fa-solid fa-car-side mr-1"></i>Xe Bên Ngoài (Chưa Đăng Ký)</span>`;
-                } else {
-                    classBadgeEl.innerHTML = '';
-                }
+                classBadgeEl.innerHTML = renderActionStatusBadge('', summary, classification);
             }
 
             if (syncBadgeEl) {
@@ -5884,6 +6074,10 @@
             const plateInput = document.getElementById('edit-log-plate');
             if (plateInput) plateInput.value = item.plate_number || '';
 
+            // Reset ô nhập mã số xe sát hạch
+            const vehicleCodeInput = document.getElementById('edit-log-vehicle-code');
+            if (vehicleCodeInput) vehicleCodeInput.value = '';
+
             const viewSelect = document.getElementById('edit-log-view');
             if (viewSelect) viewSelect.value = (item.vehicle_view || 'unknown').toLowerCase();
 
@@ -5940,6 +6134,55 @@
                     plateInput.focus();
                     plateInput.select();
                 }, 50);
+            }
+        }
+
+        async function lookupPlateByVehicleCode() {
+            const codeInput = document.getElementById('edit-log-vehicle-code');
+            const plateInput = document.getElementById('edit-log-plate');
+            const lookupBtn = document.getElementById('btn-lookup-plate');
+            const lookupIcon = document.getElementById('btn-lookup-plate-icon');
+
+            if (!codeInput) return;
+            const code = codeInput.value.trim();
+            if (!code) {
+                showToast("Vui lòng nhập mã số xe sát hạch (VD: 01, 05, 12...)", "warning");
+                codeInput.focus();
+                return;
+            }
+
+            // Hiển thị trạng thái đang tải
+            if (lookupBtn) lookupBtn.disabled = true;
+            if (lookupIcon) lookupIcon.className = "fa-solid fa-spinner fa-spin text-xs";
+
+            try {
+                const res = await fetch(`/api/v1/vehicle-logs/lookup-plate-by-number?number=${encodeURIComponent(code)}`);
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    if (data.plate_number) {
+                        // Có biển số -> Cập nhật input biển số và thêm hiệu ứng viền xanh nổi bật
+                        const newPlate = data.plate_number.toUpperCase().trim();
+                        if (plateInput) {
+                            plateInput.value = newPlate;
+                            plateInput.classList.add('ring-2', 'ring-emerald-500', 'border-emerald-500', 'bg-emerald-950/40');
+                            setTimeout(() => {
+                                plateInput.classList.remove('ring-2', 'ring-emerald-500', 'border-emerald-500', 'bg-emerald-950/40');
+                            }, 2500);
+                        }
+                        showToast(`Đã tìm thấy biển số: ${newPlate} từ mã xe [${code}]`, "success", 4000);
+                    } else {
+                        // Trả về null -> KHÔNG LÀM GÌ với ô biển số hiện tại (giữ nguyên), chỉ thông báo nhẹ
+                        showToast(`Không tìm thấy biển số cho mã số xe [${code}]`, "info", 4000);
+                    }
+                } else {
+                    showToast(data.message || "Không thể tra cứu biển số từ mã xe.", "error", 5000);
+                }
+            } catch (err) {
+                showToast("Lỗi khi kết nối tra cứu biển số: " + err, "error");
+            } finally {
+                if (lookupBtn) lookupBtn.disabled = false;
+                if (lookupIcon) lookupIcon.className = "fa-solid fa-magnifying-glass text-xs";
             }
         }
 
@@ -6123,13 +6366,14 @@
                     }
 
                     const cls = updated.vehicle_classification;
+                    const st = updated.action_status;
                     let msg = `Đã lưu thành công sự kiện #${updated.id} (${updated.plate_number})!`;
                     let toastType = 'success';
-                    if (cls === 'INTERNAL_VALID') {
-                        msg += ` (🟢 Xe kế hoạch)`;
-                    } else if (cls === 'INTERNAL_UNPLANNED') {
+                    if (cls === 'INTERNAL_UNPLANNED' || st === 'UNPLANNED') {
                         msg += ` (⚠️ Xe không kế hoạch)`;
                         toastType = 'warning';
+                    } else if (cls === 'INTERNAL_VALID' || st === 'APPROVED') {
+                        msg += ` (🟢 Xe kế hoạch)`;
                     } else if (cls === 'EXTERNAL_UNKNOWN') {
                         msg += ` (⚪ Xe ngoài)`;
                         toastType = 'info';

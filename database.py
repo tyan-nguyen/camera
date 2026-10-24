@@ -196,7 +196,9 @@ def init_db():
                 ("auto_cleanup_disk", "BOOLEAN DEFAULT TRUE"),
                 ("enable_event_video_clip", "BOOLEAN DEFAULT TRUE"),
                 ("event_video_pre_seconds", "INT DEFAULT 5"),
-                ("event_video_post_seconds", "INT DEFAULT 5")
+                ("event_video_post_seconds", "INT DEFAULT 5"),
+                ("vehicle_lookup_api_url", "VARCHAR(500) DEFAULT 'http://localhost:9999/api2/take-plate-by-number'"),
+                ("vehicle_lookup_api_token", "VARCHAR(255) DEFAULT 'truonglai_camera_secure_token_2026'")
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE system_settings ADD COLUMN {col} {col_type};"))

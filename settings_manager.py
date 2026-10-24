@@ -36,7 +36,9 @@ class DynamicSettingsManager:
             "auto_cleanup_disk": True,
             "enable_event_video_clip": True,
             "event_video_pre_seconds": 5,
-            "event_video_post_seconds": 5
+            "event_video_post_seconds": 5,
+            "vehicle_lookup_api_url": "http://localhost:9999/api2/take-plate-by-number",
+            "vehicle_lookup_api_token": "truonglai_camera_secure_token_2026"
         }
         self.reload_from_db()
 
@@ -86,7 +88,9 @@ class DynamicSettingsManager:
                         "auto_cleanup_disk": settings_obj.auto_cleanup_disk if settings_obj.auto_cleanup_disk is not None else True,
                         "enable_event_video_clip": getattr(settings_obj, "enable_event_video_clip", None) if getattr(settings_obj, "enable_event_video_clip", None) is not None else True,
                         "event_video_pre_seconds": getattr(settings_obj, "event_video_pre_seconds", None) if getattr(settings_obj, "event_video_pre_seconds", None) is not None else 5,
-                        "event_video_post_seconds": getattr(settings_obj, "event_video_post_seconds", None) if getattr(settings_obj, "event_video_post_seconds", None) is not None else 5
+                        "event_video_post_seconds": getattr(settings_obj, "event_video_post_seconds", None) if getattr(settings_obj, "event_video_post_seconds", None) is not None else 5,
+                        "vehicle_lookup_api_url": getattr(settings_obj, "vehicle_lookup_api_url", None) or "http://localhost:9999/api2/take-plate-by-number",
+                        "vehicle_lookup_api_token": getattr(settings_obj, "vehicle_lookup_api_token", None) or "truonglai_camera_secure_token_2026"
                     }
                 logger.info(f"System settings loaded. Active OCR Engine: [{self.cache['ocr_engine_type']}]")
             except Exception as inner_e:
@@ -142,6 +146,10 @@ class DynamicSettingsManager:
                 settings_obj.event_video_pre_seconds = int(new_settings["event_video_pre_seconds"])
             if "event_video_post_seconds" in new_settings and new_settings["event_video_post_seconds"] is not None:
                 settings_obj.event_video_post_seconds = int(new_settings["event_video_post_seconds"])
+            if "vehicle_lookup_api_url" in new_settings and new_settings["vehicle_lookup_api_url"] is not None:
+                settings_obj.vehicle_lookup_api_url = str(new_settings["vehicle_lookup_api_url"]).strip()
+            if "vehicle_lookup_api_token" in new_settings and new_settings["vehicle_lookup_api_token"] is not None:
+                settings_obj.vehicle_lookup_api_token = str(new_settings["vehicle_lookup_api_token"]).strip()
 
             db.commit()
             db.refresh(settings_obj)
@@ -164,7 +172,9 @@ class DynamicSettingsManager:
                     "auto_cleanup_disk": settings_obj.auto_cleanup_disk if settings_obj.auto_cleanup_disk is not None else True,
                     "enable_event_video_clip": getattr(settings_obj, "enable_event_video_clip", None) if getattr(settings_obj, "enable_event_video_clip", None) is not None else True,
                     "event_video_pre_seconds": getattr(settings_obj, "event_video_pre_seconds", None) if getattr(settings_obj, "event_video_pre_seconds", None) is not None else 5,
-                    "event_video_post_seconds": getattr(settings_obj, "event_video_post_seconds", None) if getattr(settings_obj, "event_video_post_seconds", None) is not None else 5
+                    "event_video_post_seconds": getattr(settings_obj, "event_video_post_seconds", None) if getattr(settings_obj, "event_video_post_seconds", None) is not None else 5,
+                    "vehicle_lookup_api_url": getattr(settings_obj, "vehicle_lookup_api_url", None) or "http://localhost:9999/api2/take-plate-by-number",
+                    "vehicle_lookup_api_token": getattr(settings_obj, "vehicle_lookup_api_token", None) or "truonglai_camera_secure_token_2026"
                 }
             logger.info(f"System settings updated (Hot-reloaded). Active OCR: [{self.cache['ocr_engine_type']}], Video Path: [{self.cache['video_storage_path']}]")
             return self.cache.copy()

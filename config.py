@@ -13,7 +13,7 @@ class Settings:
     DEBUG: bool = True
 
     # Database Settings (Chuyển sang MySQL v8 anpr_db)
-    USE_SQLITE: bool = False
+    USE_SQLITE: bool = os.getenv("USE_SQLITE", "False").lower() in ("true", "1", "yes")
     SQLITE_URL: str = "sqlite:///./anpr_local.db"
     USE_SQLITE_FALLBACK: bool = True
 

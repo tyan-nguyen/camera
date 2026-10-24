@@ -213,6 +213,8 @@ class SystemSettingsBase(BaseModel):
     enable_event_video_clip: Optional[bool] = True
     event_video_pre_seconds: Optional[int] = 5
     event_video_post_seconds: Optional[int] = 5
+    vehicle_lookup_api_url: Optional[str] = "http://localhost:9999/api2/take-plate-by-number"
+    vehicle_lookup_api_token: Optional[str] = "truonglai_camera_secure_token_2026"
 
 class SystemSettingsUpdate(BaseModel):
     ocr_engine_type: Optional[str] = None
@@ -232,6 +234,8 @@ class SystemSettingsUpdate(BaseModel):
     enable_event_video_clip: Optional[bool] = None
     event_video_pre_seconds: Optional[int] = None
     event_video_post_seconds: Optional[int] = None
+    vehicle_lookup_api_url: Optional[str] = None
+    vehicle_lookup_api_token: Optional[str] = None
 
 class SystemSettingsResponse(SystemSettingsBase):
     id: int
@@ -244,6 +248,11 @@ class TestVisionRequest(BaseModel):
     base_url: Optional[str] = "http://localhost:1234/v1"
     model_name: Optional[str] = "default"
     api_key: Optional[str] = ""
+
+class TestVehicleLookupRequest(BaseModel):
+    api_url: Optional[str] = "http://localhost:9999/api2/take-plate-by-number"
+    api_token: Optional[str] = "truonglai_camera_secure_token_2026"
+    test_number: Optional[str] = "01"
 
 # ==========================================
 # 6. Video Recording & Playback Schemas
