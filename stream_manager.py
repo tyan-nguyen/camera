@@ -1,20 +1,14 @@
+import c_env_helper
 import os
-# Triệt tiêu toàn bộ log cảnh báo/lỗi rác của FFmpeg và OpenCV trên Command Prompt (AV_LOG_QUIET)
-os.environ["OPENCV_FFMPEG_LOGLEVEL"] = "-8"
-os.environ["OPENCV_LOG_LEVEL"] = "ERROR"
-os.environ["AV_LOG_FORCE_NOCOLOR"] = "1"
-
-# Cấu hình FFmpeg RTSP qua TCP, bộ đệm jitter buffer 2048 gói để triệt tiêu lỗi bad cseq khi mạng chập chờn
-os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|buffer_size;2048000|max_delay;500000|reorder_queue_size;2048|stimeout;5000000|timeout;5000000"
-
 import time
 import threading
 import logging
 import socket
 import cv2
 if hasattr(cv2, "utils") and hasattr(cv2.utils, "logging"):
-    cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+    cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_SILENT)
 import numpy as np
+
 from typing import Dict, Optional
 from datetime import datetime
 
