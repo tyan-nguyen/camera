@@ -4718,20 +4718,36 @@
             const st = (status || 'INFO').toUpperCase();
             const sumLower = (summary || '').toLowerCase();
 
-            // 1. Xe có lịch thuê sân (Ưu tiên kiểm tra lịch thuê)
-            if (sumLower.includes('thuê') || sumLower.includes('lịch thuê')) {
-                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 whitespace-nowrap"><i class="fa-regular fa-calendar-check mr-1 text-cyan-400"></i>${summary || 'Có Lịch Thuê'}</span>`;
-            }
-
-            // 2. Xe KHÔNG KẾ HOẠCH (Đồng bộ tuyệt đối class text-rose-300)
+            // 1. Xe KHÔNG KẾ HOẠCH / KHÔNG CÓ LỊCH THUÊ (Đồng bộ tuyệt đối hệ màu đỏ - class text-rose-300)
             const isUnplanned = cls === 'INTERNAL_UNPLANNED' || 
                                 st === 'UNPLANNED' || 
                                 sumLower.includes('không kế hoạch') || 
                                 sumLower.includes('khong ke hoach') || 
-                                sumLower.includes('ngoài kế hoạch') ||
-                                sumLower.includes('ngoai ke hoach');
+                                sumLower.includes('ngoài kế hoạch') || 
+                                sumLower.includes('ngoai ke hoach') || 
+                                sumLower.includes('không có lịch thuê') || 
+                                sumLower.includes('khong co lich thue') || 
+                                sumLower.includes('chưa có lịch thuê') || 
+                                sumLower.includes('chua co lich thue') || 
+                                sumLower.includes('không lịch thuê') || 
+                                sumLower.includes('khong lich thue') || 
+                                sumLower.includes('hết giờ thuê') || 
+                                sumLower.includes('het gio thue') || 
+                                sumLower.includes('không thuê') || 
+                                sumLower.includes('khong thue') || 
+                                sumLower.includes('không mua vé') || 
+                                sumLower.includes('khong mua ve');
             if (isUnplanned) {
                 return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 whitespace-nowrap animate-pulse"><i class="fa-solid fa-triangle-exclamation mr-1 text-rose-400"></i>${summary || 'Không Kế Hoạch'}</span>`;
+            }
+
+            // 2. Xe CÓ LỊCH THUÊ SÂN HỢP LỆ (Hệ màu cyan - chỉ khi thực sự có lịch thuê hợp lệ)
+            const isNegative = sumLower.includes('không') || sumLower.includes('khong') || 
+                               sumLower.includes('chưa') || sumLower.includes('chua') || 
+                               sumLower.includes('hết') || sumLower.includes('het');
+            const hasRentalWord = sumLower.includes('thuê') || sumLower.includes('lịch thuê') || sumLower.includes('lich thue');
+            if (hasRentalWord && !isNegative && cls !== 'INTERNAL_UNPLANNED' && st !== 'UNPLANNED') {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 whitespace-nowrap"><i class="fa-regular fa-calendar-check mr-1 text-cyan-400"></i>${summary || 'Có Lịch Thuê'}</span>`;
             }
 
             // 3. Xe CÓ KẾ HOẠCH / HỢP LỆ (Hệ màu emerald)
@@ -5746,7 +5762,9 @@
             const rentalBox = document.getElementById('modal-rental-box');
             if (rentalBox) {
                 let rentalInfo = '';
-                if (summary && (summary.toLowerCase().includes('thuê') || summary.toLowerCase().includes('lịch thuê'))) {
+                const sumLow = (summary || '').toLowerCase();
+                const isNeg = sumLow.includes('không') || sumLow.includes('khong') || sumLow.includes('chưa') || sumLow.includes('chua') || sumLow.includes('hết') || sumLow.includes('het');
+                if (summary && (sumLow.includes('thuê') || sumLow.includes('lịch thuê')) && !isNeg && classification !== 'INTERNAL_UNPLANNED') {
                     rentalInfo = summary;
                 }
                 if (actionResultRaw) {

@@ -335,6 +335,26 @@ def execute_action_webhook(
                             elif "thuê" not in summary.lower():
                                 summary = f"{summary} ({time_desc})"
 
+                    # Nhận diện nếu không có lịch thuê / hết giờ thuê từ API hoặc summary
+                    sum_check = str(summary or message or "").lower()
+                    data_obj = parsed.get("data") if isinstance(parsed, dict) else None
+                    co_lich_thue = data_obj.get("co_lich_thue") if isinstance(data_obj, dict) else None
+                    thuoc_ds = data_obj.get("thuoc_danh_sach_xe") if isinstance(data_obj, dict) else None
+
+                    is_no_rental = (co_lich_thue is False) or any(k in sum_check for k in [
+                        "không có lịch thuê", "khong co lich thue", "chưa có lịch thuê", "chua co lich thue",
+                        "không lịch thuê", "khong lich thue", "hết giờ thuê", "het gio thue",
+                        "không kế hoạch", "khong ke hoach", "ngoài kế hoạch", "ngoai ke hoach",
+                        "không mua vé", "khong mua ve"
+                    ])
+                    if is_no_rental:
+                        if thuoc_ds is False or vehicle_classification == "EXTERNAL_UNKNOWN":
+                            vehicle_classification = "EXTERNAL_UNKNOWN"
+                        else:
+                            vehicle_classification = "INTERNAL_UNPLANNED"
+                        action_status = "UNPLANNED"
+                        alert_level = "warning"
+
                     # Tự động chuẩn hóa vehicle_classification nếu API chưa trả về
                     if not vehicle_classification:
                         st_up = str(action_status).upper()
