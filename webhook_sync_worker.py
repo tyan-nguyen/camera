@@ -4,6 +4,7 @@ import threading
 import time
 import urllib.request
 import urllib.parse
+import urllib.error
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 
@@ -143,12 +144,80 @@ class WebhookSyncWorker:
         except Exception:
             payload = {}
 
+        # -------------------------------------------------------------
+        # Chuẩn hóa & Tự động phục hồi (Self-Healing) payload trước khi gọi API đối tác:
+        # Đảm bảo 100% tuân thủ validation của Yii2 Api2Controller, tránh lỗi HTTP 422:
+        # 1. Biển số xe & mã xe
+        plate = str(payload.get("plate_number") or item.plate_number or "").strip().upper()
+        clean_plate = "".join(c for c in plate if c.isalnum()).upper()
+        payload["plate_number"] = plate
+        payload["bien_so_xe"] = plate
+        payload["clean_plate"] = clean_plate
+        payload["ma_xe"] = clean_plate
+
+        # 2. Thời gian phát hiện (detected_at / thoi_gian)
+        time_val = payload.get("detected_at") or payload.get("thoi_gian")
+        if not time_val:
+            time_val = (item.created_at or datetime.utcnow()).strftime("%Y-%m-%d %H:%M:%S")
+        elif isinstance(time_val, str) and len(time_val) == 10:
+            time_val = f"{time_val} 00:00:00"
+        payload["detected_at"] = str(time_val)
+        payload["thoi_gian"] = str(time_val)
+
+        # 3. Sự kiện & Góc chụp (su_kien / vehicle_view)
+        # Đối tác Yii2 Api2Controller CHỈ chấp nhận: 'mat_truoc', 'mat_sau' (hoặc 'front', 'rear').
+        # Nếu su_kien đang bị gán 'SUA_SU_KIEN', 'XOA_SU_KIEN'... hoặc không hợp lệ -> tự động chuẩn hóa về 'mat_truoc' hoặc 'mat_sau'
+        raw_sk = str(payload.get("su_kien") or "").strip().lower()
+        raw_view = str(payload.get("vehicle_view") or "").strip().lower()
+        if raw_sk in ["mat_sau", "rear", "back", "sau"]:
+            norm_sk = "mat_sau"
+            norm_view = "rear"
+        elif raw_sk in ["mat_truoc", "front", "truoc"]:
+            norm_sk = "mat_truoc"
+            norm_view = "front"
+        elif raw_view in ["rear", "back", "mat_sau", "sau"]:
+            norm_sk = "mat_sau"
+            norm_view = "rear"
+        else:
+            norm_sk = "mat_truoc"
+            norm_view = "front"
+        payload["su_kien"] = norm_sk
+        payload["vehicle_view"] = norm_view
+
+        # 4. Mã Camera (camera_code / ma_camera)
+        # Đối tác chỉ chấp nhận: cong_san_cam_bien_vao, cong_san_cam_bien_ra, cong_can_tin, cong_san_cam_bien
+        cam_code = payload.get("camera_code") or payload.get("ma_camera") or getattr(cam, "camera_code", None)
+        if not cam_code or str(cam_code).startswith("CAM") or str(cam_code).isdigit():
+            # Tự động suy luận mã camera chuẩn từ ActionGroup hoặc Tên Camera
+            ag_name = (ag.name or "").lower()
+            ag_url = (ag.api_url or "").lower()
+            cam_name = ((cam.camera_name if cam else "") or "").lower()
+            combined = f"{ag_name} {ag_url} {cam_name}"
+            if "vao" in combined or "san-cam-bien-vao" in combined:
+                cam_code = "cong_san_cam_bien_vao"
+            elif "ra" in combined or "san-cam-bien-ra" in combined:
+                cam_code = "cong_san_cam_bien_ra"
+            elif "can_tin" in combined or "can tin" in combined or "cantin" in combined:
+                cam_code = "cong_can_tin"
+            else:
+                cam_code = "cong_san_cam_bien"
+        payload["camera_code"] = cam_code
+        payload["ma_camera"] = cam_code
+
+        # 5. Đảm bảo event_action và log_id
+        payload["event_action"] = item.event_action
+        if item.log_id:
+            payload["log_id"] = item.log_id
+            payload["id_su_kien"] = item.log_id
+        # -------------------------------------------------------------
+
         item.status = "SYNCING"
         db.commit()
 
         start_time = time.time()
         success, resp_data, error_str = self._send_http_request(ag, payload, item.event_action)
         latency = (time.time() - start_time) * 1000
+
 
         if success:
             # Ghi nhận thành công
@@ -345,6 +414,33 @@ class WebhookSyncWorker:
                 parsed_dict["summary"] = resp_body[:200]
                 return True, parsed_dict, ""
 
+        except urllib.error.HTTPError as he:
+            err_msg = f"HTTP Error {he.code}: {he.reason}"
+            try:
+                raw_err = he.read().decode("utf-8", errors="ignore").strip()
+                if raw_err:
+                    try:
+                        err_json = json.loads(raw_err)
+                        if isinstance(err_json, dict):
+                            msgs = []
+                            if err_json.get("message"):
+                                msgs.append(str(err_json["message"]))
+                            if err_json.get("errors"):
+                                errs = err_json["errors"]
+                                if isinstance(errs, dict):
+                                    for k, v in errs.items():
+                                        msgs.append(f"{k}: {v}")
+                                elif isinstance(errs, list):
+                                    msgs.extend([str(x) for x in errs])
+                            if msgs:
+                                err_msg = f"HTTP Error {he.code}: {' | '.join(msgs)}"
+                            else:
+                                err_msg = f"HTTP Error {he.code}: {raw_err[:300]}"
+                    except Exception:
+                        err_msg = f"HTTP Error {he.code}: {raw_err[:300]}"
+            except Exception:
+                pass
+            return False, None, err_msg
         except Exception as e:
             return False, None, str(e)
 

@@ -96,6 +96,7 @@ def get_webhook_queue_items(
     action_group_id: Optional[int] = None,
     event_action: Optional[str] = None,
     plate: Optional[str] = None,
+    plate_number: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db)
@@ -111,8 +112,10 @@ def get_webhook_queue_items(
         query = query.filter(WebhookSyncQueue.action_group_id == action_group_id)
     if isinstance(event_action, str) and event_action.strip():
         query = query.filter(WebhookSyncQueue.event_action == event_action.strip().upper())
-    if isinstance(plate, str) and plate.strip():
-        query = query.filter(WebhookSyncQueue.plate_number.like(f"%{plate.strip().upper()}%"))
+    
+    target_plate = plate or plate_number
+    if isinstance(target_plate, str) and target_plate.strip():
+        query = query.filter(WebhookSyncQueue.plate_number.like(f"%{target_plate.strip().upper()}%"))
 
     p = page if isinstance(page, int) else 1
     ps = page_size if isinstance(page_size, int) else 20
@@ -154,6 +157,7 @@ def retry_all_pending_and_failed(
         .update(
             {
                 WebhookSyncQueue.status: "PENDING",
+                WebhookSyncQueue.retry_count: 0,
                 WebhookSyncQueue.next_retry_at: now
             },
             synchronize_session=False
@@ -190,6 +194,7 @@ def retry_single_queue_item(
         raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi trong hàng đợi.")
 
     item.status = "PENDING"
+    item.retry_count = 0
     item.next_retry_at = datetime.utcnow()
     db.commit()
 

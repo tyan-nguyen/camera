@@ -554,10 +554,12 @@ def dispatch_vehicle_log_update_webhook(
         "old_vehicle_type": old_type,
         "updated_by": updated_by,
         "updated_at": now_str,
-        "su_kien": "SUA_SU_KIEN",
+        "action_reason": "SUA_SU_KIEN",
+        "su_kien": effective_su_kien or "mat_truoc",
         "trip_su_kien": effective_su_kien,
         "direction": effective_dir
     }
+
 
     try:
         res = execute_action_webhook(
@@ -624,7 +626,7 @@ def dispatch_vehicle_log_delete_webhook(
         "deleted_by": deleted_by,
         "deleted_at": now_str,
         "action_reason": "SOFT_DELETE",
-        "su_kien": "XOA_SU_KIEN",
+        "su_kien": effective_su_kien or "mat_truoc",
         "trip_su_kien": effective_su_kien,
         "direction": effective_dir
     }
@@ -693,7 +695,7 @@ def dispatch_vehicle_log_restore_webhook(
         "restored_by": restored_by,
         "restored_at": now_str,
         "action_reason": "RESTORE_FROM_TRASH",
-        "su_kien": "KHOI_PHUC_SU_KIEN",
+        "su_kien": effective_su_kien or "mat_truoc",
         "trip_su_kien": effective_su_kien,
         "direction": effective_dir
     }

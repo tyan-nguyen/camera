@@ -3864,7 +3864,10 @@
                 btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i>Đang kiểm tra...`;
             }
             try {
-                const res = await fetch('/api/v1/webhook-sync/check-health', { method: 'POST' });
+                const res = await fetch('/api/v1/webhook-sync/check-health', {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
                     const data = await res.json();
                     showToast(`Đã kiểm tra ${data.total_checked} API Webhook (Online: ${data.online_count}, Offline: ${data.offline_count})`, data.offline_count > 0 ? "warning" : "success");
@@ -3898,7 +3901,7 @@
             }
 
             try {
-                const res = await fetch(url);
+                const res = await fetch(url, { headers: getAuthHeaders() });
                 if (!res.ok) return;
                 const data = await res.json();
 
@@ -3999,13 +4002,18 @@
                 btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i>Đang gửi...`;
             }
             try {
-                const res = await fetch('/api/v1/webhook-sync/retry-all', { method: 'POST' });
+                const res = await fetch('/api/v1/webhook-sync/retry-all', {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
-                    showToast(`Đã kích hoạt đồng bộ lại toàn bộ hàng đợi!`, "success");
+                    const resData = await res.json();
+                    showToast(resData.message || `Đã kích hoạt đồng bộ lại toàn bộ hàng đợi!`, "success");
                     loadWebhookQueue(currentWebhookQueuePage);
                     updateWebhookHeaderStatus();
                 } else {
-                    showToast("Lỗi khi gửi yêu cầu đồng bộ lại", "error");
+                    const errData = await res.json().catch(() => ({}));
+                    showToast("Lỗi khi gửi yêu cầu đồng bộ lại: " + (errData.detail || "Không đủ quyền hoặc phiên hết hạn"), "error");
                 }
             } catch (e) {
                 showToast("Lỗi kết nối: " + e, "error");
@@ -4019,13 +4027,16 @@
 
         async function retrySingleWebhookQueueManual(queueId) {
             try {
-                const res = await fetch(`/api/v1/webhook-sync/${queueId}/retry`, { method: 'POST' });
+                const res = await fetch(`/api/v1/webhook-sync/${queueId}/retry`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
                     showToast(`Đã đưa bản ghi #${queueId} vào hàng đợi thử lại!`, "success");
                     loadWebhookQueue(currentWebhookQueuePage);
                     updateWebhookHeaderStatus();
                 } else {
-                    const err = await res.json();
+                    const err = await res.json().catch(() => ({}));
                     showToast("Lỗi: " + (err.detail || JSON.stringify(err)), "error");
                 }
             } catch (e) {
@@ -4036,13 +4047,16 @@
         async function cancelWebhookQueueManual(queueId) {
             if (!confirm(`Bạn có chắc muốn hủy bản ghi đồng bộ #${queueId}?`)) return;
             try {
-                const res = await fetch(`/api/v1/webhook-sync/${queueId}`, { method: 'DELETE' });
+                const res = await fetch(`/api/v1/webhook-sync/${queueId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
                     showToast(`Đã xóa bản ghi #${queueId} khỏi hàng đợi`, "info");
                     loadWebhookQueue(currentWebhookQueuePage);
                     updateWebhookHeaderStatus();
                 } else {
-                    const err = await res.json();
+                    const err = await res.json().catch(() => ({}));
                     showToast("Lỗi khi hủy: " + (err.detail || JSON.stringify(err)), "error");
                 }
             } catch (e) {
