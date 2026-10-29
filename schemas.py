@@ -168,6 +168,9 @@ class VehicleLogUpdate(BaseModel):
     alert_level: Optional[str] = None
     video_path: Optional[str] = None
 
+class BatchDeleteLogsRequest(BaseModel):
+    log_ids: List[int]
+
 # ==========================================
 # 4. Device Token Schemas (FCM Push Notification)
 # ==========================================

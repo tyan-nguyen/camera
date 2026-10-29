@@ -9,7 +9,7 @@ from sqlalchemy import desc
 
 from database import get_db
 from models import VehicleLog, Camera, UserRoleEnum
-from schemas import PaginatedVehicleLogs, VehicleLogResponse, VehicleLogUpdate
+from schemas import PaginatedVehicleLogs, VehicleLogResponse, VehicleLogUpdate, BatchDeleteLogsRequest
 from auth_utils import get_current_user_optional, require_roles
 from settings_manager import settings_manager
 
@@ -335,6 +335,60 @@ def empty_trash_bin(
     deleted_count = db.query(VehicleLog).filter(VehicleLog.is_deleted == True).delete()
     db.commit()
     return {"success": True, "deleted_count": deleted_count}
+
+@router.post("/batch-delete")
+def batch_delete_vehicle_logs(
+    payload: BatchDeleteLogsRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(manager_or_admin)
+):
+    """Xóa hàng loạt sự kiện (Xóa mềm / Chuyển vào Thùng Rác & gọi Webhook DELETE)"""
+    if not payload.log_ids:
+        raise HTTPException(status_code=400, detail="Danh sách ID sự kiện cần xóa không được để trống.")
+
+    logs = db.query(VehicleLog).filter(
+        VehicleLog.id.in_(payload.log_ids),
+        VehicleLog.is_deleted == False
+    ).all()
+    if not logs:
+        return {"success": True, "deleted_count": 0, "message": "Không có sự kiện nào hợp lệ để xóa."}
+
+    now_utc = datetime.utcnow()
+    username = current_user.username if current_user else "admin"
+
+    deleted_count = 0
+    deleted_ids = []
+    for log_item in logs:
+        log_item.is_deleted = True
+        log_item.deleted_at = now_utc
+        log_item.deleted_by = username
+        deleted_count += 1
+        deleted_ids.append(log_item.id)
+
+        try:
+            dispatch_vehicle_log_delete_webhook(log_item, username, db)
+        except Exception:
+            pass
+
+    db.commit()
+
+    # Phát thông báo WebSocket
+    try:
+        websocket_manager.broadcast_sync({
+            "event": "vehicle_batch_deleted",
+            "data": {
+                "deleted_count": deleted_count,
+                "ids": deleted_ids
+            }
+        })
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "message": f"Đã chuyển {deleted_count} sự kiện đã chọn vào Thùng Rác thành công."
+    }
 
 @router.delete("/{log_id}")
 def delete_vehicle_log(

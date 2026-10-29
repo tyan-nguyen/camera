@@ -382,12 +382,31 @@
                         <span id="trash-count-badge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">0</span>
                     </button>
                 </div>
-                <div id="trash-actions-container" class="hidden items-center space-x-2">
-                    <button onclick="emptyTrash()"
-                        class="px-3.5 py-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 shadow-lg shadow-rose-900/20">
-                        <i class="fa-solid fa-dumpster-fire"></i>
-                        <span>Dọn Sạch Thùng Rác</span>
-                    </button>
+                <div class="flex items-center space-x-2">
+                    <!-- Batch actions container (shows when rows selected) -->
+                    <div id="history-batch-actions" class="hidden items-center space-x-2">
+                        <span class="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-blue-600/20 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
+                            <i class="fa-solid fa-check-double text-blue-400"></i>
+                            <span>Đã chọn: <strong id="history-selected-count" class="text-white">0</strong></span>
+                        </span>
+                        <button onclick="batchDeleteSelectedLogs()" id="btn-batch-delete"
+                            class="px-3.5 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 shadow-lg shadow-rose-950/40">
+                            <i class="fa-solid fa-trash-can"></i>
+                            <span>Xóa Đã Chọn</span>
+                        </button>
+                        <button onclick="deselectAllHistoryLogs()"
+                            class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 rounded-xl text-xs font-medium transition-all" title="Bỏ chọn tất cả">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div id="trash-actions-container" class="hidden items-center space-x-2">
+                        <button onclick="emptyTrash()"
+                            class="px-3.5 py-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 shadow-lg shadow-rose-900/20">
+                            <i class="fa-solid fa-dumpster-fire"></i>
+                            <span>Dọn Sạch Thùng Rác</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -406,25 +425,31 @@
 
                     <!-- 2. Từ ngày -->
                     <div class="relative">
-                        <div class="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus-within:border-blue-500">
-                            <span class="text-[11px] text-slate-400 font-medium whitespace-nowrap mr-2 flex items-center gap-1.5">
-                                <i class="fa-regular fa-calendar text-blue-400"></i> Từ:
+                        <div class="flex items-center justify-between bg-slate-900/90 border border-slate-700/80 hover:border-slate-600 focus-within:border-cyan-500 rounded-xl px-3 py-2 text-xs sm:text-sm transition-all shadow-sm">
+                            <span class="text-[11px] font-semibold text-cyan-400 whitespace-nowrap mr-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-calendar-days text-cyan-400"></i> Từ ngày:
                             </span>
                             <input type="date" id="filter-start-date" title="Lọc từ ngày"
                                 onchange="fetchHistoryLogs(1)"
-                                class="w-full bg-transparent text-xs sm:text-sm text-slate-200 focus:outline-none [color-scheme:dark] cursor-pointer">
+                                class="w-full bg-transparent text-xs sm:text-sm text-slate-200 focus:outline-none [color-scheme:dark] cursor-pointer font-medium">
+                            <button type="button" onclick="clearHistoryDate('filter-start-date')" class="text-slate-500 hover:text-rose-400 ml-1 p-0.5 transition-colors" title="Xóa từ ngày">
+                                <i class="fa-solid fa-xmark text-xs"></i>
+                            </button>
                         </div>
                     </div>
 
                     <!-- 3. Đến ngày -->
                     <div class="relative">
-                        <div class="flex items-center bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus-within:border-blue-500">
-                            <span class="text-[11px] text-slate-400 font-medium whitespace-nowrap mr-2 flex items-center gap-1.5">
-                                <i class="fa-regular fa-calendar-check text-blue-400"></i> Đến:
+                        <div class="flex items-center justify-between bg-slate-900/90 border border-slate-700/80 hover:border-slate-600 focus-within:border-blue-500 rounded-xl px-3 py-2 text-xs sm:text-sm transition-all shadow-sm">
+                            <span class="text-[11px] font-semibold text-blue-400 whitespace-nowrap mr-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-calendar-check text-blue-400"></i> Đến ngày:
                             </span>
                             <input type="date" id="filter-end-date" title="Lọc đến ngày"
                                 onchange="fetchHistoryLogs(1)"
-                                class="w-full bg-transparent text-xs sm:text-sm text-slate-200 focus:outline-none [color-scheme:dark] cursor-pointer">
+                                class="w-full bg-transparent text-xs sm:text-sm text-slate-200 focus:outline-none [color-scheme:dark] cursor-pointer font-medium">
+                            <button type="button" onclick="clearHistoryDate('filter-end-date')" class="text-slate-500 hover:text-rose-400 ml-1 p-0.5 transition-colors" title="Xóa đến ngày">
+                                <i class="fa-solid fa-xmark text-xs"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -498,6 +523,20 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Quick Date Presets -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-800/80 text-xs">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="text-[11px] text-slate-400 font-medium mr-1 flex items-center gap-1">
+                            <i class="fa-solid fa-bolt text-amber-400 text-[10px]"></i> Chọn nhanh ngày:
+                        </span>
+                        <button type="button" onclick="setHistoryDatePreset('today')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 text-[11px] font-medium transition-all">Hôm nay</button>
+                        <button type="button" onclick="setHistoryDatePreset('yesterday')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 text-[11px] font-medium transition-all">Hôm qua</button>
+                        <button type="button" onclick="setHistoryDatePreset('7days')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 text-[11px] font-medium transition-all">7 ngày qua</button>
+                        <button type="button" onclick="setHistoryDatePreset('this_month')" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 text-[11px] font-medium transition-all">Tháng này</button>
+                        <button type="button" onclick="setHistoryDatePreset('clear')" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-800/60 text-[11px] font-medium transition-all" title="Xóa lọc theo ngày"><i class="fa-solid fa-trash-can text-[10px] mr-1"></i>Xóa ngày</button>
+                    </div>
+                </div>
             </div>
 
             <!-- History Table -->
@@ -506,6 +545,10 @@
                     <table class="w-full text-left text-xs sm:text-sm">
                         <thead class="text-[10px] sm:text-xs uppercase bg-slate-900/80 text-slate-400 border-b border-slate-800">
                             <tr id="history-thead-row">
+                                <th class="p-3 sm:p-4 w-10 text-center">
+                                    <input type="checkbox" id="history-check-all" onchange="toggleSelectAllHistoryLogs(this.checked)"
+                                        class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer" title="Chọn tất cả trên trang">
+                                </th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Thời gian</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Camera / Vùng</th>
@@ -527,7 +570,7 @@
             <!-- Pagination -->
             <div class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm text-slate-400">
                 <span id="pagination-info" class="text-center sm:text-left">Hiển thị 0 bản ghi</span>
-                <div class="flex space-x-2" id="pagination-btns"></div>
+                <div class="flex flex-wrap items-center justify-center gap-1.5" id="pagination-btns"></div>
             </div>
         </div>
 
@@ -2376,6 +2419,29 @@
         </div>
     </div>
 
+    <!-- Custom Confirm / Alert Modal (Replaces browser confirm) -->
+    <div id="confirm-action-modal" class="hidden fixed inset-0 z-[350] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="relative w-full max-w-md bg-slate-900 border border-slate-700/90 rounded-2xl p-6 shadow-2xl text-center transform transition-all animate-scale-up">
+            <div id="confirm-modal-icon-container" class="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto mb-4 text-2xl shadow-lg shadow-rose-950/50">
+                <i id="confirm-modal-icon" class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="confirm-modal-title" class="text-base sm:text-lg font-bold text-white mb-2">Xác Nhận Hành Động</h3>
+            <p id="confirm-modal-message" class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-4">Bạn có chắc chắn muốn thực hiện hành động này không?</p>
+            <div id="confirm-modal-detail" class="hidden mb-4 p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-300 text-left"></div>
+            
+            <div class="flex items-center justify-center space-x-3 pt-2">
+                <button type="button" onclick="closeCustomConfirmModal()" id="confirm-modal-cancel-btn"
+                    class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all">
+                    Hủy bỏ
+                </button>
+                <button type="button" id="confirm-modal-submit-btn"
+                    class="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30 transition-all flex items-center justify-center space-x-1.5">
+                    <span>Đồng ý</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Notification Toast Container (Top Right High Z-Index) -->
     <div id="toast-container" class="fixed top-5 right-5 z-[300] flex flex-col space-y-2.5 pointer-events-none max-w-md w-full px-3"></div>
 
@@ -2429,6 +2495,90 @@
                 toast.classList.add('toast-animate-out');
                 setTimeout(() => toast.remove(), 250);
             }, duration);
+        }
+
+        /* --- CUSTOM CONFIRM / ALERT MODAL SYSTEM --- */
+        let customConfirmResolve = null;
+
+        function showCustomConfirmModal({
+            title = 'Xác Nhận Hành Động',
+            message = 'Bạn có chắc chắn muốn thực hiện hành động này không?',
+            detailHtml = '',
+            confirmText = 'Đồng ý',
+            confirmType = 'danger',
+            cancelText = 'Hủy bỏ'
+        } = {}) {
+            return new Promise((resolve) => {
+                customConfirmResolve = resolve;
+                const modal = document.getElementById('confirm-action-modal');
+                const titleEl = document.getElementById('confirm-modal-title');
+                const msgEl = document.getElementById('confirm-modal-message');
+                const detailEl = document.getElementById('confirm-modal-detail');
+                const submitBtn = document.getElementById('confirm-modal-submit-btn');
+                const cancelBtn = document.getElementById('confirm-modal-cancel-btn');
+                const iconCont = document.getElementById('confirm-modal-icon-container');
+                const iconEl = document.getElementById('confirm-modal-icon');
+
+                if (!modal) {
+                    resolve(window.confirm(message));
+                    return;
+                }
+
+                if (titleEl) titleEl.innerText = title;
+                if (msgEl) msgEl.innerText = message;
+
+                if (detailEl) {
+                    if (detailHtml) {
+                        detailEl.innerHTML = detailHtml;
+                        detailEl.classList.remove('hidden');
+                    } else {
+                        detailEl.innerHTML = '';
+                        detailEl.classList.add('hidden');
+                    }
+                }
+
+                if (cancelBtn) cancelBtn.innerText = cancelText;
+
+                if (submitBtn) {
+                    submitBtn.innerHTML = `<span>${confirmText}</span>`;
+                    if (confirmType === 'danger') {
+                        submitBtn.className = "px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30 transition-all flex items-center justify-center space-x-1.5 cursor-pointer";
+                        if (iconCont) iconCont.className = "w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto mb-4 text-2xl shadow-lg shadow-rose-950/50";
+                        if (iconEl) iconEl.className = "fa-solid fa-triangle-exclamation";
+                    } else if (confirmType === 'warning') {
+                        submitBtn.className = "px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-600/30 transition-all flex items-center justify-center space-x-1.5 cursor-pointer";
+                        if (iconCont) iconCont.className = "w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto mb-4 text-2xl shadow-lg shadow-amber-950/50";
+                        if (iconEl) iconEl.className = "fa-solid fa-circle-exclamation";
+                    } else if (confirmType === 'success') {
+                        submitBtn.className = "px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center space-x-1.5 cursor-pointer";
+                        if (iconCont) iconCont.className = "w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4 text-2xl shadow-lg shadow-emerald-950/50";
+                        if (iconEl) iconEl.className = "fa-solid fa-rotate-left";
+                    } else {
+                        submitBtn.className = "px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center space-x-1.5 cursor-pointer";
+                        if (iconCont) iconCont.className = "w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto mb-4 text-2xl shadow-lg shadow-blue-950/50";
+                        if (iconEl) iconEl.className = "fa-solid fa-circle-info";
+                    }
+
+                    submitBtn.onclick = () => {
+                        closeCustomConfirmModal();
+                        if (customConfirmResolve) {
+                            customConfirmResolve(true);
+                            customConfirmResolve = null;
+                        }
+                    };
+                }
+
+                modal.classList.remove('hidden');
+            });
+        }
+
+        function closeCustomConfirmModal() {
+            const modal = document.getElementById('confirm-action-modal');
+            if (modal) modal.classList.add('hidden');
+            if (customConfirmResolve) {
+                customConfirmResolve(false);
+                customConfirmResolve = null;
+            }
         }
 
         /* --- AUTHENTICATION & RBAC --- */
@@ -4469,10 +4619,202 @@
         let currentHistoryPage = 1;
         let currentHistoryLogs = [];
         let currentDashboardLogs = [];
+        let selectedHistoryLogIds = new Set();
+
+        /* --- DATE HELPER & PRESETS --- */
+        function clearHistoryDate(inputId) {
+            const el = document.getElementById(inputId);
+            if (el) {
+                el.value = '';
+                fetchHistoryLogs(1);
+            }
+        }
+
+        function setHistoryDatePreset(preset) {
+            const elStart = document.getElementById('filter-start-date');
+            const elEnd = document.getElementById('filter-end-date');
+            if (!elStart || !elEnd) return;
+
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const formatDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+            if (preset === 'today') {
+                const todayStr = formatDate(now);
+                elStart.value = todayStr;
+                elEnd.value = todayStr;
+            } else if (preset === 'yesterday') {
+                const y = new Date();
+                y.setDate(y.getDate() - 1);
+                const yStr = formatDate(y);
+                elStart.value = yStr;
+                elEnd.value = yStr;
+            } else if (preset === '7days') {
+                const past = new Date();
+                past.setDate(past.getDate() - 6);
+                elStart.value = formatDate(past);
+                elEnd.value = formatDate(now);
+            } else if (preset === 'this_month') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                elStart.value = formatDate(firstDay);
+                elEnd.value = formatDate(now);
+            } else if (preset === 'clear') {
+                elStart.value = '';
+                elEnd.value = '';
+            }
+            fetchHistoryLogs(1);
+        }
+
+        /* --- BATCH SELECTION HELPERS --- */
+        function toggleSelectAllHistoryLogs(isChecked) {
+            if (!currentHistoryLogs || currentHistoryLogs.length === 0) return;
+            currentHistoryLogs.forEach(item => {
+                if (isChecked) {
+                    selectedHistoryLogIds.add(item.id);
+                } else {
+                    selectedHistoryLogIds.delete(item.id);
+                }
+            });
+            document.querySelectorAll('.history-row-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+            });
+            document.querySelectorAll('#history-table-body tr').forEach(tr => {
+                const cb = tr.querySelector('.history-row-checkbox');
+                if (cb && cb.checked) {
+                    tr.classList.add('bg-blue-950/20');
+                } else {
+                    tr.classList.remove('bg-blue-950/20');
+                }
+            });
+            updateHistoryBatchActionBar();
+            syncMasterCheckboxState();
+        }
+
+        function onHistoryRowCheckChange(logId, isChecked) {
+            if (isChecked) {
+                selectedHistoryLogIds.add(logId);
+            } else {
+                selectedHistoryLogIds.delete(logId);
+            }
+            const cb = document.querySelector(`.history-row-checkbox[value="${logId}"]`);
+            if (cb) {
+                const tr = cb.closest('tr');
+                if (tr) {
+                    if (isChecked) tr.classList.add('bg-blue-950/20');
+                    else tr.classList.remove('bg-blue-950/20');
+                }
+            }
+            updateHistoryBatchActionBar();
+            syncMasterCheckboxState();
+        }
+
+        function deselectAllHistoryLogs() {
+            selectedHistoryLogIds.clear();
+            document.querySelectorAll('.history-row-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+            document.querySelectorAll('#history-table-body tr').forEach(tr => {
+                tr.classList.remove('bg-blue-950/20');
+            });
+            const checkAll = document.getElementById('history-check-all');
+            if (checkAll) {
+                checkAll.checked = false;
+                checkAll.indeterminate = false;
+            }
+            updateHistoryBatchActionBar();
+        }
+
+        function updateHistoryBatchActionBar() {
+            const bar = document.getElementById('history-batch-actions');
+            const countEl = document.getElementById('history-selected-count');
+            if (!bar) return;
+            const count = selectedHistoryLogIds.size;
+            if (count > 0) {
+                bar.classList.remove('hidden');
+                bar.classList.add('flex');
+                if (countEl) countEl.innerText = count;
+            } else {
+                bar.classList.add('hidden');
+                bar.classList.remove('flex');
+            }
+        }
+
+        function syncMasterCheckboxState() {
+            const checkAll = document.getElementById('history-check-all');
+            if (!checkAll) return;
+            if (!currentHistoryLogs || currentHistoryLogs.length === 0) {
+                checkAll.checked = false;
+                checkAll.indeterminate = false;
+                return;
+            }
+            const pageIds = currentHistoryLogs.map(item => item.id);
+            const selectedOnPage = pageIds.filter(id => selectedHistoryLogIds.has(id)).length;
+            if (selectedOnPage === 0) {
+                checkAll.checked = false;
+                checkAll.indeterminate = false;
+            } else if (selectedOnPage === pageIds.length) {
+                checkAll.checked = true;
+                checkAll.indeterminate = false;
+            } else {
+                checkAll.checked = false;
+                checkAll.indeterminate = true;
+            }
+        }
+
+        async function batchDeleteSelectedLogs() {
+            const ids = Array.from(selectedHistoryLogIds);
+            if (ids.length === 0) {
+                showToast("Vui lòng chọn ít nhất một sự kiện để xóa!", "warning");
+                return;
+            }
+
+            const confirmed = await showCustomConfirmModal({
+                title: 'Xác Nhận Xóa Hàng Loạt',
+                message: `Bạn có chắc chắn muốn xóa ${ids.length} sự kiện đã chọn không?`,
+                detailHtml: `
+                    <div class="space-y-1.5 text-xs text-slate-300">
+                        <div class="flex items-center text-rose-400 font-semibold">
+                            <i class="fa-solid fa-trash-can mr-2"></i>Số lượng bản ghi sẽ xóa: <span class="text-white ml-1 font-bold font-mono text-sm">${ids.length}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 leading-relaxed pt-1 border-t border-slate-800">
+                            • Toàn bộ sự kiện đã chọn sẽ được chuyển vào <strong>Thùng Rác</strong>.<br>
+                            • Tự động gửi thông báo đồng bộ xóa tới hệ thống API đối tác.<br>
+                            • Bạn có thể khôi phục lại bất kỳ lúc nào từ tab Thùng Rác.
+                        </div>
+                    </div>
+                `,
+                confirmText: `Xóa ${ids.length} Bản Ghi`,
+                confirmType: 'danger'
+            });
+
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch('/api/v1/vehicle-logs/batch-delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ log_ids: ids })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    deselectAllHistoryLogs();
+                    loadRecentDashboardLogs();
+                    if (currentTab === 'history') fetchHistoryLogs(currentHistoryPage || 1);
+                    updateTrashBadge();
+                    showToast(`Đã chuyển thành công ${data.deleted_count} sự kiện vào Thùng Rác!`, "success");
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi khi xóa hàng loạt: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối khi xóa: " + err, "error");
+            }
+        }
 
         function switchHistoryMode(mode) {
             currentHistoryMode = mode;
             currentHistoryPage = 1;
+            deselectAllHistoryLogs();
             const btnAll = document.getElementById('subtab-history-all');
             const btnTrash = document.getElementById('subtab-history-trash');
             const trashActions = document.getElementById('trash-actions-container');
@@ -4503,6 +4845,10 @@
             if (!thead) return;
             if (mode === 'trash') {
                 thead.innerHTML = `
+                    <th class="p-3 sm:p-4 w-10 text-center">
+                        <input type="checkbox" id="history-check-all" onchange="toggleSelectAllHistoryLogs(this.checked)"
+                            class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer" title="Chọn tất cả trên trang">
+                    </th>
                     <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
                     <th class="p-3 sm:p-4 whitespace-nowrap">Thời gian phát hiện</th>
                     <th class="p-3 sm:p-4 whitespace-nowrap">Camera / Vùng</th>
@@ -4514,6 +4860,10 @@
                 `;
             } else {
                 thead.innerHTML = `
+                    <th class="p-3 sm:p-4 w-10 text-center">
+                        <input type="checkbox" id="history-check-all" onchange="toggleSelectAllHistoryLogs(this.checked)"
+                            class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer" title="Chọn tất cả trên trang">
+                    </th>
                     <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
                     <th class="p-3 sm:p-4 whitespace-nowrap">Thời gian</th>
                     <th class="p-3 sm:p-4 whitespace-nowrap">Camera / Vùng</th>
@@ -4593,6 +4943,7 @@
             if (elClass) elClass.value = '';
             if (elStatus) elStatus.value = '';
 
+            deselectAllHistoryLogs();
             fetchHistoryLogs(1);
         }
 
@@ -4623,7 +4974,8 @@
             const tbody = document.getElementById('history-table-body');
             if (currentHistoryMode === 'trash') {
                 if (items.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500 font-medium"><i class="fa-solid fa-trash-can mr-2 text-slate-600"></i>Thùng rác trống. Không có sự kiện nào.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-500 font-medium"><i class="fa-solid fa-trash-can mr-2 text-slate-600"></i>Thùng rác trống. Không có sự kiện nào.</td></tr>`;
+                    syncMasterCheckboxState();
                     return;
                 }
 
@@ -4631,9 +4983,14 @@
                     const zoneBadge = item.zone_code === 'KHO_BAI' 
                         ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">Kho Bãi</span>`
                         : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300">Trường Lái</span>`;
+                    const isChecked = selectedHistoryLogIds.has(item.id) ? 'checked' : '';
 
                     return `
-                        <tr class="hover:bg-slate-800/40 border-b border-slate-800/60">
+                        <tr class="hover:bg-slate-800/40 border-b border-slate-800/60 ${selectedHistoryLogIds.has(item.id) ? 'bg-blue-950/20' : ''}">
+                            <td class="p-3 text-center">
+                                <input type="checkbox" value="${item.id}" onchange="onHistoryRowCheckChange(${item.id}, this.checked)" ${isChecked}
+                                    class="history-row-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer">
+                            </td>
                             <td class="p-3 font-mono text-slate-400">#${item.id}</td>
                             <td class="p-3 text-xs text-slate-300 whitespace-nowrap">${item.detected_at}</td>
                             <td class="p-3">
@@ -4665,11 +5022,13 @@
                         </tr>
                     `;
                 }).join('');
+                syncMasterCheckboxState();
                 return;
             }
 
             if (items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">Không tìm thấy bản ghi nhận dạng nào.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-500">Không tìm thấy bản ghi nhận dạng nào.</td></tr>`;
+                syncMasterCheckboxState();
                 return;
             }
 
@@ -4679,9 +5038,14 @@
                 const zoneBadge = item.zone_code === 'KHO_BAI' 
                     ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">Kho Bãi</span>`
                     : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300">Trường Lái</span>`;
+                const isChecked = selectedHistoryLogIds.has(item.id) ? 'checked' : '';
 
                 return `
-                    <tr class="hover:bg-slate-800/40">
+                    <tr class="hover:bg-slate-800/40 ${selectedHistoryLogIds.has(item.id) ? 'bg-blue-950/20' : ''}">
+                        <td class="p-3 text-center">
+                            <input type="checkbox" value="${item.id}" onchange="onHistoryRowCheckChange(${item.id}, this.checked)" ${isChecked}
+                                class="history-row-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer">
+                        </td>
                         <td class="p-3 font-mono text-slate-400">#${item.id}</td>
                         <td class="p-3 text-xs text-slate-300 whitespace-nowrap">${item.detected_at}</td>
                         <td class="p-3">
@@ -4725,6 +5089,7 @@
                     </tr>
                 `;
             }).join('');
+            syncMasterCheckboxState();
         }
 
         function renderActionStatusBadge(status, summary, classification = null) {
@@ -4801,13 +5166,72 @@
         }
 
         function renderPagination(currentPage, total, pageSize) {
-            const totalPages = Math.ceil(total / pageSize);
-            document.getElementById('pagination-info').innerText = `Hiển thị trang ${currentPage} / ${totalPages || 1} (Tổng: ${total} bản ghi)`;
+            const totalPages = Math.ceil(total / pageSize) || 1;
+            const infoEl = document.getElementById('pagination-info');
+            if (infoEl) {
+                infoEl.innerHTML = `Hiển thị trang <span class="text-white font-bold">${currentPage}</span> / <span class="text-white font-bold">${totalPages}</span> (Tổng: <span class="text-blue-400 font-bold">${(total || 0).toLocaleString('vi-VN')}</span> bản ghi)`;
+            }
+
             const btns = document.getElementById('pagination-btns');
-            btns.innerHTML = `
-                <button onclick="fetchHistoryLogs(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs disabled:opacity-40">Trước</button>
-                <button onclick="fetchHistoryLogs(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs disabled:opacity-40">Sau</button>
+            if (!btns) return;
+
+            let html = '';
+
+            // Nút "Trước"
+            const prevDisabled = currentPage <= 1;
+            html += `
+                <button onclick="fetchHistoryLogs(${currentPage - 1})" ${prevDisabled ? 'disabled' : ''}
+                    class="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center space-x-1 transition-all ${prevDisabled ? 'opacity-40 cursor-not-allowed bg-slate-900/60 border-slate-800 text-slate-500' : 'bg-slate-900/90 hover:bg-slate-800 border-slate-700/80 text-slate-300 hover:text-white cursor-pointer shadow-sm'}">
+                    <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                    <span>Trước</span>
+                </button>
             `;
+
+            // Sliding Window page numbers
+            const items = getPaginationItems(currentPage, totalPages);
+            items.forEach(item => {
+                if (item === '...') {
+                    html += `<span class="px-2 py-1 text-slate-500 text-xs font-bold select-none">...</span>`;
+                } else if (item === currentPage) {
+                    html += `
+                        <button class="w-8 h-8 rounded-xl bg-blue-600 border border-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 flex items-center justify-center cursor-default">
+                            ${item}
+                        </button>
+                    `;
+                } else {
+                    html += `
+                        <button onclick="fetchHistoryLogs(${item})"
+                            class="w-8 h-8 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white font-semibold text-xs flex items-center justify-center transition-all cursor-pointer shadow-sm">
+                            ${item}
+                        </button>
+                    `;
+                }
+            });
+
+            // Nút "Sau"
+            const nextDisabled = currentPage >= totalPages;
+            html += `
+                <button onclick="fetchHistoryLogs(${currentPage + 1})" ${nextDisabled ? 'disabled' : ''}
+                    class="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center space-x-1 transition-all ${nextDisabled ? 'opacity-40 cursor-not-allowed bg-slate-900/60 border-slate-800 text-slate-500' : 'bg-slate-900/90 hover:bg-slate-800 border-slate-700/80 text-slate-300 hover:text-white cursor-pointer shadow-sm'}">
+                    <span>Sau</span>
+                    <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                </button>
+            `;
+
+            btns.innerHTML = html;
+        }
+
+        function getPaginationItems(current, total) {
+            if (total <= 7) {
+                return Array.from({ length: total }, (_, i) => i + 1);
+            }
+            if (current <= 4) {
+                return [1, 2, 3, 4, 5, '...', total];
+            }
+            if (current >= total - 3) {
+                return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+            }
+            return [1, '...', current - 1, current, current + 1, '...', total];
         }
 
         async function loadRecentDashboardLogs() {
@@ -6474,6 +6898,15 @@
         // Lắng nghe phím tắt điều hướng nhanh trong cửa sổ chỉnh sửa sự kiện:
         // Alt + ← (Bản ghi trước), Alt + → (Bản ghi sau), Ctrl + Enter (Lưu & Tiếp)
         document.addEventListener('keydown', function (e) {
+            const confModal = document.getElementById('confirm-action-modal');
+            if (confModal && !confModal.classList.contains('hidden')) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeCustomConfirmModal();
+                    return;
+                }
+            }
+
             const vModal = document.getElementById('event-video-modal');
             if (vModal && !vModal.classList.contains('hidden')) {
                 if (e.key === 'Escape') {
@@ -6515,10 +6948,33 @@
         });
 
         async function deleteVehicleLog(logId, plateNumber) {
-            if (!confirm(`Bạn có chắc chắn muốn xóa sự kiện biển số [${plateNumber}] không?\n(Sự kiện sẽ được chuyển vào Thùng Rác và thông báo đồng bộ xóa tới API)`)) return;
+            const confirmed = await showCustomConfirmModal({
+                title: 'Xóa Sự Kiện Phương Tiện',
+                message: `Bạn có chắc chắn muốn xóa sự kiện biển số [${plateNumber}] (#${logId}) không?`,
+                detailHtml: `
+                    <div class="space-y-1.5 text-xs text-slate-300">
+                        <div class="flex items-center text-rose-400 font-semibold">
+                            <i class="fa-solid fa-trash-can mr-2"></i>Biển số: <span class="text-white ml-1 font-bold font-mono">${plateNumber}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 leading-relaxed pt-1 border-t border-slate-800">
+                            • Sự kiện sẽ được chuyển vào <strong>Thùng Rác</strong>.<br>
+                            • Tự động gửi thông báo đồng bộ xóa tới hệ thống API đối tác.<br>
+                            • Bạn có thể hoàn tác / khôi phục lại từ Thùng Rác bất cứ lúc nào.
+                        </div>
+                    </div>
+                `,
+                confirmText: 'Chuyển Vào Thùng Rác',
+                confirmType: 'danger'
+            });
+            if (!confirmed) return;
+
             try {
                 const res = await fetch(`/api/v1/vehicle-logs/${logId}`, { method: 'DELETE' });
                 if (res.ok) {
+                    if (selectedHistoryLogIds.has(logId)) {
+                        selectedHistoryLogIds.delete(logId);
+                        updateHistoryBatchActionBar();
+                    }
                     loadRecentDashboardLogs();
                     if (currentTab === 'history') fetchHistoryLogs(currentHistoryPage || 1);
                     updateTrashBadge();
@@ -6533,7 +6989,25 @@
         }
 
         async function restoreVehicleLog(logId, plateNumber) {
-            if (!confirm(`Khôi phục sự kiện biển số [${plateNumber}]?\n(Sự kiện sẽ được đưa trở lại danh sách chính và gửi yêu cầu RESTORE tới API)`)) return;
+            const confirmed = await showCustomConfirmModal({
+                title: 'Khôi Phục Sự Kiện',
+                message: `Khôi phục sự kiện biển số [${plateNumber}] (#${logId})?`,
+                detailHtml: `
+                    <div class="space-y-1.5 text-xs text-slate-300">
+                        <div class="flex items-center text-emerald-400 font-semibold">
+                            <i class="fa-solid fa-rotate-left mr-2"></i>Biển số: <span class="text-white ml-1 font-bold font-mono">${plateNumber}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 leading-relaxed pt-1 border-t border-slate-800">
+                            • Sự kiện sẽ được đưa trở lại danh sách sự kiện chính.<br>
+                            • Gửi yêu cầu RESTORE tới hệ thống API đối tác để đồng bộ lại dữ liệu.
+                        </div>
+                    </div>
+                `,
+                confirmText: 'Khôi Phục Ngay',
+                confirmType: 'success'
+            });
+            if (!confirmed) return;
+
             try {
                 const res = await fetch(`/api/v1/vehicle-logs/${logId}/restore`, { method: 'POST' });
                 if (res.ok) {
@@ -6551,7 +7025,21 @@
         }
 
         async function permanentDeleteVehicleLog(logId, plateNumber) {
-            if (!confirm(`CẢNH BÁO NGUY HIỂM:\nBạn có chắc chắn muốn XÓA VĨNH VIỄN sự kiện [${plateNumber}] khỏi cơ sở dữ liệu?\nHành động này KHÔNG THỂ hoàn tác và sẽ KHÔNG gọi API.`)) return;
+            const confirmed = await showCustomConfirmModal({
+                title: 'CẢNH BÁO: XÓA VĨNH VIỄN',
+                message: `Bạn có chắc chắn muốn XÓA VĨNH VIỄN sự kiện [${plateNumber}] (#${logId}) khỏi cơ sở dữ liệu?`,
+                detailHtml: `
+                    <div class="p-2.5 rounded-xl bg-rose-950/60 border border-rose-800/60 text-rose-300 text-xs space-y-1">
+                        <div class="font-bold flex items-center text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>CẢNH BÁO NGUY HIỂM:</div>
+                        <div>• Bản ghi sẽ bị xóa sạch hoàn toàn khỏi CSDL SQLite.</div>
+                        <div>• Hành động này <strong>KHÔNG THỂ HOÀN TÁC</strong> và sẽ KHÔNG gọi API đối tác.</div>
+                    </div>
+                `,
+                confirmText: 'Xóa Vĩnh Viễn Khỏi CSDL',
+                confirmType: 'danger'
+            });
+            if (!confirmed) return;
+
             try {
                 const res = await fetch(`/api/v1/vehicle-logs/${logId}/permanent`, { method: 'DELETE' });
                 if (res.ok) {
@@ -6568,7 +7056,22 @@
         }
 
         async function emptyTrash() {
-            if (!confirm("CẢNH BÁO NGUY HIỂM:\nBạn có chắc chắn muốn DỌN SẠCH toàn bộ sự kiện trong Thùng Rác không?\nTất cả bản ghi trong thùng rác sẽ bị XÓA VĨNH VIỄN khỏi CSDL và không gọi API!")) return;
+            const confirmed = await showCustomConfirmModal({
+                title: 'DỌN SẠCH THÙNG RÁC',
+                message: 'Bạn có chắc chắn muốn DỌN SẠCH toàn bộ sự kiện trong Thùng Rác không?',
+                detailHtml: `
+                    <div class="p-3 rounded-xl bg-rose-950/60 border border-rose-800/60 text-rose-300 text-xs space-y-1.5">
+                        <div class="font-bold flex items-center text-rose-400 text-sm"><i class="fa-solid fa-dumpster-fire mr-2"></i>CẢNH BÁO NGUY HIỂM TOÀN DIỆN:</div>
+                        <div>• Tất cả bản ghi trong thùng rác sẽ bị <strong>XÓA VĨNH VIỄN</strong> khỏi CSDL SQLite.</div>
+                        <div>• Không thể khôi phục lại bất kỳ dữ liệu nào sau thao tác này.</div>
+                        <div>• Không gửi lệnh API đối tác.</div>
+                    </div>
+                `,
+                confirmText: 'Dọn Sạch Toàn Bộ',
+                confirmType: 'danger'
+            });
+            if (!confirmed) return;
+
             try {
                 const res = await fetch('/api/v1/vehicle-logs/trash/empty', { method: 'DELETE' });
                 if (res.ok) {
@@ -6728,6 +7231,20 @@
                         updateTrashBadge();
                     }
                     showToast(`🗑️ Sự kiện xe ${data.plate_number} đã được chuyển vào thùng rác`, "info", 3500);
+                } else if (msg.event === 'vehicle_batch_deleted') {
+                    const data = msg.data;
+                    if (typeof currentTab !== 'undefined' && currentTab === 'history') {
+                        if (typeof fetchHistoryLogs === 'function') {
+                            fetchHistoryLogs(currentHistoryPage || 1);
+                        }
+                    }
+                    if (typeof loadRecentDashboardLogs === 'function') {
+                        loadRecentDashboardLogs();
+                    }
+                    if (typeof updateTrashBadge === 'function') {
+                        updateTrashBadge();
+                    }
+                    showToast(`🗑️ Đã xóa ${data.deleted_count} sự kiện và chuyển vào Thùng Rác`, "info", 3500);
                 } else if (msg.event === 'vehicle_restored') {
                     const data = msg.data;
                     if (typeof currentTab !== 'undefined' && currentTab === 'history') {
