@@ -7481,11 +7481,7 @@
 
                     // Cập nhật bộ nhớ đệm History logs nếu đang mở tab Lịch sử
                     if (typeof currentHistoryLogs !== 'undefined' && currentHistoryLogs && currentHistoryLogs.length > 0) {
-                        const targetHist = currentHistoryLogs.find(x => x.id === logI
-100 470.8k 100 470.8k   0      0  1.64M      0                              0
-100 470.8k 100 470.8k   0      0  1.64M      0                              0
-100 470.8k 100 470.8k   0      0  1.64M      0                              0
-d);
+                        const targetHist = currentHistoryLogs.find(x => x.id === logId);
                         if (targetHist) targetHist.video_path = videoUrl;
                     }
 
