@@ -494,7 +494,18 @@
                         </select>
                     </div>
 
-                    <!-- 7. Đối Tượng Xe -->
+                    <!-- 7. Mặt Xe (Trước / Sau) -->
+                    <div>
+                        <select id="filter-vehicle-view" onchange="fetchHistoryLogs(1)"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
+                            <option value="">-- Tất cả Mặt Xe --</option>
+                            <option value="front">🚗 Mặt trước</option>
+                            <option value="rear">🚗 Mặt sau</option>
+                            <option value="unknown">❓ Không rõ</option>
+                        </select>
+                    </div>
+
+                    <!-- 8. Đối Tượng Xe -->
                     <div>
                         <select id="filter-classification" onchange="fetchHistoryLogs(1)"
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
@@ -505,7 +516,7 @@
                         </select>
                     </div>
 
-                    <!-- 8. Trạng Thái Hành Động -->
+                    <!-- 9. Trạng Thái Hành Động -->
                     <div>
                         <select id="filter-action-status" onchange="fetchHistoryLogs(1)"
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-blue-500 text-slate-200">
@@ -518,21 +529,17 @@
                         </select>
                     </div>
 
-                    <!-- 9. Nút Tìm kiếm -->
-                    <div>
+                    <!-- 10. Nút Tìm kiếm & Đặt lại -->
+                    <div class="flex items-center space-x-2">
                         <button onclick="fetchHistoryLogs(1)"
-                            class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30 transition-all">
+                            class="flex-1 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center space-x-1.5 shadow-lg shadow-blue-600/30 transition-all" title="Tìm kiếm">
                             <i class="fa-solid fa-magnifying-glass"></i>
                             <span>Tìm kiếm</span>
                         </button>
-                    </div>
-
-                    <!-- 10. Nút Đặt lại (Reset) -->
-                    <div>
                         <button onclick="resetHistoryFilters()"
-                            class="w-full px-4 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-300 hover:text-white border border-slate-700 hover:border-slate-600 text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center space-x-2 transition-all">
+                            class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-300 hover:text-white border border-slate-700 hover:border-slate-600 text-xs sm:text-sm font-semibold rounded-xl flex items-center justify-center space-x-1.5 transition-all" title="Đặt lại bộ lọc">
                             <i class="fa-solid fa-rotate-left"></i>
-                            <span>Đặt lại</span>
+                            <span class="hidden sm:inline">Đặt lại</span>
                         </button>
                     </div>
                 </div>
@@ -5017,6 +5024,7 @@
             const camId = document.getElementById('filter-camera') ? document.getElementById('filter-camera').value : '';
             const status = document.getElementById('filter-action-status') ? document.getElementById('filter-action-status').value : '';
             const vtype = document.getElementById('filter-vehicle-type') ? document.getElementById('filter-vehicle-type').value : '';
+            const vview = document.getElementById('filter-vehicle-view') ? document.getElementById('filter-vehicle-view').value : '';
             const classification = document.getElementById('filter-classification') ? document.getElementById('filter-classification').value : '';
 
             if (startDate && endDate && startDate > endDate) {
@@ -5038,6 +5046,7 @@
             if (camId) url += `&camera_id=${encodeURIComponent(camId)}`;
             if (status) url += `&action_status=${encodeURIComponent(status)}`;
             if (vtype) url += `&vehicle_type=${encodeURIComponent(vtype)}`;
+            if (vview) url += `&vehicle_view=${encodeURIComponent(vview)}`;
             if (classification) url += `&vehicle_classification=${encodeURIComponent(classification)}`;
 
             try {
@@ -5062,6 +5071,7 @@
             const elZone = document.getElementById('filter-zone');
             const elCam = document.getElementById('filter-camera');
             const elType = document.getElementById('filter-vehicle-type');
+            const elView = document.getElementById('filter-vehicle-view');
             const elClass = document.getElementById('filter-classification');
             const elStatus = document.getElementById('filter-action-status');
 
@@ -5071,6 +5081,7 @@
             if (elZone) elZone.value = '';
             if (elCam) elCam.value = '';
             if (elType) elType.value = '';
+            if (elView) elView.value = '';
             if (elClass) elClass.value = '';
             if (elStatus) elStatus.value = '';
 
@@ -7470,7 +7481,11 @@
 
                     // Cập nhật bộ nhớ đệm History logs nếu đang mở tab Lịch sử
                     if (typeof currentHistoryLogs !== 'undefined' && currentHistoryLogs && currentHistoryLogs.length > 0) {
-                        const targetHist = currentHistoryLogs.find(x => x.id === logId);
+                        const targetHist = currentHistoryLogs.find(x => x.id === logI
+100 470.8k 100 470.8k   0      0  1.64M      0                              0
+100 470.8k 100 470.8k   0      0  1.64M      0                              0
+100 470.8k 100 470.8k   0      0  1.64M      0                              0
+d);
                         if (targetHist) targetHist.video_path = videoUrl;
                     }
 

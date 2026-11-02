@@ -141,7 +141,7 @@ class VehicleLog(Base):
     id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
     camera_id = Column(Integer, ForeignKey("cameras.id"), nullable=False)
     plate_number = Column(String(50), index=True, nullable=False)
-    vehicle_view = Column(String(20), default=VehicleViewEnum.UNKNOWN.value)
+    vehicle_view = Column(String(20), default=VehicleViewEnum.UNKNOWN.value, index=True)
     vehicle_type = Column(String(20), default=VehicleTypeEnum.CAR.value, index=True) # car, motorcycle, unknown
     confidence_score = Column(Float, default=0.0)
     image_full_path = Column(String(500), nullable=False)
