@@ -336,6 +336,121 @@ def empty_trash_bin(
     db.commit()
     return {"success": True, "deleted_count": deleted_count}
 
+@router.post("/trash/batch-restore")
+def batch_restore_vehicle_logs(
+    payload: BatchDeleteLogsRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(admin_only)
+):
+    """Khôi phục hàng loạt sự kiện từ Thùng Rác (Chỉ Admin)"""
+    if not payload.log_ids:
+        raise HTTPException(status_code=400, detail="Danh sách ID sự kiện cần khôi phục không được để trống.")
+
+    logs = db.query(VehicleLog).filter(
+        VehicleLog.id.in_(payload.log_ids),
+        VehicleLog.is_deleted == True
+    ).all()
+    if not logs:
+        return {"success": True, "restored_count": 0, "message": "Không có sự kiện nào hợp lệ trong Thùng Rác để khôi phục."}
+
+    username = current_user.username if current_user else "admin"
+    restored_count = 0
+    restored_ids = []
+
+    for log_item in logs:
+        log_item.is_deleted = False
+        log_item.deleted_at = None
+        log_item.deleted_by = None
+        restored_count += 1
+        restored_ids.append(log_item.id)
+
+        try:
+            webhook_res = dispatch_vehicle_log_restore_webhook(log_item, username, db)
+            if webhook_res:
+                if webhook_res.get("sync_status") == "PENDING_SYNC":
+                    log_item.sync_status = "PENDING_SYNC"
+                    log_item.sync_error = webhook_res.get("message")
+                else:
+                    log_item.sync_status = "SYNCED"
+                    log_item.last_sync_at = datetime.utcnow()
+                    log_item.sync_error = None
+                    if webhook_res.get("vehicle_classification"):
+                        log_item.vehicle_classification = webhook_res["vehicle_classification"]
+                    if webhook_res.get("action_status"):
+                        log_item.action_status = webhook_res["action_status"]
+                    if webhook_res.get("summary"):
+                        log_item.summary = webhook_res["summary"]
+                    if webhook_res.get("alert_level"):
+                        log_item.alert_level = webhook_res["alert_level"]
+                    if webhook_res.get("action_result_raw"):
+                        log_item.action_result_raw = webhook_res["action_result_raw"]
+        except Exception:
+            pass
+
+    db.commit()
+
+    # Phát thông báo WebSocket
+    try:
+        websocket_manager.broadcast_sync({
+            "event": "vehicle_batch_restored",
+            "data": {
+                "restored_count": restored_count,
+                "ids": restored_ids
+            }
+        })
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "restored_count": restored_count,
+        "message": f"Đã khôi phục thành công {restored_count} sự kiện từ Thùng Rác."
+    }
+
+@router.post("/trash/batch-permanent-delete")
+def batch_permanent_delete_vehicle_logs(
+    payload: BatchDeleteLogsRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(admin_only)
+):
+    """Xóa vĩnh viễn hàng loạt sự kiện trong Thùng Rác khỏi CSDL (Chỉ Admin, KHÔNG gọi webhook)"""
+    if not payload.log_ids:
+        raise HTTPException(status_code=400, detail="Danh sách ID sự kiện cần xóa vĩnh viễn không được để trống.")
+
+    logs = db.query(VehicleLog).filter(
+        VehicleLog.id.in_(payload.log_ids),
+        VehicleLog.is_deleted == True
+    ).all()
+    if not logs:
+        return {"success": True, "deleted_count": 0, "message": "Không tìm thấy sự kiện nào trong Thùng Rác để xóa vĩnh viễn."}
+
+    deleted_count = 0
+    deleted_ids = []
+    for log_item in logs:
+        deleted_ids.append(log_item.id)
+        db.delete(log_item)
+        deleted_count += 1
+
+    db.commit()
+
+    # Phát thông báo WebSocket
+    try:
+        websocket_manager.broadcast_sync({
+            "event": "vehicle_batch_permanently_deleted",
+            "data": {
+                "deleted_count": deleted_count,
+                "ids": deleted_ids
+            }
+        })
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "message": f"Đã xóa vĩnh viễn {deleted_count} sự kiện khỏi cơ sở dữ liệu."
+    }
+
 @router.post("/batch-delete")
 def batch_delete_vehicle_logs(
     payload: BatchDeleteLogsRequest,

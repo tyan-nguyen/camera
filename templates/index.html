@@ -389,10 +389,23 @@
                             <i class="fa-solid fa-check-double text-blue-400"></i>
                             <span>Đã chọn: <strong id="history-selected-count" class="text-white">0</strong></span>
                         </span>
+                        <!-- Chế độ Tất Cả Sự Kiện: Chuyển vào Thùng Rác -->
                         <button onclick="batchDeleteSelectedLogs()" id="btn-batch-delete"
                             class="px-3.5 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 shadow-lg shadow-rose-950/40">
                             <i class="fa-solid fa-trash-can"></i>
                             <span>Xóa Đã Chọn</span>
+                        </button>
+                        <!-- Chế độ Thùng Rác: Khôi Phục Đã Chọn -->
+                        <button onclick="batchRestoreSelectedLogs()" id="btn-batch-restore"
+                            class="hidden px-3.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 shadow-lg shadow-emerald-950/40">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Khôi Phục Đã Chọn</span>
+                        </button>
+                        <!-- Chế độ Thùng Rác: Xóa Vĩnh Viễn Đã Chọn -->
+                        <button onclick="batchPermanentDeleteSelectedLogs()" id="btn-batch-permanent"
+                            class="hidden px-3.5 py-1.5 bg-rose-700/30 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/50 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 shadow-lg shadow-rose-950/40">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>Xóa Hẳn Đã Chọn</span>
                         </button>
                         <button onclick="deselectAllHistoryLogs()"
                             class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 rounded-xl text-xs font-medium transition-all" title="Bỏ chọn tất cả">
@@ -2560,11 +2573,13 @@
                     }
 
                     submitBtn.onclick = () => {
-                        closeCustomConfirmModal();
-                        if (customConfirmResolve) {
-                            customConfirmResolve(true);
-                            customConfirmResolve = null;
-                        }
+                        closeCustomConfirmModal(true);
+                    };
+                }
+
+                if (cancelBtn) {
+                    cancelBtn.onclick = () => {
+                        closeCustomConfirmModal(false);
                     };
                 }
 
@@ -2572,12 +2587,13 @@
             });
         }
 
-        function closeCustomConfirmModal() {
+        function closeCustomConfirmModal(result = false) {
             const modal = document.getElementById('confirm-action-modal');
             if (modal) modal.classList.add('hidden');
             if (customConfirmResolve) {
-                customConfirmResolve(false);
+                const resolver = customConfirmResolve;
                 customConfirmResolve = null;
+                resolver(result);
             }
         }
 
@@ -2820,7 +2836,10 @@
                 loadExportedClips();
                 loadPlaybackStorageStatus();
             }
-            if (tabId === 'history') fetchHistoryLogs(1);
+            if (tabId === 'history') {
+                fetchHistoryLogs(1);
+                updateTrashBadge();
+            }
             if (tabId === 'settings') loadSettingsValues();
         }
 
@@ -4727,12 +4746,26 @@
         function updateHistoryBatchActionBar() {
             const bar = document.getElementById('history-batch-actions');
             const countEl = document.getElementById('history-selected-count');
+            const btnBatchDelete = document.getElementById('btn-batch-delete');
+            const btnBatchRestore = document.getElementById('btn-batch-restore');
+            const btnBatchPermanent = document.getElementById('btn-batch-permanent');
+
             if (!bar) return;
             const count = selectedHistoryLogIds.size;
             if (count > 0) {
                 bar.classList.remove('hidden');
                 bar.classList.add('flex');
                 if (countEl) countEl.innerText = count;
+
+                if (currentHistoryMode === 'trash') {
+                    if (btnBatchDelete) btnBatchDelete.classList.add('hidden');
+                    if (btnBatchRestore) btnBatchRestore.classList.remove('hidden');
+                    if (btnBatchPermanent) btnBatchPermanent.classList.remove('hidden');
+                } else {
+                    if (btnBatchDelete) btnBatchDelete.classList.remove('hidden');
+                    if (btnBatchRestore) btnBatchRestore.classList.add('hidden');
+                    if (btnBatchPermanent) btnBatchPermanent.classList.add('hidden');
+                }
             } else {
                 bar.classList.add('hidden');
                 bar.classList.remove('flex');
@@ -4792,7 +4825,7 @@
             try {
                 const res = await fetch('/api/v1/vehicle-logs/batch-delete', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ log_ids: ids })
                 });
                 if (res.ok) {
@@ -4801,13 +4834,106 @@
                     loadRecentDashboardLogs();
                     if (currentTab === 'history') fetchHistoryLogs(currentHistoryPage || 1);
                     updateTrashBadge();
-                    showToast(`Đã chuyển thành công ${data.deleted_count} sự kiện vào Thùng Rác!`, "success");
+                    showToast(data.message || `Đã chuyển thành công ${data.deleted_count} sự kiện vào Thùng Rác!`, "success");
                 } else {
                     const err = await res.json();
                     showToast("Lỗi khi xóa hàng loạt: " + (err.detail || JSON.stringify(err)), "error");
                 }
             } catch (err) {
                 showToast("Lỗi kết nối khi xóa: " + err, "error");
+            }
+        }
+
+        async function batchRestoreSelectedLogs() {
+            const ids = Array.from(selectedHistoryLogIds);
+            if (ids.length === 0) {
+                showToast("Vui lòng chọn ít nhất một sự kiện để khôi phục!", "warning");
+                return;
+            }
+
+            const confirmed = await showCustomConfirmModal({
+                title: 'Khôi Phục Hàng Loạt',
+                message: `Bạn có chắc chắn muốn khôi phục ${ids.length} sự kiện đã chọn từ Thùng Rác?`,
+                detailHtml: `
+                    <div class="space-y-1.5 text-xs text-slate-300">
+                        <div class="flex items-center text-emerald-400 font-semibold">
+                            <i class="fa-solid fa-rotate-left mr-2"></i>Số lượng bản ghi khôi phục: <span class="text-white ml-1 font-bold font-mono text-sm">${ids.length}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 leading-relaxed pt-1 border-t border-slate-800">
+                            • Các sự kiện sẽ được đưa trở lại danh sách sự kiện chính.<br>
+                            • Tự động gửi thông báo RESTORE tới đối tác để đồng bộ lại dữ liệu.
+                        </div>
+                    </div>
+                `,
+                confirmText: `Khôi Phục ${ids.length} Bản Ghi`,
+                confirmType: 'success'
+            });
+
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch('/api/v1/vehicle-logs/trash/batch-restore', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ log_ids: ids })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    deselectAllHistoryLogs();
+                    loadRecentDashboardLogs();
+                    if (currentTab === 'history') fetchHistoryLogs(currentHistoryPage || 1);
+                    updateTrashBadge();
+                    showToast(data.message || `Đã khôi phục thành công ${data.restored_count} sự kiện!`, "success");
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi khi khôi phục hàng loạt: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối khi khôi phục: " + err, "error");
+            }
+        }
+
+        async function batchPermanentDeleteSelectedLogs() {
+            const ids = Array.from(selectedHistoryLogIds);
+            if (ids.length === 0) {
+                showToast("Vui lòng chọn ít nhất một sự kiện để xóa vĩnh viễn!", "warning");
+                return;
+            }
+
+            const confirmed = await showCustomConfirmModal({
+                title: 'CẢNH BÁO: XÓA VĨNH VIỄN HÀNG LOẠT',
+                message: `Bạn có chắc chắn muốn XÓA VĨNH VIỄN ${ids.length} sự kiện khỏi cơ sở dữ liệu?`,
+                detailHtml: `
+                    <div class="p-2.5 rounded-xl bg-rose-950/60 border border-rose-800/60 text-rose-300 text-xs space-y-1">
+                        <div class="font-bold flex items-center text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>CẢNH BÁO NGUY HIỂM:</div>
+                        <div>• Toàn bộ <strong class="text-white">${ids.length}</strong> bản ghi sẽ bị xóa sạch hoàn toàn khỏi CSDL.</div>
+                        <div>• Hành động này <strong>KHÔNG THỂ HOÀN TÁC</strong> và sẽ KHÔNG gọi API đối tác.</div>
+                    </div>
+                `,
+                confirmText: `Xóa Vĩnh Viễn ${ids.length} Bản Ghi`,
+                confirmType: 'danger'
+            });
+
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch('/api/v1/vehicle-logs/trash/batch-permanent-delete', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ log_ids: ids })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    deselectAllHistoryLogs();
+                    if (currentTab === 'history') fetchHistoryLogs(currentHistoryPage || 1);
+                    updateTrashBadge();
+                    showToast(data.message || `Đã xóa vĩnh viễn ${data.deleted_count} sự kiện khỏi CSDL!`, "success");
+                } else {
+                    const err = await res.json();
+                    showToast("Lỗi xóa vĩnh viễn: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối: " + err, "error");
             }
         }
 
@@ -4843,12 +4969,20 @@
         function renderHistoryTableHead(mode) {
             const thead = document.getElementById('history-thead-row');
             if (!thead) return;
+            const canManage = currentUser && (currentUser.role === 'admin' || currentUser.role === 'quan_ly');
+            const isAdmin = currentUser && (currentUser.role === 'admin');
+            const showCheck = (mode === 'trash') ? isAdmin : canManage;
+
+            const checkTh = showCheck ? `
+                <th class="p-3 sm:p-4 w-10 text-center">
+                    <input type="checkbox" id="history-check-all" onchange="toggleSelectAllHistoryLogs(this.checked)"
+                        class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer" title="Chọn tất cả trên trang">
+                </th>
+            ` : '';
+
             if (mode === 'trash') {
                 thead.innerHTML = `
-                    <th class="p-3 sm:p-4 w-10 text-center">
-                        <input type="checkbox" id="history-check-all" onchange="toggleSelectAllHistoryLogs(this.checked)"
-                            class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer" title="Chọn tất cả trên trang">
-                    </th>
+                    ${checkTh}
                     <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
                     <th class="p-3 sm:p-4 whitespace-nowrap">Thời gian phát hiện</th>
                     <th class="p-3 sm:p-4 whitespace-nowrap">Camera / Vùng</th>
@@ -4860,10 +4994,7 @@
                 `;
             } else {
                 thead.innerHTML = `
-                    <th class="p-3 sm:p-4 w-10 text-center">
-                        <input type="checkbox" id="history-check-all" onchange="toggleSelectAllHistoryLogs(this.checked)"
-                            class="w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer" title="Chọn tất cả trên trang">
-                    </th>
+                    ${checkTh}
                     <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
                     <th class="p-3 sm:p-4 whitespace-nowrap">Thời gian</th>
                     <th class="p-3 sm:p-4 whitespace-nowrap">Camera / Vùng</th>
@@ -4910,7 +5041,7 @@
             if (classification) url += `&vehicle_classification=${encodeURIComponent(classification)}`;
 
             try {
-                const res = await fetch(url);
+                const res = await fetch(url, { headers: getAuthHeaders() });
                 if (!res.ok) {
                     if (res.status === 403) {
                         showToast("Chỉ Admin mới có quyền truy cập Thùng Rác!", "error");
@@ -4972,9 +5103,14 @@
 
         function renderHistoryTable(items) {
             const tbody = document.getElementById('history-table-body');
+            const canManage = currentUser && (currentUser.role === 'admin' || currentUser.role === 'quan_ly');
+            const isAdmin = currentUser && (currentUser.role === 'admin');
+            const showCheck = (currentHistoryMode === 'trash') ? isAdmin : canManage;
+            const emptyColspan = showCheck ? (currentHistoryMode === 'trash' ? 9 : 10) : (currentHistoryMode === 'trash' ? 8 : 9);
+
             if (currentHistoryMode === 'trash') {
                 if (items.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-500 font-medium"><i class="fa-solid fa-trash-can mr-2 text-slate-600"></i>Thùng rác trống. Không có sự kiện nào.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="${emptyColspan}" class="p-8 text-center text-slate-500 font-medium"><i class="fa-solid fa-trash-can mr-2 text-slate-600"></i>Thùng rác trống. Không có sự kiện nào.</td></tr>`;
                     syncMasterCheckboxState();
                     return;
                 }
@@ -4987,10 +5123,12 @@
 
                     return `
                         <tr class="hover:bg-slate-800/40 border-b border-slate-800/60 ${selectedHistoryLogIds.has(item.id) ? 'bg-blue-950/20' : ''}">
-                            <td class="p-3 text-center">
-                                <input type="checkbox" value="${item.id}" onchange="onHistoryRowCheckChange(${item.id}, this.checked)" ${isChecked}
-                                    class="history-row-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer">
-                            </td>
+                            ${showCheck ? `
+                                <td class="p-3 text-center">
+                                    <input type="checkbox" value="${item.id}" onchange="onHistoryRowCheckChange(${item.id}, this.checked)" ${isChecked}
+                                        class="history-row-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer">
+                                </td>
+                            ` : ''}
                             <td class="p-3 font-mono text-slate-400">#${item.id}</td>
                             <td class="p-3 text-xs text-slate-300 whitespace-nowrap">${item.detected_at}</td>
                             <td class="p-3">
@@ -5027,7 +5165,7 @@
             }
 
             if (items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-500">Không tìm thấy bản ghi nhận dạng nào.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${emptyColspan}" class="p-6 text-center text-slate-500">Không tìm thấy bản ghi nhận dạng nào.</td></tr>`;
                 syncMasterCheckboxState();
                 return;
             }
@@ -5042,10 +5180,12 @@
 
                 return `
                     <tr class="hover:bg-slate-800/40 ${selectedHistoryLogIds.has(item.id) ? 'bg-blue-950/20' : ''}">
-                        <td class="p-3 text-center">
-                            <input type="checkbox" value="${item.id}" onchange="onHistoryRowCheckChange(${item.id}, this.checked)" ${isChecked}
-                                class="history-row-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer">
-                        </td>
+                        ${showCheck ? `
+                            <td class="p-3 text-center">
+                                <input type="checkbox" value="${item.id}" onchange="onHistoryRowCheckChange(${item.id}, this.checked)" ${isChecked}
+                                    class="history-row-checkbox w-4 h-4 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer">
+                            </td>
+                        ` : ''}
                         <td class="p-3 font-mono text-slate-400">#${item.id}</td>
                         <td class="p-3 text-xs text-slate-300 whitespace-nowrap">${item.detected_at}</td>
                         <td class="p-3">
@@ -6969,7 +7109,10 @@
             if (!confirmed) return;
 
             try {
-                const res = await fetch(`/api/v1/vehicle-logs/${logId}`, { method: 'DELETE' });
+                const res = await fetch(`/api/v1/vehicle-logs/${logId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
                     if (selectedHistoryLogIds.has(logId)) {
                         selectedHistoryLogIds.delete(logId);
@@ -7009,7 +7152,10 @@
             if (!confirmed) return;
 
             try {
-                const res = await fetch(`/api/v1/vehicle-logs/${logId}/restore`, { method: 'POST' });
+                const res = await fetch(`/api/v1/vehicle-logs/${logId}/restore`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
                     loadRecentDashboardLogs();
                     if (currentTab === 'history') fetchHistoryLogs(currentHistoryPage || 1);
@@ -7041,7 +7187,10 @@
             if (!confirmed) return;
 
             try {
-                const res = await fetch(`/api/v1/vehicle-logs/${logId}/permanent`, { method: 'DELETE' });
+                const res = await fetch(`/api/v1/vehicle-logs/${logId}/permanent`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
                     if (currentTab === 'history') fetchHistoryLogs(currentHistoryPage || 1);
                     updateTrashBadge();
@@ -7073,7 +7222,10 @@
             if (!confirmed) return;
 
             try {
-                const res = await fetch('/api/v1/vehicle-logs/trash/empty', { method: 'DELETE' });
+                const res = await fetch('/api/v1/vehicle-logs/trash/empty', {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
                     const data = await res.json();
                     if (currentTab === 'history') fetchHistoryLogs(1);
@@ -7091,7 +7243,9 @@
         async function updateTrashBadge() {
             if (!currentUser || currentUser.role !== 'admin') return;
             try {
-                const res = await fetch('/api/v1/vehicle-logs/trash/count');
+                const res = await fetch('/api/v1/vehicle-logs/trash/count', {
+                    headers: getAuthHeaders()
+                });
                 if (res.ok) {
                     const data = await res.json();
                     const badge = document.getElementById('trash-count-badge');
@@ -7259,6 +7413,31 @@
                         updateTrashBadge();
                     }
                     showToast(`↩️ Sự kiện xe ${data.plate_number} đã được khôi phục thành công`, "success", 3500);
+                } else if (msg.event === 'vehicle_batch_restored') {
+                    const data = msg.data;
+                    if (typeof currentTab !== 'undefined' && currentTab === 'history') {
+                        if (typeof fetchHistoryLogs === 'function') {
+                            fetchHistoryLogs(currentHistoryPage || 1);
+                        }
+                    }
+                    if (typeof loadRecentDashboardLogs === 'function') {
+                        loadRecentDashboardLogs();
+                    }
+                    if (typeof updateTrashBadge === 'function') {
+                        updateTrashBadge();
+                    }
+                    showToast(`↩️ Đã khôi phục thành công ${data.restored_count} sự kiện từ Thùng Rác`, "success", 3500);
+                } else if (msg.event === 'vehicle_batch_permanently_deleted') {
+                    const data = msg.data;
+                    if (typeof currentTab !== 'undefined' && currentTab === 'history') {
+                        if (typeof fetchHistoryLogs === 'function') {
+                            fetchHistoryLogs(currentHistoryPage || 1);
+                        }
+                    }
+                    if (typeof updateTrashBadge === 'function') {
+                        updateTrashBadge();
+                    }
+                    showToast(`🗑️ Đã xóa vĩnh viễn ${data.deleted_count} sự kiện khỏi CSDL`, "info", 3500);
                 } else if (msg.event === 'webhook_health_changed') {
                     if (typeof updateWebhookHeaderStatus === 'function') updateWebhookHeaderStatus();
                     if (typeof currentWebhookSyncTab !== 'undefined' && currentWebhookSyncTab === 'health') {
