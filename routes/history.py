@@ -37,6 +37,10 @@ def search_vehicle_logs(
     db: Session = Depends(get_db)
 ):
     current_user = get_current_user_optional(request, db)
+    # 0. Quyền quan sát: Chặn hoàn toàn không được xem dữ liệu sự kiện / đếm xe
+    if current_user and current_user.role == UserRoleEnum.QUAN_SAT.value:
+        return PaginatedVehicleLogs(total=0, page=page, page_size=page_size, items=[])
+
     query = db.query(VehicleLog)
 
     # 0. Lọc Thùng rác (Xóa mềm vs Chưa xóa)

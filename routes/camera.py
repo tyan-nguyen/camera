@@ -87,7 +87,17 @@ def get_all_cameras(
         query = query.filter(Camera.camera_function == camera_function.strip().upper())
 
     cams = query.order_by(Camera.display_order.asc(), Camera.id.asc()).all()
-    return [build_camera_response(c) for c in cams]
+    is_viewer = current_user and current_user.role == UserRoleEnum.QUAN_SAT.value
+    res_list = []
+    for c in cams:
+        item = build_camera_response(c)
+        if is_viewer:
+            item.detection_zone = None
+            item.action_group_name = None
+            item.action_group_front_name = None
+            item.action_group_rear_name = None
+        res_list.append(item)
+    return res_list
 
 @router.get("/zones")
 def get_all_zones(db: Session = Depends(get_db)):
@@ -275,13 +285,19 @@ def get_camera_snapshot(
     camera_id: int, 
     request: Request,
     w: Optional[int] = None,
-    q: Optional[int] = None
+    q: Optional[int] = None,
+    overlay: Optional[int] = None
 ):
     db = SessionLocal()
+    show_overlay = True
     try:
         current_user = get_current_user_optional(request, db)
         if not check_camera_access(camera_id, current_user):
             raise HTTPException(status_code=403, detail="Tài khoản của bạn không có quyền xem hình ảnh camera này.")
+        if current_user and current_user.role == UserRoleEnum.QUAN_SAT.value:
+            show_overlay = False
+        elif overlay is not None and overlay == 0:
+            show_overlay = False
     finally:
         db.close()
 
@@ -292,7 +308,7 @@ def get_camera_snapshot(
     target_w = w if (w and 120 <= w <= 1920) else None
     target_q = q if (q and 30 <= q <= 95) else 75
 
-    jpeg_bytes = stream_manager_ref.get_camera_snapshot(camera_id, width=target_w, quality=target_q)
+    jpeg_bytes = stream_manager_ref.get_camera_snapshot(camera_id, width=target_w, quality=target_q, overlay=show_overlay)
     if not jpeg_bytes:
         raise HTTPException(status_code=404, detail="Không có hình ảnh snapshot.")
     return Response(
@@ -306,12 +322,17 @@ def get_camera_snapshot(
     )
 
 @router.get("/{camera_id}/stream")
-def get_camera_stream(camera_id: int, request: Request):
+def get_camera_stream(camera_id: int, request: Request, overlay: Optional[int] = None):
     db = SessionLocal()
+    show_overlay = True
     try:
         current_user = get_current_user_optional(request, db)
         if not check_camera_access(camera_id, current_user):
             raise HTTPException(status_code=403, detail="Tài khoản của bạn không có quyền xem luồng camera này.")
+        if current_user and current_user.role == UserRoleEnum.QUAN_SAT.value:
+            show_overlay = False
+        elif overlay is not None and overlay == 0:
+            show_overlay = False
     finally:
         db.close()
 
@@ -320,7 +341,7 @@ def get_camera_stream(camera_id: int, request: Request):
 
     def mjpeg_generator():
         while True:
-            jpeg_bytes = stream_manager_ref.get_camera_snapshot(camera_id)
+            jpeg_bytes = stream_manager_ref.get_camera_snapshot(camera_id, overlay=show_overlay)
             if jpeg_bytes:
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + jpeg_bytes + b'\r\n')

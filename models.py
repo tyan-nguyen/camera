@@ -239,6 +239,7 @@ class UserRoleEnum(str, enum.Enum):
     ADMIN = "admin"        # Toàn quyền cấu hình, camera, tài khoản, sửa/xóa log
     QUAN_LY = "quan_ly"    # Xem camera được phân quyền, xem sự kiện, sửa biển số, xóa sự kiện
     USER = "user"          # Chỉ xem camera và xem sự kiện được phân quyền
+    QUAN_SAT = "quan_sat"  # Người quan sát: CHỈ XEM video Live & Xem lại camera được phân công
 
 class User(Base):
     __tablename__ = "users"

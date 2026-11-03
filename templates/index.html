@@ -293,7 +293,7 @@
         <div id="page-dashboard" class="space-y-4 sm:space-y-6">
             
             <!-- Zone Filter Tabs Bar -->
-            <div class="flex flex-wrap items-center justify-between gap-3 glass-panel p-2.5 sm:p-3 rounded-2xl">
+            <div id="dashboard-zone-filter-bar" class="flex flex-wrap items-center justify-between gap-3 glass-panel p-2.5 sm:p-3 rounded-2xl">
                 <div class="flex items-center space-x-1.5 overflow-x-auto">
                     <span class="text-xs text-slate-400 font-semibold mr-1.5 flex items-center gap-1">
                         <i class="fa-solid fa-filter text-blue-400"></i> Lọc Vùng:
@@ -327,7 +327,7 @@
             </div>
 
             <!-- Realtime Event Log Banner -->
-            <div class="glass-panel rounded-2xl p-3.5 sm:p-5">
+            <div id="dashboard-realtime-events-container" class="glass-panel rounded-2xl p-3.5 sm:p-5">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-0 mb-3.5">
                     <h2 class="text-base sm:text-lg font-bold flex items-center space-x-2 text-white">
                         <i class="fa-solid fa-bolt text-amber-400"></i>
@@ -1596,7 +1596,8 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 mb-1">Phân Quyền Vai Trò:</label>
                             <select id="admin-user-role" onchange="toggleCameraChecklistVisibility()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs focus:border-blue-500 text-slate-200">
-                                <option value="user">👤 User (Chỉ xem camera được cấp)</option>
+                                <option value="quan_sat">👁️ Quan Sát (Chỉ xem Live & Xem lại camera)</option>
+                                <option value="user">👤 User (Chỉ xem camera & lịch sử xe được cấp)</option>
                                 <option value="quan_ly">🛡️ Quản Lý (Sửa/Xóa log camera được cấp)</option>
                                 <option value="admin">👑 Admin (Toàn quyền 100% camera)</option>
                             </select>
@@ -2949,7 +2950,7 @@
             document.getElementById('user-avatar-initial').innerText = (currentUser.username || 'U').charAt(0).toUpperCase();
             document.getElementById('user-dropdown-fullname').innerText = name;
 
-            let roleName = role === 'admin' ? '👑 Quản Trị Viên (Admin)' : (role === 'quan_ly' ? '🛡️ Quản Lý' : '👤 Giám Sát Viên');
+            let roleName = role === 'admin' ? '👑 Quản Trị Viên (Admin)' : (role === 'quan_ly' ? '🛡️ Quản Lý' : (role === 'quan_sat' ? '👁️ Quan Sát Viên' : '👤 Giám Sát Viên'));
             document.getElementById('user-dropdown-role').innerText = roleName;
 
             const headerBadge = document.getElementById('header-user-role-badge');
@@ -2958,6 +2959,8 @@
             }
 
             const isAdmin = (role === 'admin');
+            const isViewer = (role === 'quan_sat');
+
             document.querySelectorAll('.role-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
             if (isAdmin && typeof updateTrashBadge === 'function') {
                 updateTrashBadge();
@@ -2969,7 +2972,22 @@
             const btnManageAG = document.getElementById('btn-manage-action-groups');
             if (btnManageAG) btnManageAG.classList.toggle('hidden', !isAdmin);
 
-            if (!isAdmin && (currentTab === 'cameras' || currentTab === 'settings')) {
+            // Quyền Quan sát viên (quan_sat): Ẩn Tra cứu lịch sử, Filter bar vùng/chức năng, Realtime feed sự kiện
+            const tabHistory = document.getElementById('tab-history');
+            if (tabHistory) tabHistory.classList.toggle('hidden', isViewer);
+            const mobTabHistory = document.getElementById('mob-tab-history');
+            if (mobTabHistory) mobTabHistory.classList.toggle('hidden', isViewer);
+
+            const zoneFilterBar = document.getElementById('dashboard-zone-filter-bar');
+            if (zoneFilterBar) zoneFilterBar.classList.toggle('hidden', isViewer);
+
+            const realtimeEvents = document.getElementById('dashboard-realtime-events-container');
+            if (realtimeEvents) realtimeEvents.classList.toggle('hidden', isViewer);
+
+            const webhookBtn = document.getElementById('webhook-header-status-btn');
+            if (webhookBtn) webhookBtn.classList.toggle('hidden', isViewer);
+
+            if ((!isAdmin && (currentTab === 'cameras' || currentTab === 'settings')) || (isViewer && currentTab === 'history')) {
                 switchTab('dashboard');
             }
         }
@@ -3017,7 +3035,8 @@
                     }
                 };
                 // Gửi kèm w=640&q=65 để nén ảnh thumbnail nhỏ nhẹ gấp 8 lần (giảm 85% tải mạng)
-                tempImg.src = `/api/v1/cameras/${camId}/snapshot?w=640&q=65&_t=${Date.now()}`;
+                const overlayParam = (currentUser && currentUser.role === 'quan_sat') ? '&overlay=0' : '';
+                tempImg.src = `/api/v1/cameras/${camId}/snapshot?w=640&q=65${overlayParam}&_t=${Date.now()}`;
             }
 
             loadNext();
@@ -3165,6 +3184,8 @@
                     : '';
 
                 const isAdmin = currentUser && currentUser.role === 'admin';
+                const isViewer = currentUser && currentUser.role === 'quan_sat';
+                const overlayParam = isViewer ? '&overlay=0' : '';
 
                 return `
                     <div class="glass-panel rounded-2xl overflow-hidden border border-slate-700/80 shadow-xl flex flex-col">
@@ -3176,22 +3197,24 @@
                             </div>
                             <div class="flex items-center space-x-1.5 flex-shrink-0">
                                 ${recBadge}
-                                ${dirBadge}
-                                ${zoneBadge}
-                                ${funcBadge}
-                                ${cam.detection_zone && cam.detection_zone.length >= 10 ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono flex items-center gap-1" title="Đã cấu hình vùng nhận diện ROI"><i class="fa-solid fa-draw-polygon text-[9px]"></i>ROI</span>` : ''}
-                                ${isAdmin ? `
-                                    <button onclick="openRoiModal(${cam.id})" class="p-1 px-2 rounded-lg bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/40 text-xs font-semibold" title="Khoanh vùng nhận diện ROI">
-                                        <i class="fa-solid fa-draw-polygon"></i>
-                                    </button>
-                                    <button onclick="openEditCameraModal(${cam.id})" class="p-1 px-2 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 text-xs font-semibold" title="Chỉnh sửa Camera">
-                                        <i class="fa-solid fa-pen"></i>
-                                    </button>
+                                ${!isViewer ? `
+                                    ${dirBadge}
+                                    ${zoneBadge}
+                                    ${funcBadge}
+                                    ${cam.detection_zone && cam.detection_zone.length >= 10 ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono flex items-center gap-1" title="Đã cấu hình vùng nhận diện ROI"><i class="fa-solid fa-draw-polygon text-[9px]"></i>ROI</span>` : ''}
+                                    ${isAdmin ? `
+                                        <button onclick="openRoiModal(${cam.id})" class="p-1 px-2 rounded-lg bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/40 text-xs font-semibold" title="Khoanh vùng nhận diện ROI">
+                                            <i class="fa-solid fa-draw-polygon"></i>
+                                        </button>
+                                        <button onclick="openEditCameraModal(${cam.id})" class="p-1 px-2 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 text-xs font-semibold" title="Chỉnh sửa Camera">
+                                            <i class="fa-solid fa-pen"></i>
+                                        </button>
+                                    ` : ''}
                                 ` : ''}
                             </div>
                         </div>
                         <div class="relative bg-slate-950 aspect-video flex items-center justify-center overflow-hidden group cursor-pointer" onclick="openZoomModal(${cam.id})">
-                            <img id="grid-cam-img-${cam.id}" src="/api/v1/cameras/${cam.id}/snapshot?w=640&q=65&_t=${Date.now()}" class="w-full h-full object-cover" alt="${cam.camera_name}">
+                            <img id="grid-cam-img-${cam.id}" src="/api/v1/cameras/${cam.id}/snapshot?w=640&q=65${overlayParam}&_t=${Date.now()}" class="w-full h-full object-cover" alt="${cam.camera_name}">
                             <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
                                 <span class="px-3 py-1.5 rounded-xl bg-slate-900/90 text-white text-xs font-semibold border border-slate-700 shadow flex items-center space-x-1.5">
                                     <i class="fa-solid fa-expand text-blue-400"></i>
@@ -3200,10 +3223,17 @@
                             </div>
                         </div>
                         <div class="p-2.5 bg-slate-900/60 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
-                            <div class="truncate space-y-0.5 max-w-[65%]">
-                                <div class="truncate"><i class="fa-solid fa-arrow-right-to-bracket text-emerald-400 mr-1 text-[10px]"></i>Trước: <span class="text-slate-300 font-medium">${cam.action_group_front_name || cam.action_group_name || 'Không'}</span></div>
-                                <div class="truncate"><i class="fa-solid fa-arrow-right-from-bracket text-amber-400 mr-1 text-[10px]"></i>Sau: <span class="text-slate-300 font-medium">${cam.action_group_rear_name || cam.action_group_name || 'Không'}</span></div>
-                            </div>
+                            ${!isViewer ? `
+                                <div class="truncate space-y-0.5 max-w-[65%]">
+                                    <div class="truncate"><i class="fa-solid fa-arrow-right-to-bracket text-emerald-400 mr-1 text-[10px]"></i>Trước: <span class="text-slate-300 font-medium">${cam.action_group_front_name || cam.action_group_name || 'Không'}</span></div>
+                                    <div class="truncate"><i class="fa-solid fa-arrow-right-from-bracket text-amber-400 mr-1 text-[10px]"></i>Sau: <span class="text-slate-300 font-medium">${cam.action_group_rear_name || cam.action_group_name || 'Không'}</span></div>
+                                </div>
+                            ` : `
+                                <div class="flex items-center space-x-1.5 text-slate-400">
+                                    <i class="fa-solid fa-video text-blue-400"></i>
+                                    <span class="font-medium text-slate-300">Live Camera</span>
+                                </div>
+                            `}
                             <div class="flex items-center space-x-2 flex-shrink-0">
                                 <button onclick="openPlaybackForEvent(${cam.id}, '')" class="text-blue-400 hover:text-blue-300 font-semibold" title="Xem lại video camera này">
                                     <i class="fa-solid fa-film mr-1"></i>Xem lại
@@ -4924,6 +4954,8 @@
                         roleBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-300">👑 Admin</span>`;
                     } else if (u.role === 'quan_ly') {
                         roleBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300">🛡️ Quản Lý</span>`;
+                    } else if (u.role === 'quan_sat') {
+                        roleBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30">👁️ Quan Sát</span>`;
                     }
 
                     let camAccessText = u.role === 'admin' ? '<span class="text-blue-400 font-semibold">Toàn quyền (100% Cam)</span>' : `${u.assigned_camera_ids ? u.assigned_camera_ids.length : 0} Camera được cấp`;
@@ -6031,6 +6063,7 @@
         }
 
         async function loadRecentDashboardLogs() {
+            if (currentUser && currentUser.role === 'quan_sat') return;
             try {
                 const res = await fetch('/api/v1/vehicle-logs?page=1&page_size=10');
                 if (!res.ok) return;
@@ -7210,7 +7243,9 @@
         function openZoomModal(camId) {
             const cam = camerasList.find(c => c.id === camId);
             document.getElementById('zoom-modal-title').innerText = `LIVE FULLVIEW - ${cam ? cam.camera_name : ('Camera #' + camId)}`;
-            document.getElementById('zoom-modal-img').src = `/api/v1/cameras/${camId}/stream`;
+            const isViewer = currentUser && currentUser.role === 'quan_sat';
+            const streamUrl = isViewer ? `/api/v1/cameras/${camId}/stream?overlay=0` : `/api/v1/cameras/${camId}/stream`;
+            document.getElementById('zoom-modal-img').src = streamUrl;
             document.getElementById('camera-zoom-modal').classList.remove('hidden');
         }
 
@@ -7946,6 +7981,10 @@
 
             ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
+                if (currentUser && currentUser.role === 'quan_sat') {
+                    // Tài khoản quan sát không hiển thị thông báo hay sự kiện xe
+                    return;
+                }
                 if (msg.event === 'vehicle_detected') {
                     const data = msg.data;
 

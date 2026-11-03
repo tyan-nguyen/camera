@@ -39,7 +39,7 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db), current_user
     if existing:
         raise HTTPException(status_code=400, detail=f"Tên đăng nhập '{username}' đã tồn tại trong hệ thống.")
     
-    if user_in.role not in [UserRoleEnum.ADMIN.value, UserRoleEnum.QUAN_LY.value, UserRoleEnum.USER.value]:
+    if user_in.role not in [UserRoleEnum.ADMIN.value, UserRoleEnum.QUAN_LY.value, UserRoleEnum.USER.value, UserRoleEnum.QUAN_SAT.value]:
         raise HTTPException(status_code=400, detail="Vai trò không hợp lệ (admin, quan_ly, user).")
     
     new_user = User(
@@ -68,7 +68,7 @@ def update_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db)
     if user_in.full_name is not None:
         user.full_name = user_in.full_name
     if user_in.role is not None:
-        if user_in.role not in [UserRoleEnum.ADMIN.value, UserRoleEnum.QUAN_LY.value, UserRoleEnum.USER.value]:
+        if user_in.role not in [UserRoleEnum.ADMIN.value, UserRoleEnum.QUAN_LY.value, UserRoleEnum.USER.value, UserRoleEnum.QUAN_SAT.value]:
             raise HTTPException(status_code=400, detail="Vai trò không hợp lệ.")
         if user.id == current_user.id and user_in.role != UserRoleEnum.ADMIN.value:
             admin_count = db.query(User).filter(User.role == UserRoleEnum.ADMIN.value, User.is_active == True).count()

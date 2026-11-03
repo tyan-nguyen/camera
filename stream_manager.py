@@ -332,7 +332,7 @@ class CameraThread(threading.Thread):
         video_recorder_manager.stop_recorder(self.camera_id)
         logger.info(f"Stopped camera thread for [{self.camera_name}] (ID: {self.camera_id})")
 
-    def get_latest_frame_jpeg(self, width: Optional[int] = None, quality: int = 75) -> Optional[bytes]:
+    def get_latest_frame_jpeg(self, width: Optional[int] = None, quality: int = 75, overlay: bool = True) -> Optional[bytes]:
         """
         Nén ảnh JPEG từ khung hình mới nhất.
         Hỗ trợ:
@@ -342,15 +342,16 @@ class CameraThread(threading.Thread):
         """
         now = time.time()
         
-        # 1. Trường hợp yêu cầu ảnh thumbnail (width <= 640): dùng cache 200ms
+        # 1. Trường hợp yêu cầu ảnh thumbnail (width <= 640): dùng cache 200ms (chỉ cache nếu có overlay mặc định)
         if width and width <= 640:
-            if self._cached_thumb_jpeg and (now - self._cached_thumb_time < 0.20):
+            if overlay and self._cached_thumb_jpeg and (now - self._cached_thumb_time < 0.20):
                 return self._cached_thumb_jpeg
             
             with self.frame_lock:
-                if self.latest_frame is None:
+                target_src = self.latest_frame if overlay else (self.latest_raw_frame if self.latest_raw_frame is not None else self.latest_frame)
+                if target_src is None:
                     return None
-                frame_to_encode = self.latest_frame
+                frame_to_encode = target_src
                 h, orig_w = frame_to_encode.shape[:2]
                 if orig_w > width:
                     new_h = int(h * (width / orig_w))
@@ -368,9 +369,10 @@ class CameraThread(threading.Thread):
             return self._cached_full_jpeg
 
         with self.frame_lock:
-            if self.latest_frame is None:
+            target_src = self.latest_frame if overlay else (self.latest_raw_frame if self.latest_raw_frame is not None else self.latest_frame)
+            if target_src is None:
                 return None
-            frame_to_encode = self.latest_frame
+            frame_to_encode = target_src
             ret, buffer = cv2.imencode('.jpg', frame_to_encode, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
             if ret:
                 encoded = buffer.tobytes()
@@ -524,10 +526,10 @@ class DynamicStreamManager:
         ret, buf = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
         return buf.tobytes() if ret else b''
 
-    def get_camera_snapshot(self, camera_id: int, width: Optional[int] = None, quality: int = 75) -> bytes:
+    def get_camera_snapshot(self, camera_id: int, width: Optional[int] = None, quality: int = 75, overlay: bool = True) -> bytes:
         thread = self.threads.get(camera_id)
         if thread:
-            img_bytes = thread.get_latest_frame_jpeg(width=width, quality=quality)
+            img_bytes = thread.get_latest_frame_jpeg(width=width, quality=quality, overlay=overlay)
             if img_bytes:
                 return img_bytes
             return self._create_default_offline_jpeg(thread.camera_name, "Dang ket noi luong RTSP...")
