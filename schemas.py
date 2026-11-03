@@ -433,3 +433,45 @@ class WebhookSystemStatusResponse(BaseModel):
     open_circuit_count: int = 0
     action_groups: List[WebhookHealthStatusResponse] = []
 
+# ==========================================
+# 11. Search Shortcut Schemas (Lối tắt tìm kiếm lịch sử)
+# ==========================================
+class SearchShortcutBase(BaseModel):
+    name: str
+    camera_id: Optional[int] = None
+    zone_code: Optional[str] = None
+    vehicle_type: Optional[str] = None
+    vehicle_view: Optional[str] = None
+    vehicle_classification: Optional[str] = None
+    action_status: Optional[str] = None
+    plate_number: Optional[str] = None
+    color: str = 'blue'
+    icon: str = 'fa-filter'
+    order_index: int = 0
+    is_active: bool = True
+
+class SearchShortcutCreate(SearchShortcutBase):
+    pass
+
+class SearchShortcutUpdate(BaseModel):
+    name: Optional[str] = None
+    camera_id: Optional[int] = None
+    zone_code: Optional[str] = None
+    vehicle_type: Optional[str] = None
+    vehicle_view: Optional[str] = None
+    vehicle_classification: Optional[str] = None
+    action_status: Optional[str] = None
+    plate_number: Optional[str] = None
+    color: Optional[str] = None
+    icon: Optional[str] = None
+    order_index: Optional[int] = None
+    is_active: Optional[bool] = None
+
+class SearchShortcutResponse(SearchShortcutBase):
+    id: int
+    camera_name: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+

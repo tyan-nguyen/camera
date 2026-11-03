@@ -287,3 +287,26 @@ class WebhookSyncQueue(Base):
     log = relationship("VehicleLog")
     camera = relationship("Camera")
 
+class SearchShortcut(Base):
+    """Lối tắt tìm kiếm động trong Tra cứu lịch sử (Search Shortcuts / Presets)"""
+    __tablename__ = "search_shortcuts"
+    __table_args__ = {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci'}
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String(100), nullable=False)                                # Tên hiển thị lối tắt
+    camera_id = Column(Integer, ForeignKey("cameras.id", ondelete="SET NULL"), nullable=True, index=True) # Camera lọc
+    zone_code = Column(String(50), nullable=True)                             # Vùng: TRUONGLAI, KHO_BAI...
+    vehicle_type = Column(String(50), nullable=True)                          # car, motorcycle
+    vehicle_view = Column(String(50), nullable=True)                          # front, rear, unknown
+    vehicle_classification = Column(String(50), nullable=True)                # INTERNAL_VALID, INTERNAL_UNPLANNED, EXTERNAL_UNKNOWN
+    action_status = Column(String(50), nullable=True)                         # APPROVED, UNPLANNED, REJECTED, WARNING, INFO
+    plate_number = Column(String(50), nullable=True)                          # Biển số định sẵn
+    color = Column(String(50), default="blue")                                # Tông màu nút: blue, emerald, amber, rose, indigo, purple, cyan
+    icon = Column(String(50), default="fa-filter")                            # FontAwesome icon
+    order_index = Column(Integer, default=0)                                 # Thứ tự sắp xếp
+    is_active = Column(Boolean, default=True)                                 # Bật/Tắt hiển thị
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    camera = relationship("Camera")
+

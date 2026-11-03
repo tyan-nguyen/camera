@@ -17,7 +17,7 @@ from disk_worker import AsyncDiskWorker
 from stream_manager import DynamicStreamManager
 from websocket_manager import websocket_manager
 from notification_service import notification_service
-from routes import camera, history, settings as settings_route, tts, auth, users, action_groups, devices, playback, webhook_sync
+from routes import camera, history, settings as settings_route, tts, auth, users, action_groups, devices, playback, webhook_sync, search_shortcuts
 from settings_manager import settings_manager
 from webhook_sync_worker import webhook_sync_worker
 from video_recorder import recover_orphaned_recordings
@@ -183,6 +183,7 @@ app.include_router(playback.router)
 app.include_router(settings_route.router)
 app.include_router(tts.router)
 app.include_router(webhook_sync.router)
+app.include_router(search_shortcuts.router)
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index_page(request: Request):

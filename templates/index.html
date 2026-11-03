@@ -367,20 +367,30 @@
 
         <!-- TAB 2: VEHICLE HISTORY & SEARCH -->
         <div id="page-history" class="hidden space-y-4 sm:space-y-6">
-            <!-- Header Bar with Mode Sub-Tabs (All vs Trash) -->
+            <!-- Header Bar with Mode Sub-Tabs (All vs Trash) & Quick Search Shortcuts -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-800/80">
-                <div class="flex items-center space-x-2">
-                    <button id="subtab-history-all" onclick="switchHistoryMode('all')"
-                        class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/30 flex items-center space-x-2">
-                        <i class="fa-solid fa-list-check"></i>
-                        <span>Tất Cả Sự Kiện</span>
-                    </button>
-                    <button id="subtab-history-trash" onclick="switchHistoryMode('trash')"
-                        class="role-admin-only hidden px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-rose-300 border border-slate-700/80 flex items-center space-x-2">
-                        <i class="fa-solid fa-trash-can"></i>
-                        <span>Thùng Rác</span>
-                        <span id="trash-count-badge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">0</span>
-                    </button>
+                <div class="flex items-center space-x-2 flex-wrap gap-y-2">
+                    <div class="flex items-center space-x-2 shrink-0">
+                        <button id="subtab-history-all" onclick="switchHistoryMode('all')"
+                            class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/30 flex items-center space-x-2 whitespace-nowrap">
+                            <i class="fa-solid fa-list-check"></i>
+                            <span>Tất Cả Sự Kiện</span>
+                        </button>
+                        <button id="subtab-history-trash" onclick="switchHistoryMode('trash')"
+                            class="role-admin-only hidden px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-rose-300 border border-slate-700/80 flex items-center space-x-2 whitespace-nowrap">
+                            <i class="fa-solid fa-trash-can"></i>
+                            <span>Thùng Rác</span>
+                            <span id="trash-count-badge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">0</span>
+                        </button>
+                    </div>
+
+                    <!-- Phân cách dọc -->
+                    <div class="h-6 w-[1px] bg-slate-800 hidden sm:block mx-1 shrink-0"></div>
+
+                    <!-- Danh sách Lối Tắt Tìm Kiếm Động -->
+                    <div id="history-shortcuts-container" class="flex items-center space-x-1.5 flex-wrap gap-y-1.5">
+                        <!-- Render các nút lối tắt tại đây -->
+                    </div>
                 </div>
                 <div class="flex items-center space-x-2">
                     <!-- Batch actions container (shows when rows selected) -->
@@ -1314,6 +1324,30 @@
                             <i class="fa-solid fa-bolt"></i>
                             <span>Kiểm Tra Thử Nghiệm Kết Nối API (Mã xe 01)</span>
                         </button>
+                    </div>
+                </div>
+
+                <!-- 5. Quản Lý Lối Tắt Tìm Kiếm Lịch Sử (Search Shortcuts / Presets) -->
+                <div class="glass-panel p-4 sm:p-5 rounded-2xl border border-slate-700/60 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
+                        <div class="flex items-center space-x-2">
+                            <h3 class="text-xs sm:text-sm font-semibold text-cyan-400 flex items-center space-x-2">
+                                <i class="fa-solid fa-bookmark text-cyan-400"></i>
+                                <span>5. Quản Lý Lối Tắt Tìm Kiếm Lịch Sử (Search Presets)</span>
+                            </h3>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">Lối Tắt Động</span>
+                        </div>
+                        <button type="button" onclick="openSearchShortcutModal()"
+                            class="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 active:scale-[0.98] text-white text-xs font-semibold rounded-xl flex items-center space-x-1.5 shadow-md shadow-cyan-600/20 transition-all self-start sm:self-auto">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Thêm Lối Tắt Mới</span>
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-slate-400">Tạo sẵn các bộ lọc nhanh (Camera, vùng, loại xe, mặt xe, đối tượng, trạng thái, biển số) hiển thị kế bên nút 'Tất cả sự kiện' tại mục Tra cứu lịch sử. Khi bấm vào lối tắt, form tìm kiếm sẽ tự chọn các điều kiện và nạp lại danh sách sự kiện ngay lập tức.</p>
+
+                    <!-- Danh sách thẻ lối tắt trong Cấu hình -->
+                    <div id="settings-shortcuts-list" class="space-y-2.5">
+                        <div class="text-xs text-slate-500 py-3 text-center">Đang nạp danh sách lối tắt...</div>
                     </div>
                 </div>
 
@@ -2462,6 +2496,178 @@
         </div>
     </div>
 
+    <!-- Search Shortcut Create / Edit Modal -->
+    <div id="search-shortcut-modal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+        <div class="glass-panel w-full max-w-2xl rounded-2xl p-5 sm:p-6 relative border border-slate-700/80 shadow-2xl my-auto max-h-[94vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-lg shadow-inner">
+                        <i class="fa-solid fa-bookmark"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-white tracking-wide" id="shortcut-modal-title">Thêm Lối Tắt Tìm Kiếm Mới</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Cấu hình bộ lọc động để tìm kiếm nhanh tại mục Tra Cứu Lịch Sử</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeSearchShortcutModal()" class="w-8 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="search-shortcut-form" onsubmit="event.preventDefault(); saveSearchShortcut();" class="space-y-4 py-4 overflow-y-auto flex-1">
+                <input type="hidden" id="shortcut-id" value="">
+
+                <!-- 1. Tên lối tắt & Thứ tự hiển thị -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">
+                            Tên Lối Tắt <span class="text-rose-400">*</span>
+                        </label>
+                        <input type="text" id="shortcut-name" required placeholder="Ví dụ: Xe vào bãi A, Xe lạ vào cổng..."
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500 placeholder-slate-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Thứ Tự Hiển Thị</label>
+                        <input type="number" id="shortcut-order" value="0" min="0" max="999"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+
+                <!-- 2. Camera & Vùng -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Nguồn Camera</label>
+                        <select id="shortcut-camera"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="">-- Tất cả Camera --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Khu Vực / Vùng</label>
+                        <select id="shortcut-zone"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="">-- Tất cả Vùng --</option>
+                            <option value="TRUONGLAI">🚗 Trường Lái</option>
+                            <option value="KHO_BAI">📦 Kho Bãi</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 3. Loại xe & Mặt xe -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Loại Xe</label>
+                        <select id="shortcut-vehicle-type"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="">-- Tất cả Loại Xe --</option>
+                            <option value="car">🚗 Ô Tô (Tải, Buýt...)</option>
+                            <option value="motorcycle">🏍️ Xe Máy</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Mặt Xe (Trước / Sau)</label>
+                        <select id="shortcut-vehicle-view"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="">-- Tất cả Mặt Xe --</option>
+                            <option value="front">🚗 Mặt trước</option>
+                            <option value="rear">🚗 Mặt sau</option>
+                            <option value="unknown">❓ Không rõ</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 4. Đối tượng & Trạng thái -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Đối Tượng Xe</label>
+                        <select id="shortcut-classification"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="">-- Tất cả Đối Tượng --</option>
+                            <option value="INTERNAL_VALID">🟢 Xe Nội Bộ (Có Kế Hoạch)</option>
+                            <option value="INTERNAL_UNPLANNED">⚠️ Xe Nội Bộ (Không Kế Hoạch)</option>
+                            <option value="EXTERNAL_UNKNOWN">⚪ Xe Lạ / Ngoài Danh Sách</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Trạng Thái Hành Động</label>
+                        <select id="shortcut-action-status"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="">-- Tất cả Trạng Thái --</option>
+                            <option value="APPROVED">✅ Hợp Lệ (Approved)</option>
+                            <option value="UNPLANNED">⚠️ Không Kế Hoạch (Unplanned)</option>
+                            <option value="REJECTED">❌ Từ Chối (Rejected)</option>
+                            <option value="WARNING">⚡ Cảnh Báo (Warning)</option>
+                            <option value="INFO">ℹ️ Thông Tin (Info)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 5. Biển số xe & Tông màu & Icon -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Biển Số Cần Lọc</label>
+                        <input type="text" id="shortcut-plate" placeholder="VD: 51A, 29B... (để trống nếu lọc mọi xe)"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500 placeholder-slate-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Tông Màu Nút</label>
+                        <select id="shortcut-color"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="blue">🔵 Xanh Dương (Blue)</option>
+                            <option value="emerald">🟢 Xanh Lá (Emerald)</option>
+                            <option value="amber">🟠 Vàng Cam (Amber)</option>
+                            <option value="rose">🔴 Đỏ Hồng (Rose)</option>
+                            <option value="purple">🟣 Tím (Purple)</option>
+                            <option value="cyan">🌊 Xanh Lam (Cyan)</option>
+                            <option value="slate">⚪ Xám Chì (Slate)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Biểu Tượng (Icon)</label>
+                        <select id="shortcut-icon"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="fa-filter">🔍 fa-filter (Bộ lọc)</option>
+                            <option value="fa-car">🚗 fa-car (Ô tô)</option>
+                            <option value="fa-car-side">🚘 fa-car-side (Thân xe)</option>
+                            <option value="fa-truck">🚚 fa-truck (Xe tải)</option>
+                            <option value="fa-motorcycle">🏍️ fa-motorcycle (Xe máy)</option>
+                            <option value="fa-camera">📷 fa-camera (Camera)</option>
+                            <option value="fa-warehouse">🏢 fa-warehouse (Kho bãi)</option>
+                            <option value="fa-shield-halved">🛡️ fa-shield (Bảo vệ)</option>
+                            <option value="fa-circle-check">✅ fa-circle-check (Hợp lệ)</option>
+                            <option value="fa-triangle-exclamation">⚠️ fa-triangle-exclamation (Cảnh báo)</option>
+                            <option value="fa-bookmark">🔖 fa-bookmark (Lối tắt)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 6. Kích hoạt -->
+                <div class="pt-2 flex items-center space-x-2">
+                    <input type="checkbox" id="shortcut-active" checked
+                        class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900">
+                    <label for="shortcut-active" class="text-xs font-semibold text-slate-300 cursor-pointer">
+                        Kích hoạt hiển thị lối tắt này tại mục Tra Cứu Lịch Sử
+                    </label>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeSearchShortcutModal()"
+                        class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all">
+                        Hủy
+                    </button>
+                    <button type="submit"
+                        class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-lg shadow-cyan-600/30 transition-all flex items-center space-x-1.5">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Lưu Lối Tắt</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Notification Toast Container (Top Right High Z-Index) -->
     <div id="toast-container" class="fixed top-5 right-5 z-[300] flex flex-col space-y-2.5 pointer-events-none max-w-md w-full px-3"></div>
 
@@ -2844,10 +3050,14 @@
                 loadPlaybackStorageStatus();
             }
             if (tabId === 'history') {
+                loadSearchShortcuts();
                 fetchHistoryLogs(1);
                 updateTrashBadge();
             }
-            if (tabId === 'settings') loadSettingsValues();
+            if (tabId === 'settings') {
+                loadSettingsValues();
+                loadSearchShortcuts();
+            }
         }
 
         function toggleMobileMenu() {
@@ -3062,6 +3272,382 @@
                 }
             } catch (err) {
                 showToast("Lỗi kết nối: " + err, "error");
+            }
+        }
+
+
+        /* --- SEARCH SHORTCUTS SYSTEM (LỐI TẮT TÌM KIẾM ĐỘNG) --- */
+        let searchShortcutsList = [];
+        let currentActiveShortcutId = null;
+
+        function getShortcutColorStyles(color, isActive = false) {
+            const colorMap = {
+                blue: {
+                    normal: "bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 border-blue-500/40 hover:border-blue-400",
+                    active: "bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-600/40 ring-2 ring-blue-500/50"
+                },
+                emerald: {
+                    normal: "bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-300 border-emerald-500/40 hover:border-emerald-400",
+                    active: "bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-600/40 ring-2 ring-emerald-500/50"
+                },
+                amber: {
+                    normal: "bg-amber-600/15 hover:bg-amber-600/25 text-amber-300 border-amber-500/40 hover:border-amber-400",
+                    active: "bg-amber-600 text-white border-amber-400 shadow-md shadow-amber-600/40 ring-2 ring-amber-500/50"
+                },
+                rose: {
+                    normal: "bg-rose-600/15 hover:bg-rose-600/25 text-rose-300 border-rose-500/40 hover:border-rose-400",
+                    active: "bg-rose-600 text-white border-rose-400 shadow-md shadow-rose-600/40 ring-2 ring-rose-500/50"
+                },
+                purple: {
+                    normal: "bg-purple-600/15 hover:bg-purple-600/25 text-purple-300 border-purple-500/40 hover:border-purple-400",
+                    active: "bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-600/40 ring-2 ring-purple-500/50"
+                },
+                cyan: {
+                    normal: "bg-cyan-600/15 hover:bg-cyan-600/25 text-cyan-300 border-cyan-500/40 hover:border-cyan-400",
+                    active: "bg-cyan-600 text-white border-cyan-400 shadow-md shadow-cyan-600/40 ring-2 ring-cyan-500/50"
+                },
+                slate: {
+                    normal: "bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border-slate-700 hover:border-slate-500",
+                    active: "bg-slate-700 text-white border-slate-400 shadow-md ring-2 ring-slate-500/50"
+                }
+            };
+            const c = colorMap[color] || colorMap.blue;
+            return isActive ? c.active : c.normal;
+        }
+
+        function getShortcutTooltip(s) {
+            const parts = [];
+            if (s.camera_name) parts.push(`Camera: ${s.camera_name}`);
+            if (s.zone_code) {
+                const zname = s.zone_code === 'TRUONGLAI' ? 'Trường Lái' : s.zone_code === 'KHO_BAI' ? 'Kho Bãi' : s.zone_code;
+                parts.push(`Vùng: ${zname}`);
+            }
+            if (s.vehicle_type) parts.push(`Loại xe: ${s.vehicle_type === 'car' ? 'Ô tô' : 'Xe máy'}`);
+            if (s.vehicle_view) {
+                const vname = s.vehicle_view === 'front' ? 'Mặt trước' : s.vehicle_view === 'rear' ? 'Mặt sau' : 'Không rõ';
+                parts.push(`Mặt xe: ${vname}`);
+            }
+            if (s.vehicle_classification) {
+                const cname = s.vehicle_classification === 'INTERNAL_VALID' ? 'Xe nội bộ' : s.vehicle_classification === 'INTERNAL_UNPLANNED' ? 'Không kế hoạch' : 'Xe lạ';
+                parts.push(`Đối tượng: ${cname}`);
+            }
+            if (s.action_status) parts.push(`Trạng thái: ${s.action_status}`);
+            if (s.plate_number) parts.push(`Biển số: ${s.plate_number}`);
+            return parts.length > 0 ? parts.join(' | ') : 'Tất cả tiêu chí';
+        }
+
+        async function loadSearchShortcuts() {
+            try {
+                const res = await fetch('/api/v1/search-shortcuts?all=true', { headers: getAuthHeaders() });
+                if (!res.ok) return;
+                searchShortcutsList = await res.json();
+                renderHistoryShortcuts();
+                renderSettingsShortcuts();
+            } catch (e) {
+                console.error("Error loading search shortcuts:", e);
+            }
+        }
+
+        function renderHistoryShortcuts() {
+            const container = document.getElementById('history-shortcuts-container');
+            if (!container) return;
+
+            const activeShortcuts = searchShortcutsList.filter(s => s.is_active);
+            if (activeShortcuts.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = activeShortcuts.map(s => {
+                const isSelected = currentActiveShortcutId === s.id;
+                const styleClasses = getShortcutColorStyles(s.color, isSelected);
+                const tooltip = getShortcutTooltip(s);
+                return `
+                    <button type="button" onclick="applySearchShortcut(${s.id})"
+                        title="${tooltip}"
+                        class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all border flex items-center space-x-1.5 whitespace-nowrap active:scale-[0.98] ${styleClasses}">
+                        <i class="fa-solid ${s.icon || 'fa-filter'} text-xs"></i>
+                        <span>${s.name}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function applySearchShortcut(shortcutId) {
+            const s = searchShortcutsList.find(x => x.id === shortcutId);
+            if (!s) return;
+
+            currentActiveShortcutId = shortcutId;
+
+            // Đổi trạng thái nút Tất Cả Sự Kiện thành không active
+            const btnAll = document.getElementById('subtab-history-all');
+            if (btnAll) {
+                btnAll.className = "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-700/80 flex items-center space-x-2 whitespace-nowrap";
+            }
+
+            // Điền tự động các điều kiện lọc vào Form tìm kiếm
+            const elPlate = document.getElementById('filter-plate');
+            const elCam = document.getElementById('filter-camera');
+            const elZone = document.getElementById('filter-zone');
+            const elType = document.getElementById('filter-vehicle-type');
+            const elView = document.getElementById('filter-vehicle-view');
+            const elClass = document.getElementById('filter-classification');
+            const elStatus = document.getElementById('filter-action-status');
+
+            if (elPlate) elPlate.value = s.plate_number || '';
+            if (elCam) elCam.value = s.camera_id ? String(s.camera_id) : '';
+            if (elZone) elZone.value = s.zone_code || '';
+            if (elType) elType.value = s.vehicle_type || '';
+            if (elView) elView.value = s.vehicle_view || '';
+            if (elClass) elClass.value = s.vehicle_classification || '';
+            if (elStatus) elStatus.value = s.action_status || '';
+
+            // Cập nhật lại giao diện nút lối tắt
+            renderHistoryShortcuts();
+
+            // Tự động load lại danh sách theo điều kiện
+            fetchHistoryLogs(1);
+
+            showToast(`⚡ Đã chọn lối tắt: "${s.name}"`, "info", 2500);
+        }
+
+        function renderSettingsShortcuts() {
+            const container = document.getElementById('settings-shortcuts-list');
+            if (!container) return;
+
+            if (searchShortcutsList.length === 0) {
+                container.innerHTML = `
+                    <div class="p-6 text-center bg-slate-900/50 rounded-xl border border-slate-800 text-slate-400">
+                        <i class="fa-solid fa-bookmark text-2xl text-slate-600 mb-2 block"></i>
+                        <p class="text-xs">Chưa có lối tắt tìm kiếm nào được cấu hình.</p>
+                        <button type="button" onclick="openSearchShortcutModal()"
+                            class="mt-3 px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded-xl inline-flex items-center space-x-1.5 transition-all">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Tạo lối tắt đầu tiên</span>
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = searchShortcutsList.map(s => {
+                const colorBadge = getShortcutColorStyles(s.color, false);
+                const criteriaBadges = [];
+                if (s.camera_name) criteriaBadges.push(`<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px]"><i class="fa-solid fa-camera mr-1 text-slate-400"></i>${s.camera_name}</span>`);
+                if (s.zone_code) {
+                    const zlabel = s.zone_code === 'TRUONGLAI' ? 'Trường Lái' : s.zone_code === 'KHO_BAI' ? 'Kho Bãi' : s.zone_code;
+                    criteriaBadges.push(`<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px]"><i class="fa-solid fa-location-dot mr-1 text-cyan-400"></i>${zlabel}</span>`);
+                }
+                if (s.vehicle_type) {
+                    const vlabel = s.vehicle_type === 'car' ? 'Ô Tô' : 'Xe Máy';
+                    criteriaBadges.push(`<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px]"><i class="fa-solid fa-car mr-1 text-blue-400"></i>${vlabel}</span>`);
+                }
+                if (s.vehicle_view) {
+                    const viewlabel = s.vehicle_view === 'front' ? 'Mặt trước' : s.vehicle_view === 'rear' ? 'Mặt sau' : 'Không rõ';
+                    criteriaBadges.push(`<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px]"><i class="fa-solid fa-eye mr-1 text-amber-400"></i>${viewlabel}</span>`);
+                }
+                if (s.vehicle_classification) {
+                    const clabel = s.vehicle_classification === 'INTERNAL_VALID' ? 'Xe nội bộ' : s.vehicle_classification === 'INTERNAL_UNPLANNED' ? 'Không kế hoạch' : 'Xe lạ';
+                    criteriaBadges.push(`<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px]"><i class="fa-solid fa-tag mr-1 text-purple-400"></i>${clabel}</span>`);
+                }
+                if (s.action_status) {
+                    criteriaBadges.push(`<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px]"><i class="fa-solid fa-circle-check mr-1 text-emerald-400"></i>${s.action_status}</span>`);
+                }
+                if (s.plate_number) {
+                    criteriaBadges.push(`<span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[11px] font-mono"><i class="fa-solid fa-hashtag mr-1"></i>${s.plate_number}</span>`);
+                }
+
+                const criteriaHtml = criteriaBadges.length > 0
+                    ? `<div class="flex flex-wrap items-center gap-1.5 mt-2">${criteriaBadges.join('')}</div>`
+                    : `<div class="text-[11px] text-slate-500 mt-1 italic">Không giới hạn điều kiện (Tất cả tiêu chí)</div>`;
+
+                const activeToggleBtn = s.is_active
+                    ? `<button type="button" onclick="toggleSearchShortcutActive(${s.id}, false)" title="Bấm để ẩn khỏi lịch sử"
+                        class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/30 transition-all flex items-center space-x-1">
+                        <i class="fa-solid fa-check"></i><span>Đang bật</span>
+                       </button>`
+                    : `<button type="button" onclick="toggleSearchShortcutActive(${s.id}, true)" title="Bấm để kích hoạt hiển thị"
+                        class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700 transition-all flex items-center space-x-1">
+                        <i class="fa-solid fa-power-off"></i><span>Đang tắt</span>
+                       </button>`;
+
+                return `
+                    <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                                <span class="px-2.5 py-1 rounded-lg text-xs font-semibold border flex items-center space-x-1.5 ${colorBadge}">
+                                    <i class="fa-solid ${s.icon || 'fa-filter'} text-xs"></i>
+                                    <span>${s.name}</span>
+                                </span>
+                                <span class="text-[11px] text-slate-500">Thứ tự: <strong class="text-slate-400">${s.order_index}</strong></span>
+                            </div>
+                            ${criteriaHtml}
+                        </div>
+                        <div class="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+                            ${activeToggleBtn}
+                            <button type="button" onclick="openSearchShortcutModal(${s.id})" title="Chỉnh sửa lối tắt"
+                                class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all flex items-center space-x-1">
+                                <i class="fa-solid fa-pen-to-square"></i><span>Sửa</span>
+                            </button>
+                            <button type="button" onclick="deleteSearchShortcut(${s.id})" title="Xóa lối tắt"
+                                class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 transition-all flex items-center space-x-1">
+                                <i class="fa-solid fa-trash-can"></i><span>Xóa</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function populateShortcutCameraDropdown(selectedCamId = null) {
+            const select = document.getElementById('shortcut-camera');
+            if (!select) return;
+            select.innerHTML = `<option value="">-- Tất cả Camera --</option>` + camerasList.map(c => `
+                <option value="${c.id}" ${selectedCamId && Number(selectedCamId) === Number(c.id) ? 'selected' : ''}>
+                    ${c.camera_name} (${c.zone_name || c.zone_code})
+                </option>
+            `).join('');
+        }
+
+        function openSearchShortcutModal(shortcutId = null) {
+            const modal = document.getElementById('search-shortcut-modal');
+            const form = document.getElementById('search-shortcut-form');
+            const titleEl = document.getElementById('shortcut-modal-title');
+            if (!modal || !form) return;
+
+            form.reset();
+
+            if (shortcutId) {
+                const s = searchShortcutsList.find(x => x.id === shortcutId);
+                if (!s) return;
+                if (titleEl) titleEl.innerText = "Chỉnh Sửa Lối Tắt Tìm Kiếm";
+                document.getElementById('shortcut-id').value = s.id;
+                document.getElementById('shortcut-name').value = s.name || '';
+                document.getElementById('shortcut-order').value = s.order_index || 0;
+                populateShortcutCameraDropdown(s.camera_id);
+                document.getElementById('shortcut-zone').value = s.zone_code || '';
+                document.getElementById('shortcut-vehicle-type').value = s.vehicle_type || '';
+                document.getElementById('shortcut-vehicle-view').value = s.vehicle_view || '';
+                document.getElementById('shortcut-classification').value = s.vehicle_classification || '';
+                document.getElementById('shortcut-action-status').value = s.action_status || '';
+                document.getElementById('shortcut-plate').value = s.plate_number || '';
+                document.getElementById('shortcut-color').value = s.color || 'blue';
+                document.getElementById('shortcut-icon').value = s.icon || 'fa-filter';
+                document.getElementById('shortcut-active').checked = s.is_active;
+            } else {
+                if (titleEl) titleEl.innerText = "Thêm Lối Tắt Tìm Kiếm Mới";
+                document.getElementById('shortcut-id').value = '';
+                document.getElementById('shortcut-order').value = searchShortcutsList.length;
+                populateShortcutCameraDropdown(null);
+                document.getElementById('shortcut-active').checked = true;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeSearchShortcutModal() {
+            const modal = document.getElementById('search-shortcut-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        async function saveSearchShortcut() {
+            const idVal = document.getElementById('shortcut-id').value;
+            const name = document.getElementById('shortcut-name').value.trim();
+            if (!name) {
+                showToast("Vui lòng nhập tên lối tắt!", "warning");
+                return;
+            }
+
+            const camIdVal = document.getElementById('shortcut-camera').value;
+            const payload = {
+                name: name,
+                camera_id: camIdVal ? parseInt(camIdVal, 10) : null,
+                zone_code: document.getElementById('shortcut-zone').value || null,
+                vehicle_type: document.getElementById('shortcut-vehicle-type').value || null,
+                vehicle_view: document.getElementById('shortcut-vehicle-view').value || null,
+                vehicle_classification: document.getElementById('shortcut-classification').value || null,
+                action_status: document.getElementById('shortcut-action-status').value || null,
+                plate_number: document.getElementById('shortcut-plate').value.trim() || null,
+                color: document.getElementById('shortcut-color').value || 'blue',
+                icon: document.getElementById('shortcut-icon').value || 'fa-filter',
+                order_index: parseInt(document.getElementById('shortcut-order').value, 10) || 0,
+                is_active: document.getElementById('shortcut-active').checked
+            };
+
+            const isEdit = !!idVal;
+            const url = isEdit ? `/api/v1/search-shortcuts/${idVal}` : '/api/v1/search-shortcuts';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeaders()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    showToast(isEdit ? "Đã cập nhật lối tắt thành công!" : "Đã tạo lối tắt mới thành công!", "success");
+                    closeSearchShortcutModal();
+                    await loadSearchShortcuts();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast("Lỗi: " + (err.detail || "Không thể lưu lối tắt"), "error");
+                }
+            } catch (e) {
+                showToast("Lỗi kết nối máy chủ: " + e, "error");
+            }
+        }
+
+        async function deleteSearchShortcut(id) {
+            const s = searchShortcutsList.find(x => x.id === id);
+            const name = s ? s.name : `ID #${id}`;
+            const confirmed = await showCustomConfirmModal({
+                title: 'Xóa Lối Tắt Tìm Kiếm',
+                message: `Bạn có chắc chắn muốn xóa lối tắt "${name}" không?`,
+                confirmText: 'Xóa lối tắt',
+                confirmType: 'danger'
+            });
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch(`/api/v1/search-shortcuts/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                if (res.ok) {
+                    showToast(`Đã xóa lối tắt "${name}"`, "success");
+                    if (currentActiveShortcutId === id) {
+                        currentActiveShortcutId = null;
+                    }
+                    await loadSearchShortcuts();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast("Lỗi khi xóa: " + (err.detail || "Không thể xóa"), "error");
+                }
+            } catch (e) {
+                showToast("Lỗi kết nối máy chủ: " + e, "error");
+            }
+        }
+
+        async function toggleSearchShortcutActive(id, newStatus) {
+            try {
+                const res = await fetch(`/api/v1/search-shortcuts/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeaders()
+                    },
+                    body: JSON.stringify({ is_active: newStatus })
+                });
+                if (res.ok) {
+                    await loadSearchShortcuts();
+                    showToast(newStatus ? "Đã kích hoạt lối tắt" : "Đã tắt lối tắt", "info", 1500);
+                }
+            } catch (e) {
+                showToast("Lỗi cập nhật trạng thái: " + e, "error");
             }
         }
 
@@ -4947,6 +5533,8 @@
         function switchHistoryMode(mode) {
             currentHistoryMode = mode;
             currentHistoryPage = 1;
+            currentActiveShortcutId = null;
+            if (typeof renderHistoryShortcuts === 'function') renderHistoryShortcuts();
             deselectAllHistoryLogs();
             const btnAll = document.getElementById('subtab-history-all');
             const btnTrash = document.getElementById('subtab-history-trash');
@@ -5086,6 +5674,12 @@
             if (elStatus) elStatus.value = '';
 
             deselectAllHistoryLogs();
+            currentActiveShortcutId = null;
+            if (typeof renderHistoryShortcuts === 'function') renderHistoryShortcuts();
+            const btnAll = document.getElementById('subtab-history-all');
+            if (btnAll) {
+                btnAll.className = "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/30 flex items-center space-x-2 whitespace-nowrap";
+            }
             fetchHistoryLogs(1);
         }
 
@@ -7521,6 +8115,7 @@
         // Khởi tạo ứng dụng
         checkAuthStatus().then(isAuthenticated => {
             if (isAuthenticated) {
+                loadSearchShortcuts();
                 loadActionGroupsList();
                 loadCameras();
                 loadRecentDashboardLogs();
