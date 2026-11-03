@@ -990,6 +990,7 @@
                         <thead class="text-[10px] sm:text-xs uppercase bg-slate-900/80 text-slate-400 border-b border-slate-800">
                             <tr>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">ID</th>
+                                <th class="p-3 sm:p-4 whitespace-nowrap">Thứ Tự (STT)</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Tên Camera</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Phân Loại Vùng</th>
                                 <th class="p-3 sm:p-4 whitespace-nowrap">Chức Năng</th>
@@ -1774,18 +1775,27 @@
                         class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:border-blue-500 font-mono text-slate-200">
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Target FPS (Khung hình AI):</label>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Target FPS (AI):</label>
                         <input type="number" id="cam-form-fps" required min="1" max="30" value="6"
                             class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Trạng Thái Kết Nối:</label>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Trạng Thái:</label>
                         <select id="cam-form-active" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200">
                             <option value="true">Đang Bật</option>
                             <option value="false">Tắt</option>
                         </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                            <span><i class="fa-solid fa-arrow-down-1-9 text-blue-400 mr-1"></i>Thứ Tự (STT):</span>
+                            <span class="text-[10px] text-slate-400 font-normal">Hiện trước</span>
+                        </label>
+                        <input type="number" id="cam-form-order" required min="0" max="999" value="1"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm focus:border-blue-500 text-slate-200 font-mono font-bold"
+                            title="Camera có số thứ tự nhỏ hơn sẽ hiển thị trước trên Live Dashboard">
                     </div>
                 </div>
 
@@ -3124,13 +3134,15 @@
 
             const funcFilter = document.getElementById('dashboard-func-filter') ? document.getElementById('dashboard-func-filter').value : 'ALL';
 
-            let filtered = camerasList;
+            let filtered = camerasList.slice();
             if (currentDashboardZone !== 'ALL') {
                 filtered = filtered.filter(c => (c.zone_code || 'TRUONGLAI') === currentDashboardZone);
             }
             if (funcFilter !== 'ALL') {
                 filtered = filtered.filter(c => (c.camera_function || 'ANPR') === funcFilter);
             }
+            // Sắp xếp camera theo số thứ tự hiển thị display_order tăng dần
+            filtered.sort((a, b) => ((a.display_order ?? 0) - (b.display_order ?? 0)) || (a.id - b.id));
 
             if (filtered.length === 0) {
                 grid.innerHTML = `<div class="col-span-full p-8 text-center glass-panel rounded-2xl text-slate-400 text-sm">Không có camera nào phù hợp với bộ lọc hiện tại.</div>`;
@@ -3159,6 +3171,7 @@
                         <div class="p-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
                             <div class="flex items-center space-x-2 truncate">
                                 <span class="w-2 h-2 rounded-full ${cam.is_active ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}"></span>
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-blue-300 border border-slate-700" title="Thứ tự hiển thị Live Dashboard">#${cam.display_order ?? cam.id}</span>
                                 <h3 class="font-bold text-xs sm:text-sm text-white truncate" title="${cam.camera_name}">${cam.camera_name}</h3>
                             </div>
                             <div class="flex items-center space-x-1.5 flex-shrink-0">
@@ -3217,6 +3230,21 @@
             tbody.innerHTML = camerasList.map(cam => `
                 <tr class="hover:bg-slate-800/40">
                     <td class="p-3 sm:p-4 font-mono text-slate-400">#${cam.id}</td>
+                    <td class="p-3 sm:p-4 whitespace-nowrap">
+                        <div class="inline-flex items-center space-x-1.5">
+                            <span class="px-2 py-0.5 rounded-lg text-xs font-mono font-bold bg-blue-500/15 text-blue-300 border border-blue-500/30" title="Số thứ tự hiển thị Live Dashboard">
+                                #${cam.display_order ?? cam.id}
+                            </span>
+                            <div class="inline-flex flex-col space-y-0.5">
+                                <button onclick="moveCameraOrder(${cam.id}, 'up')" title="Đẩy lên trước" class="p-0.5 text-slate-400 hover:text-blue-400 transition-colors">
+                                    <i class="fa-solid fa-chevron-up text-[10px]"></i>
+                                </button>
+                                <button onclick="moveCameraOrder(${cam.id}, 'down')" title="Đẩy xuống sau" class="p-0.5 text-slate-400 hover:text-blue-400 transition-colors">
+                                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </td>
                     <td class="p-3 sm:p-4">
                         <div class="font-bold text-white flex items-center gap-1.5">
                             <span>${cam.camera_name}</span>
@@ -3257,6 +3285,25 @@
                     </td>
                 </tr>
             `).join('');
+        }
+
+
+        async function moveCameraOrder(camId, direction) {
+            try {
+                const res = await fetch(`/api/v1/cameras/${camId}/move?direction=${direction}`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                if (res.ok) {
+                    await loadCameras();
+                    showToast("Đã cập nhật thứ tự hiển thị Camera!", "info", 1500);
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast("Lỗi: " + (err.detail || "Không thể đổi vị trí"), "error");
+                }
+            } catch (e) {
+                showToast("Lỗi kết nối: " + e, "error");
+            }
         }
 
         async function toggleCameraRecording(camId) {
@@ -3676,6 +3723,8 @@
             if (document.getElementById('cam-form-code')) document.getElementById('cam-form-code').value = '';
             document.getElementById('cam-form-url').value = '';
             document.getElementById('cam-form-fps').value = '6';
+            const maxOrder = camerasList.reduce((max, c) => Math.max(max, c.display_order || 0), 0);
+            if (document.getElementById('cam-form-order')) document.getElementById('cam-form-order').value = maxOrder + 1;
             document.getElementById('cam-form-zone').value = 'TRUONGLAI';
             document.getElementById('cam-form-function').value = 'ANPR';
             document.getElementById('cam-form-active').value = 'true';
@@ -3739,6 +3788,7 @@
             if (document.getElementById('cam-form-code')) document.getElementById('cam-form-code').value = cam.camera_code || '';
             document.getElementById('cam-form-url').value = cam.rtsp_url || '';
             document.getElementById('cam-form-fps').value = cam.target_fps || 6;
+            if (document.getElementById('cam-form-order')) document.getElementById('cam-form-order').value = cam.display_order ?? cam.id;
             document.getElementById('cam-form-zone').value = cam.zone_code || 'TRUONGLAI';
             document.getElementById('cam-form-function').value = cam.camera_function || 'ANPR';
             document.getElementById('cam-form-active').value = cam.is_active ? 'true' : 'false';
@@ -3814,6 +3864,7 @@
                 camera_code: document.getElementById('cam-form-code') ? (document.getElementById('cam-form-code').value.trim() || null) : null,
                 rtsp_url: document.getElementById('cam-form-url').value.trim(),
                 target_fps: parseInt(document.getElementById('cam-form-fps').value, 10) || 6,
+                display_order: parseInt(document.getElementById('cam-form-order').value, 10) || 0,
                 zone_code: zoneCode,
                 zone_name: zoneName,
                 camera_function: document.getElementById('cam-form-function').value,

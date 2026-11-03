@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db, SessionLocal
 from models import Camera, UserRoleEnum, ActionGroup, User
-from schemas import CameraCreate, CameraResponse, CameraUpdate
+from schemas import CameraCreate, CameraResponse, CameraUpdate, CameraReorderRequest
 from auth_utils import require_roles, get_current_user_optional, get_current_user
 
 router = APIRouter(prefix="/api/v1/cameras", tags=["Cameras"])
@@ -31,6 +31,7 @@ def build_camera_response(cam: Camera) -> CameraResponse:
         target_fps=cam.target_fps,
         is_active=cam.is_active,
         is_recording=bool(cam.is_recording),
+        display_order=cam.display_order if getattr(cam, "display_order", None) is not None else 0,
         zone_code=cam.zone_code or "TRUONGLAI",
         zone_name=cam.zone_name or "Trường Lái",
         camera_function=cam.camera_function or "ANPR",
@@ -85,7 +86,7 @@ def get_all_cameras(
     if camera_function and camera_function.strip() and camera_function.upper() != "ALL":
         query = query.filter(Camera.camera_function == camera_function.strip().upper())
 
-    cams = query.order_by(Camera.id.asc()).all()
+    cams = query.order_by(Camera.display_order.asc(), Camera.id.asc()).all()
     return [build_camera_response(c) for c in cams]
 
 @router.get("/zones")
@@ -134,6 +135,7 @@ def create_camera(cam_in: CameraCreate, db: Session = Depends(get_db), current_u
         target_fps=cam_in.target_fps,
         is_active=cam_in.is_active,
         is_recording=bool(cam_in.is_recording),
+        display_order=cam_in.display_order if cam_in.display_order is not None else 0,
         zone_code=zone_code,
         zone_name=zone_name,
         camera_function=camera_function,
@@ -184,6 +186,8 @@ def update_camera(camera_id: int, cam_in: CameraUpdate, db: Session = Depends(ge
         cam.is_active = cam_in.is_active
     if cam_in.is_recording is not None:
         cam.is_recording = bool(cam_in.is_recording)
+    if "display_order" in cam_in.model_fields_set:
+        cam.display_order = cam_in.display_order if cam_in.display_order is not None else 0
     if cam_in.zone_code is not None:
         cam.zone_code = cam_in.zone_code.strip().upper()
     if cam_in.zone_name is not None:
@@ -323,3 +327,44 @@ def get_camera_stream(camera_id: int, request: Request):
             time.sleep(0.08)
 
     return StreamingResponse(mjpeg_generator(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+@router.put("/reorder", status_code=status.HTTP_200_OK)
+def reorder_cameras(
+    req: CameraReorderRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(admin_only)
+):
+    """Cập nhật thứ tự hiển thị của nhiều camera cùng lúc"""
+    for item in req.items:
+        db.query(Camera).filter(Camera.id == item.id).update({"display_order": item.display_order})
+    db.commit()
+    return {"success": True, "message": "Đã cập nhật thứ tự hiển thị thành công."}
+
+@router.post("/{camera_id}/move", status_code=status.HTTP_200_OK)
+def move_camera_order(
+    camera_id: int,
+    direction: str,  # "up" hoặc "down"
+    db: Session = Depends(get_db),
+    current_user=Depends(admin_only)
+):
+    """Đổi nhanh thứ tự hiển thị camera lên trước (up) hoặc xuống sau (down)"""
+    current_cam = db.query(Camera).filter(Camera.id == camera_id).first()
+    if not current_cam:
+        raise HTTPException(status_code=404, detail="Không tìm thấy Camera.")
+
+    all_cams = db.query(Camera).order_by(Camera.display_order.asc(), Camera.id.asc()).all()
+    # Chuẩn hóa lại thứ tự cách đều 10 đơn vị
+    for idx, c in enumerate(all_cams):
+        c.display_order = (idx + 1) * 10
+
+    idx = all_cams.index(current_cam)
+    if direction == "up" and idx > 0:
+        prev_cam = all_cams[idx - 1]
+        current_cam.display_order, prev_cam.display_order = prev_cam.display_order, current_cam.display_order
+    elif direction == "down" and idx < len(all_cams) - 1:
+        next_cam = all_cams[idx + 1]
+        current_cam.display_order, next_cam.display_order = next_cam.display_order, current_cam.display_order
+
+    db.commit()
+    return {"success": True}
+

@@ -69,6 +69,7 @@ class Camera(Base):
     target_fps = Column(Integer, default=6)
     is_active = Column(Boolean, default=True)
     is_recording = Column(Boolean, default=False)  # Bật/Tắt lưu video riêng cho camera này
+    display_order = Column(Integer, default=0, nullable=False, index=True)  # Số thứ tự hiển thị trên Live Dashboard
     
     # 1. Nhóm theo vùng (TRUONGLAI, KHO_BAI, TRU_SO...)
     zone_code = Column(String(50), default="TRUONGLAI", index=True)

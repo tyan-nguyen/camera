@@ -102,7 +102,8 @@ def init_db():
                 ("action_group_rear_id", "INT NULL"),
                 ("traffic_direction", "VARCHAR(50) DEFAULT 'TWO_WAY'"),
                 ("webhook_events", "VARCHAR(100) DEFAULT 'CREATE,UPDATE'"),
-                ("is_recording", "BOOLEAN DEFAULT FALSE")
+                ("is_recording", "BOOLEAN DEFAULT FALSE"),
+                ("display_order", "INT DEFAULT 0")
             ]:
                 try:
                     conn.execute(text(f"ALTER TABLE cameras ADD COLUMN {col} {col_type};"))
@@ -121,6 +122,7 @@ def init_db():
             try:
                 conn.execute(text("UPDATE cameras SET action_group_front_id = action_group_id WHERE action_group_front_id IS NULL AND action_group_id IS NOT NULL;"))
                 conn.execute(text("UPDATE cameras SET action_group_rear_id = action_group_id WHERE action_group_rear_id IS NULL AND action_group_id IS NOT NULL;"))
+                conn.execute(text("UPDATE cameras SET display_order = id WHERE display_order IS NULL OR display_order = 0;"))
                 conn.commit()
             except Exception:
                 pass

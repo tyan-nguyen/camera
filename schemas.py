@@ -70,6 +70,7 @@ class CameraBase(BaseModel):
     target_fps: int = 6
     is_active: bool = True
     is_recording: bool = False             # Bật/Tắt lưu video cho camera này
+    display_order: int = 0                 # Số thứ tự hiển thị trên Live Dashboard
     zone_code: str = "TRUONGLAI"           # TRUONGLAI, KHO_BAI, TRU_SO...
     zone_name: str = "Trường Lái"
     camera_function: str = "ANPR"          # ANPR (Đọc biển số), SURVEILLANCE (Quan sát)
@@ -90,6 +91,7 @@ class CameraUpdate(BaseModel):
     target_fps: Optional[int] = None
     is_active: Optional[bool] = None
     is_recording: Optional[bool] = None
+    display_order: Optional[int] = None
     zone_code: Optional[str] = None
     zone_name: Optional[str] = None
     camera_function: Optional[str] = None
@@ -109,6 +111,14 @@ class CameraResponse(CameraBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class CameraReorderItem(BaseModel):
+    id: int
+    display_order: int
+
+class CameraReorderRequest(BaseModel):
+    items: List[CameraReorderItem]
+
 
 # ==========================================
 # 3. Vehicle Log Schemas (Sự kiện nhận diện)
