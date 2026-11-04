@@ -11,10 +11,10 @@ class Settings:
     APP_NAME: str = "ANPR 5-Camera Monitoring System"
     DEBUG: bool = True
 
-    # Database Settings (Chuyển sang MySQL v8 anpr_db)
-    USE_SQLITE: bool = os.getenv("USE_SQLITE", "False").lower() in ("true", "1", "yes")
-    SQLITE_URL: str = "sqlite:///./anpr_local.db"
-    USE_SQLITE_FALLBACK: bool = True
+    # Database Settings (Chỉ sử dụng MySQL v8 anpr_db thực tế - Không dùng SQLite)
+    USE_SQLITE: bool = False
+    USE_SQLITE_FALLBACK: bool = False
+    SQLITE_URL: str = ""
 
     # MySQL v8 Settings
     DB_HOST: str = os.getenv("DB_HOST", "127.0.0.1")

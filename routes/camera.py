@@ -49,9 +49,9 @@ def build_camera_response(cam: Camera) -> CameraResponse:
     )
 
 def check_camera_access(camera_id: int, user: Optional[User]) -> bool:
-    """Kiểm tra quyền truy cập camera của user. Admin toàn quyền; user thường chỉ camera được cấp."""
+    """Kiểm tra quyền truy cập camera của user. Bắt buộc đăng nhập; Admin toàn quyền; user/quan_ly/quan_sat chỉ camera được cấp."""
     if not user:
-        return True  # Fallback nếu chưa bật auth bắt buộc
+        return False
     if user.role == UserRoleEnum.ADMIN.value:
         return True
     allowed_ids = [c.id for c in user.allowed_cameras] if user.allowed_cameras else []
@@ -62,7 +62,8 @@ def get_all_cameras(
     request: Request,
     zone_code: Optional[str] = None,
     camera_function: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Lấy danh sách camera:
@@ -70,11 +71,10 @@ def get_all_cameras(
     - Hỗ trợ lọc theo Vùng (zone_code: TRUONGLAI, KHO_BAI...)
     - Hỗ trợ lọc theo Chức năng (camera_function: ANPR, SURVEILLANCE)
     """
-    current_user = get_current_user_optional(request, db)
     query = db.query(Camera)
 
     # 1. Phân quyền User
-    if current_user and current_user.role != UserRoleEnum.ADMIN.value:
+    if current_user.role != UserRoleEnum.ADMIN.value:
         allowed_ids = [c.id for c in current_user.allowed_cameras] if current_user.allowed_cameras else []
         query = query.filter(Camera.id.in_(allowed_ids))
 
@@ -120,8 +120,7 @@ def get_all_zones(db: Session = Depends(get_db)):
     return result
 
 @router.get("/{camera_id}", response_model=CameraResponse)
-def get_camera_by_id(camera_id: int, request: Request, db: Session = Depends(get_db)):
-    current_user = get_current_user_optional(request, db)
+def get_camera_by_id(camera_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if not check_camera_access(camera_id, current_user):
         raise HTTPException(status_code=403, detail="Tài khoản của bạn không có quyền xem camera này.")
 

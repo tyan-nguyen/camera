@@ -721,29 +721,53 @@ def get_exported_clips(
     return results
 
 @router.get("/download/{export_id}")
-def download_exported_clip(export_id: int, db: Session = Depends(get_db)):
-    """Tải file MP4 clip đã trích xuất về máy tính / điện thoại"""
+def download_exported_clip(
+    export_id: int, 
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Tải file MP4 clip đã trích xuất về máy tính / điện thoại (Kiểm tra quyền truy cập camera và chống Path Traversal)"""
+    current_user = get_current_user_optional(request, db)
     job = db.query(VideoExportJob).filter(VideoExportJob.id == export_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Không tìm thấy Clip đã xuất.")
 
+    if not check_camera_access(job.camera_id, current_user):
+        raise HTTPException(status_code=403, detail="Bạn không có quyền tải video của camera này.")
+
     abs_path = open_video_file_absolute(job.output_file_path)
-    if not os.path.exists(abs_path):
+    real_path = os.path.realpath(abs_path)
+    allowed_dirs = [os.path.realpath(settings.EXPORTS_DIR), os.path.realpath(settings.RECORDINGS_DIR)]
+    if not any(real_path.startswith(ad) for ad in allowed_dirs):
+        raise HTTPException(status_code=403, detail="Đường dẫn file không hợp lệ hoặc nằm ngoài phạm vi lưu trữ.")
+
+    if not os.path.exists(real_path):
         raise HTTPException(status_code=404, detail="File clip không tồn tại trên máy chủ.")
 
-    filename = os.path.basename(abs_path)
+    filename = os.path.basename(real_path)
     return FileResponse(
-        path=abs_path,
+        path=real_path,
         media_type="video/mp4",
         filename=filename
     )
 
 @router.delete("/exports/{export_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_exported_clip(export_id: int, db: Session = Depends(get_db)):
-    """Xóa một clip đã xuất khỏi hệ thống và ổ đĩa"""
+def delete_exported_clip(
+    export_id: int, 
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Xóa một clip đã xuất khỏi hệ thống và ổ đĩa (Chỉ Admin hoặc Quản lý camera đó)"""
+    current_user = get_current_user_optional(request, db)
     job = db.query(VideoExportJob).filter(VideoExportJob.id == export_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Không tìm thấy Clip đã xuất.")
+
+    if not current_user or (current_user.role not in [UserRoleEnum.ADMIN.value, UserRoleEnum.QUAN_LY.value]):
+        raise HTTPException(status_code=403, detail="Chỉ Quản trị viên hoặc Quản lý mới có quyền xóa clip.")
+
+    if not check_camera_access(job.camera_id, current_user):
+        raise HTTPException(status_code=403, detail="Bạn không có quyền xóa clip của camera này.")
 
     abs_path = open_video_file_absolute(job.output_file_path)
     if os.path.exists(abs_path):

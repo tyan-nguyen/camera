@@ -24,7 +24,10 @@ admin_or_manager = require_roles([UserRoleEnum.ADMIN.value, UserRoleEnum.QUAN_LY
 admin_only = require_roles([UserRoleEnum.ADMIN.value])
 
 @router.get("/status", response_model=WebhookSystemStatusResponse)
-def get_webhook_system_status(db: Session = Depends(get_db)):
+def get_webhook_system_status(
+    db: Session = Depends(get_db),
+    current_user = Depends(admin_or_manager)
+):
     """
     Lấy thông tin tổng quan trạng thái Webhook:
     - Sức khỏe từng ActionGroup (Online/Offline, Độ trễ ms, Trạng thái Circuit Breaker)
@@ -99,7 +102,8 @@ def get_webhook_queue_items(
     plate_number: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(admin_or_manager)
 ):
     """
     Lấy danh sách các bản ghi trong hàng đợi đồng bộ Webhook (phân trang và lọc)

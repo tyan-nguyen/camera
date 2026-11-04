@@ -10,7 +10,7 @@ from sqlalchemy import desc
 from database import get_db
 from models import VehicleLog, Camera, UserRoleEnum
 from schemas import PaginatedVehicleLogs, VehicleLogResponse, VehicleLogUpdate, BatchDeleteLogsRequest
-from auth_utils import get_current_user_optional, require_roles
+from auth_utils import get_current_user, get_current_user_optional, require_roles
 from settings_manager import settings_manager
 
 router = APIRouter(prefix="/api/v1/vehicle-logs", tags=["Vehicle Logs History"])
@@ -224,6 +224,12 @@ def update_vehicle_log(
     log_item = db.query(VehicleLog).filter(VehicleLog.id == log_id).first()
     if not log_item:
         raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi nhận dạng.")
+
+    # IDOR Check: Quản lý chỉ được sửa log của camera được cấp phép
+    if current_user.role != UserRoleEnum.ADMIN.value:
+        allowed_ids = [c.id for c in current_user.allowed_cameras] if current_user.allowed_cameras else []
+        if log_item.camera_id not in allowed_ids:
+            raise HTTPException(status_code=403, detail="Bạn không có quyền chỉnh sửa sự kiện của camera này.")
     
     old_plate = log_item.plate_number
     old_view = log_item.vehicle_view
@@ -465,10 +471,14 @@ def batch_delete_vehicle_logs(
     if not payload.log_ids:
         raise HTTPException(status_code=400, detail="Danh sách ID sự kiện cần xóa không được để trống.")
 
-    logs = db.query(VehicleLog).filter(
+    query = db.query(VehicleLog).filter(
         VehicleLog.id.in_(payload.log_ids),
         VehicleLog.is_deleted == False
-    ).all()
+    )
+    if current_user.role != UserRoleEnum.ADMIN.value:
+        allowed_ids = [c.id for c in current_user.allowed_cameras] if current_user.allowed_cameras else []
+        query = query.filter(VehicleLog.camera_id.in_(allowed_ids))
+    logs = query.all()
     if not logs:
         return {"success": True, "deleted_count": 0, "message": "Không có sự kiện nào hợp lệ để xóa."}
 
@@ -519,6 +529,12 @@ def delete_vehicle_log(
     log_item = db.query(VehicleLog).filter(VehicleLog.id == log_id).first()
     if not log_item:
         raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi nhận dạng.")
+
+    # IDOR Check: Quản lý chỉ được sửa log của camera được cấp phép
+    if current_user.role != UserRoleEnum.ADMIN.value:
+        allowed_ids = [c.id for c in current_user.allowed_cameras] if current_user.allowed_cameras else []
+        if log_item.camera_id not in allowed_ids:
+            raise HTTPException(status_code=403, detail="Bạn không có quyền chỉnh sửa sự kiện của camera này.")
     
     log_item.is_deleted = True
     log_item.deleted_at = datetime.utcnow()
@@ -556,6 +572,12 @@ def restore_vehicle_log(
     log_item = db.query(VehicleLog).filter(VehicleLog.id == log_id).first()
     if not log_item:
         raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi nhận dạng.")
+
+    # IDOR Check: Quản lý chỉ được sửa log của camera được cấp phép
+    if current_user.role != UserRoleEnum.ADMIN.value:
+        allowed_ids = [c.id for c in current_user.allowed_cameras] if current_user.allowed_cameras else []
+        if log_item.camera_id not in allowed_ids:
+            raise HTTPException(status_code=403, detail="Bạn không có quyền chỉnh sửa sự kiện của camera này.")
 
     log_item.is_deleted = False
     log_item.deleted_at = None
@@ -627,6 +649,12 @@ def permanent_delete_vehicle_log(
     log_item = db.query(VehicleLog).filter(VehicleLog.id == log_id).first()
     if not log_item:
         raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi nhận dạng.")
+
+    # IDOR Check: Quản lý chỉ được sửa log của camera được cấp phép
+    if current_user.role != UserRoleEnum.ADMIN.value:
+        allowed_ids = [c.id for c in current_user.allowed_cameras] if current_user.allowed_cameras else []
+        if log_item.camera_id not in allowed_ids:
+            raise HTTPException(status_code=403, detail="Bạn không có quyền chỉnh sửa sự kiện của camera này.")
 
     db.delete(log_item)
     db.commit()

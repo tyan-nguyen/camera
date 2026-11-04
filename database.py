@@ -21,57 +21,53 @@ def ensure_mysql_database_exists(host, port, user, password, db_name):
         logger.warning(f"Could not auto-create MySQL database `{db_name}`: {e}")
 
 def get_engine():
-    # 1. Ưu tiên sử dụng SQLite nếu cấu hình USE_SQLITE = True
-    if getattr(settings, "USE_SQLITE", False):
-        logger.info(f"Using SQLite database: {settings.SQLITE_URL}")
+    """
+    Khởi tạo kết nối cơ sở dữ liệu MySQL thật:
+    - Chỉ kết nối duy nhất tới máy chủ MySQL theo cấu hình chính thức (settings.DB_HOST, settings.DB_PORT, settings.DB_NAME)
+    - Không tự ý thử port / mật khẩu lạ
+    - Tuyệt đối không fallback âm thầm sang SQLite
+    - Nếu không kết nối được, báo lỗi chi tiết và ném ngoại lệ ConnectionError
+    """
+    # 1. Kiểm tra / tạo database MySQL nếu chưa tồn tại
+    ensure_mysql_database_exists(
+        settings.DB_HOST,
+        settings.DB_PORT,
+        settings.DB_USER,
+        settings.DB_PASSWORD,
+        settings.DB_NAME
+    )
+
+    # 2. Kết nối và kiểm tra tính sẵn sàng của MySQL
+    db_url = f"mysql+pymysql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}?charset=utf8mb4"
+    try:
         engine = create_engine(
-            settings.SQLITE_URL,
-            connect_args={"check_same_thread": False},
+            db_url,
+            pool_size=25,
+            max_overflow=50,
+            pool_timeout=15,
+            pool_recycle=1800,
+            pool_pre_ping=True,
             echo=False
         )
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        logger.info(f"Kết nối thành công tới CSDL MySQL thực tế [{settings.DB_NAME}] tại {settings.DB_HOST}:{settings.DB_PORT}")
         return engine
-
-    # 2. Các port MySQL cần thử (ưu tiên settings.DB_PORT, dự phòng 3306 / 3308)
-    ports_to_try = [settings.DB_PORT]
-    if settings.DB_PORT == 3306:
-        ports_to_try.append(3308)
-    elif settings.DB_PORT == 3308:
-        ports_to_try.append(3306)
-
-    for port in ports_to_try:
-        ensure_mysql_database_exists(settings.DB_HOST, port, settings.DB_USER, settings.DB_PASSWORD, settings.DB_NAME)
-
-    # 3. Thử kết nối với Mật khẩu cấu hình và Port khả dụng
-    passwords_to_try = [settings.DB_PASSWORD, "", "root"]
-    for port in ports_to_try:
-        for pwd in passwords_to_try:
-            db_url = f"mysql+pymysql://{settings.DB_USER}:{pwd}@{settings.DB_HOST}:{port}/{settings.DB_NAME}?charset=utf8mb4"
-            try:
-                engine = create_engine(
-                    db_url,
-                    pool_size=25,
-                    max_overflow=50,
-                    pool_timeout=30,
-                    pool_recycle=1800,
-                    pool_pre_ping=True,
-                    echo=False
-                )
-                with engine.connect() as conn:
-                    pass
-                logger.info(f"Connected successfully to MySQL v8 database [{settings.DB_NAME}] on {settings.DB_HOST}:{port}")
-                return engine
-            except Exception:
-                continue
-
-    if settings.USE_SQLITE_FALLBACK:
-        logger.warning("Could not connect to MySQL v8 with any password. Falling back to SQLite local database.")
-        engine = create_engine(
-            settings.SQLITE_URL,
-            connect_args={"check_same_thread": False},
-            echo=False
+    except Exception as e:
+        error_msg = (
+            f"\n{'='*75}\n"
+            f"❌ [LỖI KẾT NỐI CƠ SỞ DỮ LIỆU MYSQL THỰC TẾ]\n"
+            f"Hệ thống chỉ sử dụng dữ liệu thật từ MySQL nhưng KHÔNG THỂ KẾT NỐI tới máy chủ MySQL!\n"
+            f"  - Host: {settings.DB_HOST}\n"
+            f"  - Port: {settings.DB_PORT}\n"
+            f"  - Database: {settings.DB_NAME}\n"
+            f"  - User: {settings.DB_USER}\n"
+            f"  - Chi tiết lỗi: {e}\n"
+            f"=> Vui lòng bật dịch vụ MySQL (XAMPP / MySQL Service) trên máy chủ và kiểm tra lại cấu hình tại config.py / .env!\n"
+            f"{'='*75}\n"
         )
-        return engine
-    raise Exception("Failed to connect to MySQL database.")
+        logger.critical(error_msg)
+        raise ConnectionError(error_msg) from e
 
 engine = get_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -239,88 +235,4 @@ def init_db():
         except Exception as e:
             logger.warning(f"Could not convert MySQL tables to utf8mb4: {e}")
 
-    # Seed Default Action Groups
-    try:
-        db = SessionLocal()
-        from models import ActionGroup
-        ag_count = db.query(ActionGroup).count()
-        if ag_count == 0:
-            logger.info("Seeding default Action Groups (Kiểm tra kế hoạch, lịch thi, thuê xe, lấy đơn)...")
-            default_ags = [
-                ActionGroup(
-                    name="Kiểm tra đi không kế hoạch",
-                    code="KIEM_TRA_DI_KHONG_KE_HOACH",
-                    api_url="https://qltl.nguyentrinh.com.vn/api2/kiem-tra-di-khong-ke-hoach?plate={plate}",
-                    http_method="GET",
-                    description="Kiểm tra xe ra vào ngoài lịch trình kế hoạch của Trường lái",
-                    is_active=True
-                ),
-                ActionGroup(
-                    name="Kiểm tra đăng ký lịch học/thi",
-                    code="KIEM_TRA_DANG_KY_LICH",
-                    api_url="https://qltl.nguyentrinh.com.vn/api2/kiem-tra-lich-thi",
-                    http_method="POST",
-                    description="Kiểm tra danh sách học viên và phương tiện đăng ký sát hạch",
-                    is_active=True
-                ),
-                ActionGroup(
-                    name="Kiểm tra thuê xe tập lái",
-                    code="KIEM_TRA_THUE_XE",
-                    api_url="https://qltl.nguyentrinh.com.vn/api2/kiem-tra-thue-xe",
-                    http_method="POST",
-                    description="Xác thực hợp đồng thuê xe tập lái sân sa hình",
-                    is_active=True
-                ),
-                ActionGroup(
-                    name="Kiểm tra lấy đơn / xuất nhập kho bãi",
-                    code="KIEM_TRA_LAY_DON",
-                    api_url="https://qltl.nguyentrinh.com.vn/api2/kiem-tra-lay-don",
-                    http_method="POST",
-                    description="Kiểm tra phiếu điều xe lấy hàng tại Kho bãi",
-                    is_active=True
-                )
-            ]
-            db.add_all(default_ags)
-            db.commit()
-            logger.info("Default Action Groups seeded successfully.")
-        db.close()
-    except Exception as e:
-        logger.warning(f"Could not seed Action Groups: {e}")
-
-    # Seed Default Users
-    try:
-        db = SessionLocal()
-        from models import User, UserRoleEnum
-        from auth_utils import hash_password
-        user_count = db.query(User).count()
-        if user_count == 0:
-            logger.info("Seeding default user accounts (admin, quanly, user)...")
-            default_users = [
-                User(
-                    username="admin",
-                    full_name="Quản Trị Viên (Admin)",
-                    hashed_password=hash_password("admin123"),
-                    role=UserRoleEnum.ADMIN.value,
-                    is_active=True
-                ),
-                User(
-                    username="quanly",
-                    full_name="Quản Lý Hệ Thống",
-                    hashed_password=hash_password("quanly123"),
-                    role=UserRoleEnum.QUAN_LY.value,
-                    is_active=True
-                ),
-                User(
-                    username="user",
-                    full_name="Giám Sát Viên (User)",
-                    hashed_password=hash_password("user123"),
-                    role=UserRoleEnum.USER.value,
-                    is_active=True
-                )
-            ]
-            db.add_all(default_users)
-            db.commit()
-            logger.info("Default user accounts created: admin/admin123, quanly/quanly123, user/user123.")
-        db.close()
-    except Exception as e:
-        logger.warning(f"Could not seed default users: {e}")
+    # Toàn bộ dữ liệu Action Groups và Users được quản lý thực tế từ CSDL MySQL

@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/v1/settings", tags=["System Settings"])
 admin_only = require_roles([UserRoleEnum.ADMIN.value])
 
 @router.get("", response_model=SystemSettingsResponse)
-def get_system_settings():
+def get_system_settings(current_user=Depends(admin_only)):
     current = settings_manager.get_settings()
     return SystemSettingsResponse(
         id=1,

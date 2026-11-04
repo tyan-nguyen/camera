@@ -17,6 +17,7 @@ from disk_worker import AsyncDiskWorker
 from stream_manager import DynamicStreamManager
 from websocket_manager import websocket_manager
 from notification_service import notification_service
+from auth_utils import decode_access_token
 from routes import camera, history, settings as settings_route, tts, auth, users, action_groups, devices, playback, webhook_sync, search_shortcuts
 from settings_manager import settings_manager
 from webhook_sync_worker import webhook_sync_worker
@@ -36,70 +37,7 @@ stream_manager = DynamicStreamManager(ai_engine=ai_engine, disk_worker=disk_work
 camera.set_stream_manager(stream_manager)
 notification_service.set_websocket_manager(websocket_manager)
 
-def seed_default_cameras():
-    db = SessionLocal()
-    try:
-        count = db.query(Camera).count()
-        if count == 0:
-            logger.info("Seeding default camera RTSP streams into database...")
-            # Lấy action group mặc định
-            first_ag = db.query(ActionGroup).first()
-            ag_id = first_ag.id if first_ag else None
-
-            default_cams = [
-                Camera(
-                    camera_name="Căn tin ra", 
-                    rtsp_url="rtsp://admin:HAO@041298.@14.238.118.58:5541/Streaming/Channels/501", 
-                    target_fps=6, 
-                    is_active=True,
-                    zone_code="TRUONGLAI",
-                    zone_name="Trường Lái",
-                    camera_function="ANPR",
-                    action_group_id=ag_id
-                ),
-                Camera(
-                    camera_name="Vào Căn tin", 
-                    rtsp_url="rtsp://admin:HAO@041298.@14.238.118.58:5541/Streaming/Channels/101", 
-                    target_fps=6, 
-                    is_active=True,
-                    zone_code="TRUONGLAI",
-                    zone_name="Trường Lái",
-                    camera_function="ANPR",
-                    action_group_id=ag_id
-                ),
-                Camera(
-                    camera_name="Bãi Xe Khu B", 
-                    rtsp_url="rtsp://admin:HAO@041298.@14.238.118.58:5541/Streaming/Channels/601", 
-                    target_fps=6, 
-                    is_active=True,
-                    zone_code="KHO_BAI",
-                    zone_name="Kho Bãi",
-                    camera_function="ANPR",
-                    action_group_id=ag_id
-                ),
-                Camera(
-                    camera_name="Cổng Quan Sát Toàn Cảnh", 
-                    rtsp_url="rtsp://admin:admin123@192.168.1.103:554/stream1", 
-                    target_fps=6, 
-                    is_active=False,
-                    zone_code="TRUONGLAI",
-                    zone_name="Trường Lái",
-                    camera_function="SURVEILLANCE"
-                ),
-                Camera(
-                    camera_name="Kho Hàng Giám Sát", 
-                    rtsp_url="rtsp://admin:admin123@192.168.1.104:554/stream1", 
-                    target_fps=6, 
-                    is_active=False,
-                    zone_code="KHO_BAI",
-                    zone_name="Kho Bãi",
-                    camera_function="SURVEILLANCE"
-                ),
-            ]
-            db.add_all(default_cams)
-            db.commit()
-    finally:
-        db.close()
+# Toàn bộ danh sách Camera được quản lý và load thực tế từ CSDL MySQL
 
 def prevent_windows_sleep():
     """Ngăn Windows tự động đi vào trạng thái Sleep/Hibernate khi chạy server camera qua đêm"""
@@ -120,7 +58,6 @@ async def lifespan(app: FastAPI):
     logger.info("Starting ANPR Multi-Zone Monitoring System...")
     init_db()
     settings_manager.reload_from_db()
-    seed_default_cameras()
     ai_engine.load_model()
     
     websocket_manager.set_loop(asyncio.get_running_loop())
@@ -194,6 +131,19 @@ async def get_index_page(request: Request):
 
 @app.websocket("/ws/events")
 async def websocket_events_endpoint(websocket: WebSocket):
+    # Xác thực người dùng qua Cookie access_token hoặc query parameter ?token=
+    token = websocket.cookies.get("access_token") or websocket.query_params.get("token")
+    user_payload = decode_access_token(token) if token else None
+    if not user_payload:
+        # Từ chối kết nối nếu chưa đăng nhập hoặc token hết hạn (WS 1008: Policy Violation)
+        await websocket.close(code=1008)
+        return
+
+    # Nếu vai trò là quan_sat, quan sát viên không cần nhận push sự kiện đếm xe
+    if user_payload.get("role") == "quan_sat":
+        await websocket.close(code=1000)
+        return
+
     await websocket_manager.connect(websocket)
     try:
         while True:

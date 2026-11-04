@@ -23,14 +23,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/action-groups", tags=["Action Groups"])
 
 admin_only = require_roles([UserRoleEnum.ADMIN.value])
+admin_or_manager = require_roles([UserRoleEnum.ADMIN.value, UserRoleEnum.QUAN_LY.value])
 
 @router.get("", response_model=List[ActionGroupResponse])
-def get_all_action_groups(db: Session = Depends(get_db)):
+def get_all_action_groups(db: Session = Depends(get_db), current_user=Depends(admin_or_manager)):
     """Lấy danh sách tất cả các nhóm hành động"""
     return db.query(ActionGroup).order_by(ActionGroup.id.asc()).all()
 
 @router.get("/{group_id}", response_model=ActionGroupResponse)
-def get_action_group_by_id(group_id: int, db: Session = Depends(get_db)):
+def get_action_group_by_id(group_id: int, db: Session = Depends(get_db), current_user=Depends(admin_or_manager)):
     ag = db.query(ActionGroup).filter(ActionGroup.id == group_id).first()
     if not ag:
         raise HTTPException(status_code=404, detail="Không tìm thấy nhóm hành động.")

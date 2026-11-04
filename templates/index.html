@@ -91,7 +91,7 @@
                     <i class="fa-solid fa-video text-white text-2xl"></i>
                 </div>
                 <h2 class="text-xl font-extrabold text-white tracking-tight">ANPR NGUYỄN TRÌNH</h2>
-                <p class="text-xs text-slate-400 mt-1">Hệ Thống Phân Loại Vùng & Giám Sát Biển Số Xe</p>
+                <p class="text-xs text-slate-400 mt-1">Hệ thống camera tự động</p>
             </div>
 
             <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4">
@@ -147,11 +147,8 @@
                     <i class="fa-solid fa-video text-white text-sm sm:text-base"></i>
                 </div>
                 <div>
-                    <h1 class="text-sm sm:text-lg font-extrabold tracking-tight text-white flex items-center gap-1.5">
-                        <span>ANPR NGUYỄN TRÌNH</span>
-                        <span id="header-user-role-badge" class="hidden sm:inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">AI PRO</span>
-                    </h1>
-                    <p class="text-[10px] sm:text-xs text-slate-400 truncate max-w-[150px] sm:max-w-none">Phân Loại Vùng & Nhận Dạng Biển Số</p>
+                    <h1 class="text-sm sm:text-lg font-extrabold tracking-tight text-white">ANPR NGUYỄN TRÌNH</h1>
+                    <p class="text-[10px] sm:text-xs text-slate-400 truncate max-w-[150px] sm:max-w-none">Hệ thống camera tự động</p>
                 </div>
             </div>
 
@@ -229,7 +226,7 @@
                                 <i class="fa-solid fa-diagram-project text-amber-400 w-4"></i>
                                 <span>Nhóm Hành Động (Webhook)</span>
                             </button>
-                            <button onclick="openWebhookSyncModal()" class="w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center space-x-2 transition-colors">
+                            <button onclick="openWebhookSyncModal()" id="btn-webhook-sync" class="hidden w-full text-left px-3 py-2 rounded-xl text-xs text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center space-x-2 transition-colors">
                                 <i class="fa-solid fa-rotate text-cyan-400 w-4"></i>
                                 <span>Đồng Bộ Webhook</span>
                             </button>
@@ -1365,6 +1362,29 @@
     </main>
 
     <!-- ========================================== -->
+    <!-- 3. MAIN FOOTER -->
+    <!-- ========================================== -->
+    <footer class="mt-auto border-t border-slate-800/80 bg-slate-950/80 glass-panel py-3.5 sm:py-4 px-4 sm:px-6">
+        <div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+            <div class="flex items-center space-x-2.5 text-center sm:text-left">
+                <div class="w-6 h-6 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center text-xs flex-shrink-0">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-slate-200">HỆ THỐNG ANPR NGUYỄN TRÌNH</span>
+                    <span class="hidden md:inline text-slate-500"> — </span>
+                    <span class="block md:inline text-[11px] text-slate-400">Hệ thống camera tự động</span>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                <span>Phiên bản: <strong class="text-slate-400 font-mono">v1.0</strong></span>
+                <span>•</span>
+                <span>&copy; 2026 Bản quyền thuộc về <strong class="text-slate-300">Nguyễn Trình</strong>. All rights reserved.</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========================================== -->
     <!-- 4. MODALS & POPUPS -->
     <!-- ========================================== -->
 
@@ -1652,14 +1672,17 @@
     </div>
 
     <!-- Add / Edit Camera Modal -->
-    <div id="camera-form-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-        <div class="glass-panel max-w-lg w-full rounded-2xl p-5 sm:p-6 relative border border-slate-700 shadow-2xl">
-            <button onclick="closeAddCameraModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-            <h3 class="text-base sm:text-lg font-bold text-white mb-4" id="camera-modal-title">Thêm Camera Mới</h3>
+    <div id="camera-form-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-5 sm:p-6 relative border border-slate-700 shadow-2xl my-auto max-h-[92vh] flex flex-col">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 flex-shrink-0">
+                <h3 class="text-base sm:text-lg font-bold text-white" id="camera-modal-title">Thêm Camera Mới</h3>
+                <button onclick="closeAddCameraModal()" class="text-slate-400 hover:text-white text-xl p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
             
-            <form id="camera-form" onsubmit="handleCameraFormSubmit(event)" class="space-y-3.5">
+            <form id="camera-form" onsubmit="handleCameraFormSubmit(event)" class="flex flex-col flex-1 overflow-hidden">
+                <div class="space-y-3.5 overflow-y-auto flex-1 pr-1.5 custom-scrollbar">
                 <input type="hidden" id="cam-form-id" value="">
                 
                 <!-- Status Alert Banner -->
@@ -1829,7 +1852,8 @@
                     </button>
                 </div>
 
-                <div class="pt-3 flex justify-end space-x-2">
+                </div>
+                <div class="pt-3 mt-2 border-t border-slate-800 flex justify-end space-x-2 flex-shrink-0">
                     <button type="button" onclick="closeAddCameraModal()"
                         class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium rounded-xl transition-all">Hủy</button>
                     <button type="submit" id="cam-form-submit-btn"
@@ -1843,8 +1867,8 @@
     </div>
 
     <!-- 8. Camera ROI (Detection Zone) Drawing Modal -->
-    <div id="camera-roi-modal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto flex flex-col space-y-3.5">
+    <div id="camera-roi-modal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto max-h-[95vh] flex flex-col space-y-3.5 overflow-y-auto custom-scrollbar">
             <button onclick="closeRoiModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1 z-10 transition-colors">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -1908,12 +1932,12 @@
     </div>
 
     <!-- Edit Vehicle Plate Modal -->
-    <div id="edit-log-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="glass-panel max-w-5xl w-full rounded-2xl p-5 sm:p-6 relative border border-slate-700 shadow-2xl my-auto">
+    <div id="edit-log-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-5xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto max-h-[92vh] flex flex-col">
             <button onclick="closeEditLogModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1 z-10 transition-colors">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-700/80 pr-8">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-700/80 pr-8 flex-shrink-0">
                 <div class="flex items-center space-x-2.5">
                     <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm flex-shrink-0">
                         <i class="fa-solid fa-pen-to-square"></i>
@@ -1963,7 +1987,7 @@
                 </div>
             </div>
             
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 overflow-y-auto flex-1 pr-1.5 custom-scrollbar">
                 <!-- CỘT TRÁI: FORM CHỈNH SỬA DỮ LIỆU (5 cột trên Desktop) -->
                 <div class="lg:col-span-5 flex flex-col justify-between space-y-3.5">
                     <form id="edit-log-form" onsubmit="handleEditLogSubmit(event)" class="space-y-3.5">
@@ -2163,11 +2187,11 @@
 
     <!-- Detail Modal (Event Details) -->
     <div id="image-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto">
-            <button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1">
+        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto max-h-[92vh] flex flex-col">
+            <button onclick="closeImageModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1 z-10">
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pr-8">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pr-8 flex-shrink-0">
                 <h3 class="text-base sm:text-lg font-bold text-white" id="modal-title">Chi Tiết Sự Kiện Nhận Dạng</h3>
                 <div class="flex items-center space-x-2">
                     <button id="modal-btn-edit-event" onclick="editFromDetailModal()" class="px-3.5 py-1.5 bg-amber-600/90 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow flex items-center space-x-1.5 transition-all">
@@ -2184,6 +2208,7 @@
                     </button>
                 </div>
             </div>
+            <div class="overflow-y-auto flex-1 pr-1.5 custom-scrollbar">
             <div id="modal-summary-box" class="hidden mb-4 p-3 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs flex flex-wrap items-center justify-between gap-2 font-medium">
                 <div class="flex items-center space-x-2">
                     <i class="fa-solid fa-info-circle text-blue-400 text-sm flex-shrink-0"></i>
@@ -2218,14 +2243,15 @@
                     </div>
                 </div>
             </div>
+            </div>
         </div>
     </div>
 
     <!-- ========================================== -->
     <!-- EVENT VIDEO PLAYER MODAL (-5s to +5s) -->
     <!-- ========================================== -->
-    <div id="event-video-modal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto flex flex-col">
+    <div id="event-video-modal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto max-h-[95vh] flex flex-col overflow-y-auto custom-scrollbar">
             <button onclick="closeEventVideoModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1 z-10 transition-colors">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -2344,8 +2370,8 @@
     </div>
 
     <!-- Change Password Modal -->
-    <div id="change-pwd-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-        <div class="glass-panel max-w-sm w-full rounded-2xl p-5 relative border border-slate-700 shadow-2xl">
+    <div id="change-pwd-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-sm w-full rounded-2xl p-5 relative border border-slate-700 shadow-2xl my-auto max-h-[92vh] flex flex-col overflow-y-auto custom-scrollbar">
             <button onclick="closeChangePasswordModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -2485,8 +2511,8 @@
     </div>
 
     <!-- Custom Confirm / Alert Modal (Replaces browser confirm) -->
-    <div id="confirm-action-modal" class="hidden fixed inset-0 z-[350] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-        <div class="relative w-full max-w-md bg-slate-900 border border-slate-700/90 rounded-2xl p-6 shadow-2xl text-center transform transition-all animate-scale-up">
+    <div id="confirm-action-modal" class="hidden fixed inset-0 z-[350] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+        <div class="relative w-full max-w-md bg-slate-900 border border-slate-700/90 rounded-2xl p-6 shadow-2xl text-center transform transition-all animate-scale-up my-auto max-h-[92vh] flex flex-col overflow-y-auto custom-scrollbar">
             <div id="confirm-modal-icon-container" class="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto mb-4 text-2xl shadow-lg shadow-rose-950/50">
                 <i id="confirm-modal-icon" class="fa-solid fa-triangle-exclamation"></i>
             </div>
@@ -2527,7 +2553,8 @@
             </div>
 
             <!-- Modal Form -->
-            <form id="search-shortcut-form" onsubmit="event.preventDefault(); saveSearchShortcut();" class="space-y-4 py-4 overflow-y-auto flex-1">
+            <form id="search-shortcut-form" onsubmit="event.preventDefault(); saveSearchShortcut();" class="flex flex-col flex-1 overflow-hidden">
+                <div class="space-y-4 py-3 overflow-y-auto flex-1 pr-1.5 custom-scrollbar">
                 <input type="hidden" id="shortcut-id" value="">
 
                 <!-- 1. Tên lối tắt & Thứ tự hiển thị -->
@@ -2663,8 +2690,9 @@
                     </label>
                 </div>
 
+                </div>
                 <!-- Modal Actions -->
-                <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
+                <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800 flex-shrink-0">
                     <button type="button" onclick="closeSearchShortcutModal()"
                         class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all">
                         Hủy
@@ -2953,13 +2981,11 @@
             let roleName = role === 'admin' ? '👑 Quản Trị Viên (Admin)' : (role === 'quan_ly' ? '🛡️ Quản Lý' : (role === 'quan_sat' ? '👁️ Quan Sát Viên' : '👤 Giám Sát Viên'));
             document.getElementById('user-dropdown-role').innerText = roleName;
 
-            const headerBadge = document.getElementById('header-user-role-badge');
-            if (headerBadge) {
-                headerBadge.innerText = role.toUpperCase();
-            }
+
 
             const isAdmin = (role === 'admin');
             const isViewer = (role === 'quan_sat');
+            const canManageWebhook = (role === 'admin' || role === 'quan_ly');
 
             document.querySelectorAll('.role-admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
             if (isAdmin && typeof updateTrashBadge === 'function') {
@@ -2984,8 +3010,12 @@
             const realtimeEvents = document.getElementById('dashboard-realtime-events-container');
             if (realtimeEvents) realtimeEvents.classList.toggle('hidden', isViewer);
 
+            // Phân quyền Webhook: User và Quan Sát Viên không được truy cập link đồng bộ Webhook
             const webhookBtn = document.getElementById('webhook-header-status-btn');
-            if (webhookBtn) webhookBtn.classList.toggle('hidden', isViewer);
+            if (webhookBtn) webhookBtn.classList.toggle('hidden', !canManageWebhook);
+
+            const btnWebhookSync = document.getElementById('btn-webhook-sync');
+            if (btnWebhookSync) btnWebhookSync.classList.toggle('hidden', !canManageWebhook);
 
             if ((!isAdmin && (currentTab === 'cameras' || currentTab === 'settings')) || (isViewer && currentTab === 'history')) {
                 switchTab('dashboard');
@@ -3043,7 +3073,19 @@
         }
 
         function switchTab(tabId, skipPlaybackLoad = false) {
+            const role = currentUser ? (currentUser.role || 'user') : 'user';
+            const isAdmin = (role === 'admin');
+            const isViewer = (role === 'quan_sat');
+
+            // Chặn truy cập trái phép tab
+            if ((!isAdmin && (tabId === 'cameras' || tabId === 'settings')) || (isViewer && tabId === 'history')) {
+                if (typeof showToast === 'function') {
+                    showToast("Bạn không có quyền truy cập mục này!", "warning");
+                }
+                tabId = 'dashboard';
+            }
             currentTab = tabId;
+
             ['dashboard', 'playback', 'history', 'cameras', 'settings'].forEach(t => {
                 const page = document.getElementById(`page-${t}`);
                 const btn = document.getElementById(`tab-${t}`);
@@ -3051,19 +3093,26 @@
                 if (page) page.classList.toggle('hidden', t !== tabId);
                 if (btn) {
                     if (t === tabId) {
-                        btn.className = 'tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg transition-all bg-blue-600 text-white shadow-md flex items-center';
+                        btn.classList.add('bg-blue-600', 'text-white', 'shadow-md');
+                        btn.classList.remove('text-slate-400', 'hover:text-white');
                     } else {
-                        btn.className = 'tab-btn px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all flex items-center';
+                        btn.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
+                        btn.classList.add('text-slate-400', 'hover:text-white');
                     }
                 }
                 if (mobBtn) {
                     if (t === tabId) {
-                        mobBtn.className = 'mob-tab-btn flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-md transition-all';
+                        mobBtn.classList.add('bg-blue-600', 'text-white', 'shadow-md');
+                        mobBtn.classList.remove('text-slate-300', 'bg-slate-900/80', 'border-slate-800');
                     } else {
-                        mobBtn.className = 'mob-tab-btn flex items-center justify-start space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900/80 border border-slate-800 hover:text-white transition-all';
+                        mobBtn.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
+                        mobBtn.classList.add('text-slate-300', 'bg-slate-900/80', 'border-slate-800');
                     }
                 }
             });
+
+            // Luôn đồng bộ lại hiển thị menu theo quyền hạn
+            applyUserPermissions();
 
             if (tabId !== 'dashboard') {
                 stopAllGridStreams();
@@ -4534,6 +4583,13 @@
         let webhookQueueSearchTimeout = null;
 
         function openWebhookSyncModal(tab = 'health') {
+            const role = currentUser ? (currentUser.role || 'user') : 'user';
+            if (role !== 'admin' && role !== 'quan_ly') {
+                if (typeof showToast === 'function') {
+                    showToast("Bạn không có quyền truy cập Đồng Bộ Webhook!", "warning");
+                }
+                return;
+            }
             const userMenu = document.getElementById('user-dropdown-menu');
             if (userMenu) userMenu.classList.add('hidden');
             const modal = document.getElementById('webhook-sync-modal');
@@ -4571,6 +4627,7 @@
         }
 
         async function updateWebhookHeaderStatus() {
+            if (!currentUser || currentUser.role === 'quan_sat' || currentUser.role === 'user') return;
             try {
                 const res = await fetch('/api/v1/webhook-sync/status');
                 if (!res.ok) return;
@@ -5906,7 +5963,7 @@
                             <button onclick="openPlaybackForEvent(${item.camera_id}, '${item.detected_at}', '${item.plate_number}')" class="px-2.5 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
-                            ${(item.sync_status === 'PENDING_SYNC' || item.sync_status === 'SYNC_FAILED') ? `
+                            ${(currentUser && (currentUser.role === 'admin' || currentUser.role === 'quan_ly') && (item.sync_status === 'PENDING_SYNC' || item.sync_status === 'SYNC_FAILED')) ? `
                                 <button onclick="openWebhookSyncModal('queue')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Xem trong hàng đợi đồng bộ"><i class="fa-solid fa-cloud-arrow-up"></i></button>
                             ` : ''}
                             <button onclick="openEditLogModal(${item.id}, '${item.plate_number}', '${item.vehicle_view}', '${item.vehicle_type || 'car'}', '${(item.summary || '').replace(/'/g, "\\'")}', '${item.image_plate_path}', '${item.image_full_path}', 'history', '${item.detected_at || ''}', '${(item.camera_name || '').replace(/'/g, "\\'")}', '${item.action_status || ''}', '${item.vehicle_classification || ''}', '${item.sync_status || ''}', '${(item.sync_error || '').replace(/'/g, "\\'")}', '${item.video_path || ''}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>
@@ -6103,7 +6160,7 @@
                             <button onclick="openPlaybackForEvent(${d.camera_id}, '${d.detected_at}', '${d.plate_number}')" class="px-2 py-1 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg" title="Xem lại video từ thời điểm này">
                                 <i class="fa-solid fa-film mr-1"></i>Video
                             </button>
-                            ${(d.sync_status === 'PENDING_SYNC' || d.sync_status === 'SYNC_FAILED') ? `
+                            ${(currentUser && (currentUser.role === 'admin' || currentUser.role === 'quan_ly') && (d.sync_status === 'PENDING_SYNC' || d.sync_status === 'SYNC_FAILED')) ? `
                                 <button onclick="openWebhookSyncModal('queue')" class="px-2 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg" title="Xem hàng đợi đồng bộ"><i class="fa-solid fa-cloud-arrow-up"></i></button>
                             ` : ''}
                             <button onclick="openEditLogModal(${d.id}, '${d.plate_number}', '${d.vehicle_view || 'front'}', '${d.vehicle_type || 'car'}', '${(d.summary || '').replace(/'/g, "\\'")}', '${d.image_plate_path}', '${d.image_full_path}', 'dashboard', '${d.detected_at || ''}', '${(d.camera_name || '').replace(/'/g, "\\'")}', '${d.action_status || ''}', '${d.vehicle_classification || ''}', '${d.sync_status || ''}', '${(d.sync_error || '').replace(/'/g, "\\'")}', '${d.video_path || ''}')" class="px-2.5 py-1 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg font-medium transition-all" title="Chỉnh sửa sự kiện"><i class="fa-solid fa-pen-to-square mr-1"></i>Sửa</button>
