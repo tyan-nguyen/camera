@@ -194,7 +194,7 @@ class CameraVideoRecorder:
         self.camera_name = camera_name
         self.target_fps = target_fps if target_fps > 0 else 6
         
-        self.frame_queue: queue.Queue = queue.Queue(maxsize=120)  # Bộ đệm tối đa 120 frame (~20 giây)
+        self.frame_queue: queue.Queue = queue.Queue(maxsize=300)  # Bộ đệm tối đa 300 frame (~50 giây)
         self.stop_requested = threading.Event()
         self.rotate_requested = threading.Event()
         self.rotation_done_event = threading.Event()
@@ -350,8 +350,11 @@ class CameraVideoRecorder:
                 finally:
                     db.close()
             else:
-                # Tính thời lượng thực tế chính xác dựa trên số frame đã ghi
-                actual_duration = max(1, int(round(self.frame_count / self.target_fps)))
+                # Tính thời lượng thực tế theo thời gian thực (wall-clock time) để các phân đoạn nối tiếp 100% liền mạch
+                now = datetime.now()
+                wall_duration = max(1, int((now - self.segment_start_time).total_seconds()))
+                frame_duration = max(1, int(round(self.frame_count / self.target_fps)))
+                actual_duration = max(wall_duration, frame_duration)
                 end_time = self.segment_start_time + timedelta(seconds=actual_duration)
 
                 db = SessionLocal()

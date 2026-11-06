@@ -74,6 +74,8 @@ class CameraThread(threading.Thread):
         self.raw_frame_lock = threading.Lock()
         self.latest_raw_frame: Optional[np.ndarray] = None
         self.last_frame_received_time: float = 0.0
+        self.last_rec_push_time: float = 0.0
+        self.last_event_push_time: float = 0.0
         self.has_new_frame: bool = False
         self.grabber_thread: Optional[threading.Thread] = None
 
@@ -170,9 +172,23 @@ class CameraThread(threading.Thread):
                         logger.warning(f"[{self.camera_name}] Mat luong tin hieu tu camera ({self.rtsp_url}), dang ket noi lai...")
                         break
 
+                    now_ts = time.time()
+                    frame_interval = 1.0 / self.target_fps
+
+                    # 1. Ghi hình video phân đoạn MP4 trực tiếp từ luồng đọc (không bị AI làm chậm/nghẽn)
+                    if self.is_recording:
+                        if now_ts - self.last_rec_push_time >= frame_interval - 0.003:
+                            self.last_rec_push_time = now_ts
+                            video_recorder_manager.push_frame(self.camera_id, frame)
+
+                    # 2. Đẩy khung hình vào Rolling Pre-Buffer phục vụ trích xuất clip sự kiện (-5s đến +5s)
+                    if now_ts - self.last_event_push_time >= frame_interval - 0.003:
+                        self.last_event_push_time = now_ts
+                        event_video_manager.push_camera_frame(self.camera_id, frame)
+
                     with self.raw_frame_lock:
                         self.latest_raw_frame = frame
-                        self.last_frame_received_time = time.time()
+                        self.last_frame_received_time = now_ts
                         self.has_new_frame = True
                 except Exception as e:
                     logger.warning(f"[{self.camera_name}] Grabber exception: {e}")
@@ -255,7 +271,6 @@ class CameraThread(threading.Thread):
         logger.info(f"Starting camera thread for [{self.camera_name}] (ID: {self.camera_id}, Type: {self.camera_function}, Rec: {self.is_recording}) RTSP: {self.rtsp_url}")
         frame_interval = 1.0 / self.target_fps
         last_processed_time = time.time()
-        last_rec_time = time.time()
 
         # Khởi chạy luồng Grabber chuyên trách
         self.grabber_thread = threading.Thread(
@@ -287,16 +302,7 @@ class CameraThread(threading.Thread):
                 time.sleep(0.01)
                 continue
 
-            # Đẩy khung hình vào bộ đệm vòng (Rolling Pre-Buffer) phục vụ trích xuất clip sự kiện (-5s đến +5s)
-            event_video_manager.push_camera_frame(self.camera_id, raw_frame)
-
-            # 1. Ghi hình video phân đoạn nếu camera được BẬT tính năng lưu (khớp nhịp FPS thiết lập)
-            if self.is_recording:
-                if loop_start - last_rec_time >= frame_interval - 0.003:
-                    last_rec_time = loop_start
-                    video_recorder_manager.push_frame(self.camera_id, raw_frame)
-
-            # 2. Tạo khung hình hiển thị Live Dashboard
+            # 1. Tạo khung hình hiển thị Live Dashboard (ghi video và pre-buffer sự kiện đã được xử lý mượt mà ở _grabber_loop)
             display_frame = self._draw_zone_overlay(raw_frame.copy())
             with self.frame_lock:
                 self.latest_frame = display_frame
