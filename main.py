@@ -18,7 +18,7 @@ from stream_manager import DynamicStreamManager
 from websocket_manager import websocket_manager
 from notification_service import notification_service
 from auth_utils import decode_access_token
-from routes import camera, history, settings as settings_route, tts, auth, users, action_groups, devices, playback, webhook_sync, search_shortcuts
+from routes import camera, history, settings as settings_route, tts, auth, users, action_groups, devices, playback, webhook_sync, search_shortcuts, external_api
 from settings_manager import settings_manager
 from webhook_sync_worker import webhook_sync_worker
 from video_recorder import recover_orphaned_recordings
@@ -35,6 +35,7 @@ stream_manager = DynamicStreamManager(ai_engine=ai_engine, disk_worker=disk_work
 
 # Inject stream manager reference into camera routes
 camera.set_stream_manager(stream_manager)
+external_api.set_stream_manager(stream_manager)
 notification_service.set_websocket_manager(websocket_manager)
 
 # Toàn bộ danh sách Camera được quản lý và load thực tế từ CSDL MySQL
@@ -121,6 +122,7 @@ app.include_router(settings_route.router)
 app.include_router(tts.router)
 app.include_router(webhook_sync.router)
 app.include_router(search_shortcuts.router)
+app.include_router(external_api.router, prefix="/api/external/v1", tags=["External Integration"])
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index_page(request: Request):

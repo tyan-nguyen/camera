@@ -44,6 +44,9 @@ class Settings:
     EVENT_VIDEO_PRE_SECONDS: int = 5
     EVENT_VIDEO_POST_SECONDS: int = 5
 
+    # External Third-Party Integration API
+    EXTERNAL_API_KEY: str = os.getenv("EXTERNAL_API_KEY", "")
+
 settings = Settings()
 
 os.makedirs(settings.CAPTURES_DIR, exist_ok=True)
