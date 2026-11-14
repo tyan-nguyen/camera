@@ -2078,6 +2078,9 @@
                                 <button type="button" id="btn-edit-next-footer" onclick="navigateEditLog(1)" class="px-2.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700/60 transition disabled:opacity-30 disabled:cursor-not-allowed" title="Bản ghi sau (Alt + →)">
                                     Sau<i class="fa-solid fa-chevron-right ml-1"></i>
                                 </button>
+                                <button type="button" id="btn-edit-delete" onclick="handleEditLogDelete()" class="px-2.5 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white text-xs font-medium border border-rose-500/30 transition shadow-sm ml-1 flex items-center" title="Xóa sự kiện này và chuyển sang sự kiện tiếp theo (Alt + Delete)">
+                                    <i class="fa-solid fa-trash-can mr-1"></i>Xóa
+                                </button>
                             </div>
                             <div class="flex items-center space-x-2">
                                 <button type="button" onclick="closeEditLogModal()" class="px-3.5 py-2 bg-slate-800 text-slate-300 text-xs font-medium rounded-xl hover:bg-slate-700 transition-colors">
@@ -7363,6 +7366,7 @@
             const btnNext = document.getElementById('btn-edit-next');
             const btnPrevFooter = document.getElementById('btn-edit-prev-footer');
             const btnNextFooter = document.getElementById('btn-edit-next-footer');
+            const btnDelete = document.getElementById('btn-edit-delete');
 
             const total = (currentEditList && currentEditList.length) ? currentEditList.length : 0;
             const current = (total > 0 && currentEditIndex >= 0) ? (currentEditIndex + 1) : 0;
@@ -7378,6 +7382,7 @@
             if (btnNext) btnNext.disabled = isLast;
             if (btnPrevFooter) btnPrevFooter.disabled = isFirst;
             if (btnNextFooter) btnNextFooter.disabled = isLast;
+            if (btnDelete) btnDelete.disabled = (total === 0);
         }
 
         function populateEditModalWithItem(item) {
@@ -7783,8 +7788,113 @@
             await saveEditLogData({ advanceNext: true });
         }
 
+        async function handleEditLogDelete() {
+            const logIdInput = document.getElementById('edit-log-id');
+            const logId = logIdInput ? parseInt(logIdInput.value, 10) : null;
+            if (!logId) {
+                showToast("Không tìm thấy ID sự kiện để xóa.", "error");
+                return;
+            }
+
+            const plateInput = document.getElementById('edit-log-plate');
+            const plateNumber = (plateInput && plateInput.value) ? plateInput.value.trim().toUpperCase() : 'Phương tiện';
+
+            const deleteBtn = document.getElementById('btn-edit-delete');
+            const timeEl = document.getElementById('edit-log-time');
+            const camEl = document.getElementById('edit-log-cam-name');
+            const timeStr = timeEl ? timeEl.innerText : '';
+            const camStr = camEl ? camEl.innerText : '';
+
+            const confirmed = await showCustomConfirmModal({
+                title: 'Xóa Sự Kiện & Chuyển Tiếp',
+                message: `Bạn có chắc chắn muốn xóa sự kiện xe [${plateNumber}] (#${logId}) không?`,
+                detailHtml: `
+                    <div class="space-y-1.5 text-xs text-slate-300">
+                        <div class="flex items-center text-rose-400 font-semibold">
+                            <i class="fa-solid fa-trash-can mr-2"></i>Biển số: <span class="text-white ml-1 font-bold font-mono">${plateNumber}</span>
+                        </div>
+                        ${camStr ? `<div class="text-[11px] text-slate-400"><i class="fa-solid fa-video mr-1.5 text-blue-400"></i>Camera: <span class="text-slate-200">${camStr}</span></div>` : ''}
+                        ${timeStr && timeStr !== '--:--:--' ? `<div class="text-[11px] text-slate-400"><i class="fa-regular fa-clock mr-1.5 text-amber-400"></i>Thời gian: <span class="text-slate-200 font-mono">${timeStr}</span></div>` : ''}
+                        <div class="text-[11px] text-slate-400 leading-relaxed pt-2 border-t border-slate-800">
+                            • Sự kiện sẽ được chuyển vào <strong>Thùng Rác</strong> và đồng bộ API xóa.<br>
+                            • Sau khi xóa, hệ thống sẽ <strong>tự động chuyển sang sự kiện tiếp theo</strong> trong danh sách.
+                        </div>
+                    </div>
+                `,
+                confirmText: 'Xóa & Chuyển Tiếp',
+                confirmType: 'danger'
+            });
+            if (!confirmed) return;
+
+            if (deleteBtn) {
+                deleteBtn.disabled = true;
+                deleteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Đang xóa...';
+            }
+
+            try {
+                const res = await fetch(`/api/v1/vehicle-logs/${logId}`, {
+                    method: 'DELETE',
+                    headers: typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' }
+                });
+
+                if (res.ok) {
+                    showToast(`Đã xóa sự kiện [${plateNumber}] và chuyển tiếp!`, "success");
+
+                    // Bỏ chọn nếu đang nằm trong selectedHistoryLogIds
+                    if (typeof selectedHistoryLogIds !== 'undefined' && selectedHistoryLogIds.has(logId)) {
+                        selectedHistoryLogIds.delete(logId);
+                        if (typeof updateHistoryBatchActionBar === 'function') updateHistoryBatchActionBar();
+                    }
+
+                    // Tải lại nền ngoài danh sách
+                    if (typeof loadRecentDashboardLogs === 'function') loadRecentDashboardLogs();
+                    if (typeof currentTab !== 'undefined' && currentTab === 'history' && typeof fetchHistoryLogs === 'function') {
+                        fetchHistoryLogs(currentHistoryPage || 1);
+                    }
+                    if (typeof updateTrashBadge === 'function') updateTrashBadge();
+
+                    // Xóa phần tử hiện tại khỏi danh sách duyệt currentEditList
+                    if (currentEditList && currentEditList.length > 0) {
+                        const foundIdx = currentEditList.findIndex(x => x.id === logId);
+                        const removeIdx = foundIdx !== -1 ? foundIdx : currentEditIndex;
+
+                        currentEditList.splice(removeIdx, 1);
+
+                        if (currentEditList.length === 0) {
+                            showToast("Đã duyệt hết danh sách sự kiện.", "info");
+                            closeEditLogModal();
+                            return;
+                        }
+
+                        // Nếu vừa xóa phần tử cuối cùng của mảng, lùi về bản ghi trước
+                        if (removeIdx >= currentEditList.length) {
+                            currentEditIndex = currentEditList.length - 1;
+                        } else {
+                            // removeIdx chính là phần tử kế tiếp vừa dồn lên vị trí này
+                            currentEditIndex = removeIdx;
+                        }
+
+                        // Chuyển sang sự kiện tiếp theo
+                        populateEditModalWithItem(currentEditList[currentEditIndex]);
+                    } else {
+                        closeEditLogModal();
+                    }
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast("Lỗi khi xóa: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi khi xóa: " + err, "error");
+            } finally {
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can mr-1"></i>Xóa';
+                }
+            }
+        }
+
         // Lắng nghe phím tắt điều hướng nhanh trong cửa sổ chỉnh sửa sự kiện:
-        // Alt + ← (Bản ghi trước), Alt + → (Bản ghi sau), Ctrl + Enter (Lưu & Tiếp)
+        // Alt + ← (Bản ghi trước), Alt + → (Bản ghi sau), Ctrl + Enter (Lưu & Tiếp), Alt + Delete (Xóa & Tiếp)
         document.addEventListener('keydown', function (e) {
             const confModal = document.getElementById('confirm-action-modal');
             if (confModal && !confModal.classList.contains('hidden')) {
@@ -7831,6 +7941,9 @@
                 } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                     e.preventDefault();
                     handleEditLogSaveAndNext();
+                } else if (e.altKey && (e.key === 'Delete' || e.key === 'Backspace')) {
+                    e.preventDefault();
+                    handleEditLogDelete();
                 }
             }
         });
