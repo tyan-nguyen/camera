@@ -143,6 +143,8 @@ class VehicleLogBase(BaseModel):
     is_edited: bool = False
     original_plate_number: Optional[str] = None
     original_vehicle_view: Optional[str] = None
+    original_image_full_path: Optional[str] = None
+    original_image_plate_path: Optional[str] = None
     updated_by: Optional[str] = None
     updated_at: Optional[datetime] = None
     is_deleted: bool = False
@@ -180,6 +182,16 @@ class VehicleLogUpdate(BaseModel):
 
 class BatchDeleteLogsRequest(BaseModel):
     log_ids: List[int]
+
+class CropBoxCoords(BaseModel):
+    x: float
+    y: float
+    width: float
+    height: float
+
+class RecaptureImageRequest(BaseModel):
+    full_image_base64: str
+    crop_box: Optional[CropBoxCoords] = None
 
 # ==========================================
 # 4. Device Token Schemas (FCM Push Notification)

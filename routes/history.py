@@ -1,15 +1,26 @@
+import os
 import json
+import base64
 import urllib.request
 import urllib.parse
 from typing import Optional
 from datetime import datetime
+import cv2
+import numpy as np
 from fastapi import APIRouter, Depends, Query, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
+from config import settings
 from database import get_db
 from models import VehicleLog, Camera, UserRoleEnum
-from schemas import PaginatedVehicleLogs, VehicleLogResponse, VehicleLogUpdate, BatchDeleteLogsRequest
+from schemas import (
+    PaginatedVehicleLogs,
+    VehicleLogResponse,
+    VehicleLogUpdate,
+    BatchDeleteLogsRequest,
+    RecaptureImageRequest,
+)
 from auth_utils import get_current_user, get_current_user_optional, require_roles
 from settings_manager import settings_manager
 
@@ -135,6 +146,8 @@ def search_vehicle_logs(
         res.camera_name = cam_dict.get(item.camera_id, f"Cam #{item.camera_id}")
         res.image_full_path = f"/static/captures/{item.image_full_path}"
         res.image_plate_path = f"/static/captures/{item.image_plate_path}"
+        res.original_image_full_path = f"/static/captures/{item.original_image_full_path}" if item.original_image_full_path else None
+        res.original_image_plate_path = f"/static/captures/{item.original_image_plate_path}" if item.original_image_plate_path else None
         res.video_path = f"/static/captures/{item.video_path}" if item.video_path else None
         response_items.append(res)
 
@@ -295,6 +308,8 @@ def update_vehicle_log(
     res.camera_name = cam.camera_name if cam else f"Cam #{log_item.camera_id}"
     res.image_full_path = f"/static/captures/{log_item.image_full_path}"
     res.image_plate_path = f"/static/captures/{log_item.image_plate_path}"
+    res.original_image_full_path = f"/static/captures/{log_item.original_image_full_path}" if log_item.original_image_full_path else None
+    res.original_image_plate_path = f"/static/captures/{log_item.original_image_plate_path}" if log_item.original_image_plate_path else None
     res.video_path = f"/static/captures/{log_item.video_path}" if log_item.video_path else None
 
     # Phát thông báo WebSocket tới tất cả client Web
@@ -322,6 +337,122 @@ def update_vehicle_log(
             }
         }
         websocket_manager.broadcast_sync(ws_payload)
+    except Exception:
+        pass
+
+    return res
+
+@router.post("/{log_id}/recapture-images", response_model=VehicleLogResponse)
+def recapture_vehicle_log_images(
+    log_id: int,
+    payload: RecaptureImageRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(admin_only)
+):
+    """
+    Chỉ Admin: Cập nhật lại ảnh toàn cảnh chụp từ clip 10s và ảnh crop khung bao xe thủ công.
+    Ảnh tự động chụp gốc ban đầu được giữ nguyên (không xóa) vào original_image_full_path / original_image_plate_path.
+    """
+    log_item = db.query(VehicleLog).filter(VehicleLog.id == log_id).first()
+    if not log_item:
+        raise HTTPException(status_code=404, detail="Không tìm thấy bản ghi nhận dạng.")
+
+    raw_b64 = (payload.full_image_base64 or "").strip()
+    if not raw_b64:
+        raise HTTPException(status_code=400, detail="Dữ liệu ảnh toàn cảnh không được để trống.")
+    if "," in raw_b64 and raw_b64.startswith("data:"):
+        raw_b64 = raw_b64.split(",", 1)[1]
+
+    try:
+        img_bytes = base64.b64decode(raw_b64)
+        np_arr = np.frombuffer(img_bytes, dtype=np.uint8)
+        full_img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh base64 không hợp lệ: {e}")
+
+    if full_img is None or full_img.size == 0:
+        raise HTTPException(status_code=400, detail="Không thể giải mã hình ảnh đã chụp.")
+
+    img_h, img_w = full_img.shape[:2]
+
+    # Cắt ảnh theo tọa độ crop chuẩn hóa (0..1), nếu không có hoặc quá nhỏ thì lấy toàn khung
+    crop_img = full_img
+    if payload.crop_box is not None:
+        cb = payload.crop_box
+        x1 = max(0, min(img_w - 1, int(round(cb.x * img_w))))
+        y1 = max(0, min(img_h - 1, int(round(cb.y * img_h))))
+        x2 = max(x1 + 1, min(img_w, int(round((cb.x + cb.width) * img_w))))
+        y2 = max(y1 + 1, min(img_h, int(round((cb.y + cb.height) * img_h))))
+        if (x2 - x1) >= 10 and (y2 - y1) >= 10:
+            crop_img = full_img[y1:y2, x1:x2]
+
+    # Xác định thư mục lưu (ưu tiên cùng thư mục với ảnh gốc của sự kiện)
+    rel_dir = ""
+    if log_item.image_full_path:
+        rel_dir = os.path.dirname(log_item.image_full_path.replace("\\", "/")).strip("/")
+    if not rel_dir:
+        dt_ref = log_item.detected_at or datetime.utcnow()
+        rel_dir = f"{dt_ref.strftime('%Y/%m/%d')}/cam_{log_item.camera_id}"
+
+    abs_dir = os.path.join(settings.CAPTURES_DIR, *rel_dir.split("/"))
+    os.makedirs(abs_dir, exist_ok=True)
+
+    ts_tag = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:19]
+    full_filename = f"recap_{log_id}_{ts_tag}_full.webp"
+    crop_filename = f"recap_{log_id}_{ts_tag}_crop.webp"
+
+    abs_full_path = os.path.join(abs_dir, full_filename)
+    abs_crop_path = os.path.join(abs_dir, crop_filename)
+
+    webp_quality = getattr(settings, "WEBP_QUALITY", 85)
+    ok_full = cv2.imwrite(abs_full_path, full_img, [cv2.IMWRITE_WEBP_QUALITY, webp_quality])
+    ok_crop = cv2.imwrite(abs_crop_path, crop_img, [cv2.IMWRITE_WEBP_QUALITY, webp_quality])
+    if not ok_full or not ok_crop:
+        raise HTTPException(status_code=500, detail="Không thể lưu file ảnh mới lên ổ đĩa.")
+
+    # Bảo toàn ảnh tự động chụp gốc (chỉ lưu vết lần đầu, tuyệt đối không xóa file cũ)
+    if not log_item.original_image_full_path:
+        log_item.original_image_full_path = log_item.image_full_path
+    if not log_item.original_image_plate_path:
+        log_item.original_image_plate_path = log_item.image_plate_path
+
+    log_item.image_full_path = f"{rel_dir}/{full_filename}"
+    log_item.image_plate_path = f"{rel_dir}/{crop_filename}"
+    log_item.is_edited = True
+    log_item.updated_at = datetime.utcnow()
+    log_item.updated_by = current_user.username if current_user else "admin"
+
+    db.commit()
+    db.refresh(log_item)
+
+    cam = db.query(Camera).filter(Camera.id == log_item.camera_id).first()
+    res = VehicleLogResponse.model_validate(log_item)
+    res.camera_name = cam.camera_name if cam else f"Cam #{log_item.camera_id}"
+    res.image_full_path = f"/static/captures/{log_item.image_full_path}"
+    res.image_plate_path = f"/static/captures/{log_item.image_plate_path}"
+    res.original_image_full_path = f"/static/captures/{log_item.original_image_full_path}" if log_item.original_image_full_path else None
+    res.original_image_plate_path = f"/static/captures/{log_item.original_image_plate_path}" if log_item.original_image_plate_path else None
+    res.video_path = f"/static/captures/{log_item.video_path}" if log_item.video_path else None
+
+    try:
+        websocket_manager.broadcast_sync({
+            "event": "vehicle_updated",
+            "data": {
+                "id": log_item.id,
+                "camera_id": log_item.camera_id,
+                "camera_name": res.camera_name,
+                "plate_number": log_item.plate_number,
+                "vehicle_view": log_item.vehicle_view,
+                "vehicle_type": log_item.vehicle_type,
+                "image_full_path": res.image_full_path,
+                "image_plate_path": res.image_plate_path,
+                "original_image_full_path": res.original_image_full_path,
+                "original_image_plate_path": res.original_image_plate_path,
+                "is_edited": True,
+                "updated_by": log_item.updated_by,
+                "detected_at": log_item.detected_at.strftime("%Y-%m-%d %H:%M:%S")
+            }
+        })
     except Exception:
         pass
 
@@ -616,6 +747,8 @@ def restore_vehicle_log(
     res.camera_name = cam.camera_name if cam else f"Cam #{log_item.camera_id}"
     res.image_full_path = f"/static/captures/{log_item.image_full_path}"
     res.image_plate_path = f"/static/captures/{log_item.image_plate_path}"
+    res.original_image_full_path = f"/static/captures/{log_item.original_image_full_path}" if log_item.original_image_full_path else None
+    res.original_image_plate_path = f"/static/captures/{log_item.original_image_plate_path}" if log_item.original_image_plate_path else None
     res.video_path = f"/static/captures/{log_item.video_path}" if log_item.video_path else None
 
     # Phát thông báo WebSocket vehicle_restored

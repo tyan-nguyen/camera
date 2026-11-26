@@ -137,6 +137,8 @@ def init_db():
                 ("is_edited", "BOOLEAN DEFAULT FALSE"),
                 ("original_plate_number", "VARCHAR(50) NULL"),
                 ("original_vehicle_view", "VARCHAR(20) NULL"),
+                ("original_image_full_path", "VARCHAR(500) NULL"),
+                ("original_image_plate_path", "VARCHAR(500) NULL"),
                 ("updated_by", "VARCHAR(100) NULL"),
                 ("updated_at", "DATETIME NULL"),
                 ("is_deleted", "BOOLEAN DEFAULT FALSE"),

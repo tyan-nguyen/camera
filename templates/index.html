@@ -2107,10 +2107,16 @@
                                 <span>Ảnh Cắt Bao Xe</span>
                             </span>
                         </div>
-                        <button type="button" onclick="zoomEditLogMainImage()" class="text-xs text-slate-400 hover:text-amber-400 transition-colors flex items-center space-x-1 py-0.5 px-2 rounded-lg hover:bg-slate-800/80">
-                            <i class="fa-solid fa-expand text-[11px]"></i>
-                            <span>Phóng to toàn màn hình</span>
-                        </button>
+                        <div class="flex items-center space-x-1.5">
+                            <button type="button" id="edit-log-view-original-btn" onclick="openOriginalImagesFromEditModal()" class="hidden text-[11px] text-cyan-300 hover:text-white bg-cyan-600/20 hover:bg-cyan-600/35 border border-cyan-500/35 transition-colors flex items-center space-x-1 py-0.5 px-2 rounded-lg font-medium" title="Xem lại ảnh tự động chụp ban đầu của AI trước khi chụp lại">
+                                <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
+                                <span>Xem ảnh gốc</span>
+                            </button>
+                            <button type="button" onclick="zoomEditLogMainImage()" class="text-xs text-slate-400 hover:text-amber-400 transition-colors flex items-center space-x-1 py-0.5 px-2 rounded-lg hover:bg-slate-800/80">
+                                <i class="fa-solid fa-expand text-[11px]"></i>
+                                <span>Phóng to toàn màn hình</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- ẢNH TO NHẤT Ở TRÊN (Click để phóng to toàn màn hình) -->
@@ -2297,10 +2303,37 @@
             </div>
 
             <!-- Video Player Display -->
-            <div class="relative w-full rounded-2xl overflow-hidden bg-black border border-slate-800 shadow-2xl flex items-center justify-center aspect-video max-h-[58vh]">
-                <video id="event-video-player" class="w-full h-full object-contain" controls autoplay loop playsinline preload="auto">
+            <div class="relative w-full rounded-2xl overflow-hidden bg-black border border-slate-800 shadow-2xl flex items-center justify-center aspect-video max-h-[54vh]">
+                <video id="event-video-player" crossorigin="anonymous" class="w-full h-full object-contain" controls autoplay loop playsinline preload="auto">
                     Trình duyệt của bạn không hỗ trợ thẻ video HTML5.
                 </video>
+            </div>
+
+            <!-- Admin Quick Edit Plate & Capture Frame Toolbar (Chỉ Admin) -->
+            <div id="event-video-admin-bar" class="hidden mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div class="flex items-center space-x-2 flex-1 min-w-0">
+                    <span class="text-xs font-semibold text-amber-300 whitespace-nowrap flex items-center gap-1.5">
+                        <i class="fa-solid fa-user-shield text-amber-400"></i>
+                        <span>Biển số:</span>
+                    </span>
+                    <input type="text" id="event-video-edit-plate" placeholder="Nhập biển số đúng (VD: 84A12345)"
+                        onkeydown="if(event.key === 'Enter'){ event.preventDefault(); savePlateFromEventVideoModal(); }"
+                        class="flex-1 min-w-[140px] bg-slate-950/90 border border-amber-500/40 rounded-lg px-3 py-1.5 text-sm font-mono font-bold text-amber-300 uppercase tracking-wider focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400">
+                </div>
+                <div class="flex items-center space-x-2 flex-shrink-0">
+                    <button type="button" id="event-video-save-plate-btn" onclick="savePlateFromEventVideoModal()"
+                        class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-amber-600/20 flex items-center space-x-1.5 transition-all"
+                        title="Lưu biển số mới và cập nhật danh sách / cửa sổ chỉnh sửa đang mở">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Lưu</span>
+                    </button>
+                    <button type="button" id="event-video-capture-btn" onclick="captureFrameFromEventVideo()"
+                        class="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-cyan-600/20 flex items-center space-x-1.5 transition-all"
+                        title="Chụp khung hình hiện tại của video làm ảnh toàn cảnh và cắt khung bao xe thủ công">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Chụp ảnh</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Player Controls & Secondary Info -->
@@ -2327,19 +2360,150 @@
             </div>
 
             <!-- Side-by-side Snapshot Cross-check Preview (Collapsible) -->
-            <div id="event-video-thumbs-row" class="mt-3 grid grid-cols-2 gap-3 pt-3 border-t border-slate-800">
-                <div class="flex items-center space-x-2.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
-                    <img id="event-video-thumb-crop" src="" alt="Biển số" class="h-10 w-24 object-contain rounded bg-slate-950 border border-slate-700 flex-shrink-0 cursor-zoom-in" onclick="openImageViewer(this.src, 'Ảnh Cắt Biển Số')">
-                    <div class="overflow-hidden">
-                        <div class="text-[11px] font-semibold text-amber-300 truncate">Ảnh Crop Biển Số</div>
-                        <div class="text-[10px] text-slate-400">Thời điểm AI nhận diện</div>
+            <div id="event-video-thumbs-row" class="mt-3 space-y-2 pt-3 border-t border-slate-800">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="flex items-center space-x-2.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <img id="event-video-thumb-crop" src="" alt="Biển số" class="h-10 w-24 object-contain rounded bg-slate-950 border border-slate-700 flex-shrink-0 cursor-zoom-in" onclick="openImageViewer(this.src, 'Ảnh Cắt Biển Số')">
+                        <div class="overflow-hidden">
+                            <div class="text-[11px] font-semibold text-amber-300 truncate">Ảnh Crop Xe</div>
+                            <div class="text-[10px] text-slate-400">Khung bao xe hiện tại</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <img id="event-video-thumb-full" src="" alt="Toàn cảnh" class="h-10 w-24 object-cover rounded bg-slate-950 border border-slate-700 flex-shrink-0 cursor-zoom-in" onclick="openImageViewer(this.src, 'Ảnh Toàn Cảnh')">
+                        <div class="overflow-hidden">
+                            <div class="text-[11px] font-semibold text-blue-300 truncate">Ảnh Toàn Cảnh</div>
+                            <div class="text-[10px] text-slate-400">Góc nhìn đầy đủ của camera</div>
+                        </div>
                     </div>
                 </div>
-                <div class="flex items-center space-x-2.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
-                    <img id="event-video-thumb-full" src="" alt="Toàn cảnh" class="h-10 w-24 object-cover rounded bg-slate-950 border border-slate-700 flex-shrink-0 cursor-zoom-in" onclick="openImageViewer(this.src, 'Ảnh Toàn Cảnh')">
-                    <div class="overflow-hidden">
-                        <div class="text-[11px] font-semibold text-blue-300 truncate">Ảnh Toàn Cảnh</div>
-                        <div class="text-[10px] text-slate-400">Góc nhìn đầy đủ của camera</div>
+                <div id="event-video-original-bar" class="hidden flex items-center justify-between px-3 py-1.5 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-[11px]">
+                    <span class="text-cyan-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>Ảnh sự kiện đã được chụp lại thủ công. Ảnh tự động chụp ban đầu vẫn được lưu trữ.</span>
+                    </span>
+                    <button type="button" onclick="openOriginalImagesFromVideoModal()" class="px-2.5 py-1 bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-200 rounded-md font-semibold whitespace-nowrap transition-all">
+                        Xem ảnh gốc
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL CHỤP ẢNH TOÀN CẢNH & CROP THỦ CÔNG (ADMIN) -->
+    <!-- ========================================== -->
+    <div id="event-frame-crop-modal" class="fixed inset-0 z-[55] hidden bg-black/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-5xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto max-h-[95vh] flex flex-col overflow-y-auto custom-scrollbar">
+            <button type="button" onclick="closeEventFrameCropModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1 z-10 transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex flex-wrap items-center gap-2.5 mb-3 pb-3 border-b border-slate-700/80 pr-8">
+                <div class="w-9 h-9 rounded-xl bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-crop-simple text-base"></i>
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="text-base sm:text-lg font-bold text-white leading-tight">Chụp Ảnh Toàn Cảnh & Cắt Khung Bao Xe Thủ Công</h3>
+                        <span id="crop-modal-plate-badge" class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">--</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Kéo chuột trên ảnh toàn cảnh để khoanh vùng bao xe (hoặc kéo góc / di chuyển khung) để tạo ảnh Crop chuẩn xác. Ảnh AI chụp cũ sẽ được giữ lại để đối chiếu.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                <!-- Cột Trái: Ảnh Toàn Cảnh Vừa Chụp + Canvas Crop -->
+                <div class="lg:col-span-8 flex flex-col space-y-2">
+                    <div class="flex items-center justify-between text-xs text-slate-300">
+                        <span class="font-semibold flex items-center gap-1.5">
+                            <i class="fa-solid fa-image text-blue-400"></i>
+                            <span>Ảnh Toàn Cảnh Vừa Chụp (Kéo để khoanh khung xe)</span>
+                        </span>
+                        <span id="crop-box-dims" class="font-mono text-[11px] text-amber-300 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">-- × -- px</span>
+                    </div>
+                    <div id="event-crop-canvas-wrapper" class="relative w-full bg-slate-950 rounded-xl overflow-hidden border border-slate-700/80 flex items-center justify-center select-none shadow-inner" style="min-height: 260px;">
+                        <canvas id="event-crop-canvas" class="max-w-full max-h-[58vh] block cursor-crosshair touch-none"></canvas>
+                    </div>
+                </div>
+
+                <!-- Cột Phải: Preview Ảnh Crop & Công Cụ -->
+                <div class="lg:col-span-4 flex flex-col space-y-3 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+                    <div class="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-scissors"></i>
+                        <span>Xem Trước Ảnh Crop Khung Xe</span>
+                    </div>
+                    <div class="w-full aspect-[4/3] bg-slate-950 rounded-xl border border-slate-700/80 overflow-hidden flex items-center justify-center p-1">
+                        <canvas id="event-crop-preview-canvas" class="max-w-full max-h-full object-contain"></canvas>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="resetEventCropBox('default')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition-all">
+                            <i class="fa-solid fa-rotate-left mr-1 text-amber-400"></i>Khung giữa
+                        </button>
+                        <button type="button" onclick="resetEventCropBox('full')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition-all">
+                            <i class="fa-solid fa-expand mr-1 text-cyan-400"></i>Toàn ảnh
+                        </button>
+                    </div>
+
+                    <div class="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/25 text-[11px] text-blue-200 leading-relaxed">
+                        <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i>
+                        Khi bấm <strong>Lưu Ảnh Mới</strong>, hệ thống sẽ cập nhật cả <strong>Ảnh Toàn Cảnh</strong> và <strong>Ảnh Crop</strong> mới. Ảnh tự động chụp cũ vẫn được giữ nguyên trong mục <em>Xem ảnh gốc</em>.
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-800">
+                        <button type="button" onclick="closeEventFrameCropModal()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl transition-colors">
+                            Hủy
+                        </button>
+                        <button type="button" id="btn-save-recaptured-images" onclick="saveRecapturedEventImages()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/25 flex items-center space-x-1.5 transition-all">
+                            <i class="fa-solid fa-check"></i>
+                            <span>Lưu Ảnh Mới</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL XEM LẠI ẢNH GỐC AI TỰ ĐỘNG CHỤP -->
+    <!-- ========================================== -->
+    <div id="original-images-modal" class="fixed inset-0 z-[58] hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div class="glass-panel max-w-4xl w-full rounded-2xl p-4 sm:p-6 relative border border-slate-700 shadow-2xl my-auto max-h-[92vh] flex flex-col overflow-y-auto custom-scrollbar">
+            <button type="button" onclick="closeOriginalImagesModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl p-1 z-10 transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-700/80 pr-8">
+                <div class="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-clock-rotate-left text-base"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-base sm:text-lg font-bold text-white leading-tight">Ảnh Gốc AI Tự Động Chụp Ban Đầu</h3>
+                        <span id="original-img-plate-badge" class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">--</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">Ảnh gốc được hệ thống tự động lưu giữ nguyên vẹn trước khi Admin chụp lại và crop thủ công.</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2">
+                    <div class="text-xs font-semibold text-amber-300 flex items-center justify-between">
+                        <span><i class="fa-solid fa-crop-simple mr-1.5"></i>Ảnh Crop Gốc (AI chụp)</span>
+                        <span class="text-[10px] text-slate-400">Click ảnh để phóng to</span>
+                    </div>
+                    <div class="w-full h-56 sm:h-64 bg-slate-950 rounded-lg border border-slate-800 overflow-hidden flex items-center justify-center">
+                        <img id="original-img-crop" src="" alt="Ảnh Crop Gốc" class="w-full h-full object-contain cursor-zoom-in" onclick="if(this.src) openImageViewer(this.src, 'Ảnh Crop Gốc (AI Tự Động Chụp)')">
+                    </div>
+                </div>
+                <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex flex-col space-y-2">
+                    <div class="text-xs font-semibold text-blue-300 flex items-center justify-between">
+                        <span><i class="fa-solid fa-camera mr-1.5"></i>Ảnh Toàn Cảnh Gốc (AI chụp)</span>
+                        <span class="text-[10px] text-slate-400">Click ảnh để phóng to</span>
+                    </div>
+                    <div class="w-full h-56 sm:h-64 bg-slate-950 rounded-lg border border-slate-800 overflow-hidden flex items-center justify-center">
+                        <img id="original-img-full" src="" alt="Ảnh Toàn Cảnh Gốc" class="w-full h-full object-contain cursor-zoom-in" onclick="if(this.src) openImageViewer(this.src, 'Ảnh Toàn Cảnh Gốc (AI Tự Động Chụp)')">
                     </div>
                 </div>
             </div>
@@ -5949,7 +6113,7 @@
                         </td>
                         <td class="p-3 text-right space-x-1 whitespace-nowrap">
                             ${item.video_path ? `
-                                <button onclick="openEventVideoModal('${item.video_path}', '${item.plate_number}', '${item.detected_at}', '${(item.camera_name || '').replace(/'/g, "\\'")}', '${item.image_full_path}', '${item.image_plate_path}')" class="px-2.5 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all" title="Xem clip 10s sự kiện (-5s đến +5s)">
+                                <button onclick="openEventVideoModal('${item.video_path}', '${item.plate_number}', '${item.detected_at}', '${(item.camera_name || '').replace(/'/g, "\\'")}', '${item.image_full_path}', '${item.image_plate_path}', ${item.id}, '${item.original_image_full_path || ''}', '${item.original_image_plate_path || ''}')" class="px-2.5 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all" title="Xem clip 10s sự kiện (-5s đến +5s)">
                                     <i class="fa-solid fa-circle-play mr-1 text-blue-400"></i>Clip 10s
                                 </button>
                             ` : ''}
@@ -6146,7 +6310,7 @@
                         <td class="p-2.5 sm:p-3"><img src="${d.image_plate_path}" onclick="openImageViewer('${d.image_plate_path}', 'Biển số: ${d.plate_number}')" class="h-8 rounded border border-slate-700 bg-slate-900 cursor-zoom-in hover:scale-110 transition-transform"></td>
                         <td class="p-2.5 sm:p-3 text-right whitespace-nowrap space-x-1" id="dash-row-actions-${d.id}">
                             ${d.video_path ? `
-                                <button onclick="openEventVideoModal('${d.video_path}', '${d.plate_number}', '${d.detected_at}', '${(d.camera_name || '').replace(/'/g, "\\'")}', '${d.image_full_path}', '${d.image_plate_path}')" class="btn-event-video px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all" title="Xem clip 10s sự kiện (-5s đến +5s)">
+                                <button onclick="openEventVideoModal('${d.video_path}', '${d.plate_number}', '${d.detected_at}', '${(d.camera_name || '').replace(/'/g, "\\'")}', '${d.image_full_path}', '${d.image_plate_path}', ${d.id}, '${d.original_image_full_path || ''}', '${d.original_image_plate_path || ''}')" class="btn-event-video px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all" title="Xem clip 10s sự kiện (-5s đến +5s)">
                                     <i class="fa-solid fa-circle-play mr-1 text-blue-400"></i>Clip 10s
                                 </button>
                             ` : ''}
@@ -7152,7 +7316,8 @@
                     currentModalEvent.detectedAt,
                     currentModalEvent.cameraName || '',
                     currentModalEvent.fullPath,
-                    currentModalEvent.platePath
+                    currentModalEvent.platePath,
+                    currentModalEvent.logId || null
                 );
             } else {
                 showToast("Sự kiện này không có video clip 10s.", "info");
@@ -7184,12 +7349,163 @@
             document.getElementById('image-viewer-modal').classList.add('hidden');
         }
 
-        /* --- EVENT VIDEO PLAYER MODAL (-5s to +5s) --- */
-        function openEventVideoModal(videoUrl, plateNumber, detectedAt, camName, fullImg, plateImg) {
+        /* --- EVENT VIDEO PLAYER MODAL (-5s to +5s) & ADMIN RECAPTURE / CROP --- */
+        let currentEventVideoContext = {
+            logId: null,
+            videoUrl: '',
+            plateNumber: '',
+            detectedAt: '',
+            camName: '',
+            fullImg: '',
+            plateImg: '',
+            origFullImg: '',
+            origPlateImg: ''
+        };
+
+        let eventCropState = {
+            logId: null,
+            plateNumber: '',
+            dataUrl: '',
+            img: null,
+            // Normalized crop box [0..1]
+            box: { x: 0.2, y: 0.2, width: 0.6, height: 0.6 },
+            mode: null, // 'draw', 'move', 'nw', 'ne', 'sw', 'se'
+            startX: 0,
+            startY: 0,
+            origBox: null,
+            eventsBound: false
+        };
+
+        function findLogRecordInMemory(logId) {
+            const numId = parseInt(logId, 10);
+            if (!numId) return null;
+            if (typeof currentEditList !== 'undefined' && Array.isArray(currentEditList)) {
+                const found = currentEditList.find(x => x.id === numId);
+                if (found) return found;
+            }
+            if (typeof currentHistoryLogs !== 'undefined' && Array.isArray(currentHistoryLogs)) {
+                const found = currentHistoryLogs.find(x => x.id === numId);
+                if (found) return found;
+            }
+            if (typeof currentDashboardLogs !== 'undefined' && Array.isArray(currentDashboardLogs)) {
+                const found = currentDashboardLogs.find(x => x.id === numId);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        function syncUpdatedLogAcrossUi(updated) {
+            if (!updated || !updated.id) return;
+            const numId = parseInt(updated.id, 10);
+
+            const patchRecord = (rec) => {
+                if (!rec) return;
+                if (updated.plate_number !== undefined) rec.plate_number = updated.plate_number;
+                if (updated.vehicle_view !== undefined) rec.vehicle_view = updated.vehicle_view;
+                if (updated.vehicle_type !== undefined) rec.vehicle_type = updated.vehicle_type;
+                if (updated.summary !== undefined) rec.summary = updated.summary;
+                if (updated.vehicle_classification !== undefined) rec.vehicle_classification = updated.vehicle_classification;
+                if (updated.action_status !== undefined) rec.action_status = updated.action_status;
+                if (updated.sync_status !== undefined) rec.sync_status = updated.sync_status;
+                if (updated.sync_error !== undefined) rec.sync_error = updated.sync_error;
+                if (updated.image_full_path) rec.image_full_path = updated.image_full_path;
+                if (updated.image_plate_path) rec.image_plate_path = updated.image_plate_path;
+                if (updated.original_image_full_path !== undefined) rec.original_image_full_path = updated.original_image_full_path;
+                if (updated.original_image_plate_path !== undefined) rec.original_image_plate_path = updated.original_image_plate_path;
+                rec.is_edited = true;
+            };
+
+            if (typeof currentEditList !== 'undefined' && Array.isArray(currentEditList)) {
+                patchRecord(currentEditList.find(x => x.id === numId));
+            }
+            if (typeof currentHistoryLogs !== 'undefined' && Array.isArray(currentHistoryLogs)) {
+                patchRecord(currentHistoryLogs.find(x => x.id === numId));
+            }
+            if (typeof currentDashboardLogs !== 'undefined' && Array.isArray(currentDashboardLogs)) {
+                patchRecord(currentDashboardLogs.find(x => x.id === numId));
+            }
+
+            // 1. Cập nhật Popup Video 10s nếu đang mở đúng sự kiện này
+            if (currentEventVideoContext && currentEventVideoContext.logId === numId) {
+                if (updated.plate_number) currentEventVideoContext.plateNumber = updated.plate_number;
+                if (updated.image_full_path) currentEventVideoContext.fullImg = updated.image_full_path;
+                if (updated.image_plate_path) currentEventVideoContext.plateImg = updated.image_plate_path;
+                if (updated.original_image_full_path) currentEventVideoContext.origFullImg = updated.original_image_full_path;
+                if (updated.original_image_plate_path) currentEventVideoContext.origPlateImg = updated.original_image_plate_path;
+
+                const plateBadge = document.getElementById('event-video-plate-badge');
+                const plateInput = document.getElementById('event-video-edit-plate');
+                const downloadBtn = document.getElementById('event-video-download-btn');
+                const thumbCrop = document.getElementById('event-video-thumb-crop');
+                const thumbFull = document.getElementById('event-video-thumb-full');
+                const thumbsRow = document.getElementById('event-video-thumbs-row');
+                const origBar = document.getElementById('event-video-original-bar');
+
+                if (plateBadge && updated.plate_number) plateBadge.innerText = updated.plate_number;
+                if (plateInput && updated.plate_number) plateInput.value = updated.plate_number;
+                if (downloadBtn && updated.plate_number) downloadBtn.download = `${updated.plate_number}_event_clip.mp4`;
+                if (thumbCrop && currentEventVideoContext.plateImg) {
+                    thumbCrop.src = currentEventVideoContext.plateImg;
+                    thumbCrop.style.display = 'block';
+                }
+                if (thumbFull && currentEventVideoContext.fullImg) {
+                    thumbFull.src = currentEventVideoContext.fullImg;
+                    thumbFull.style.display = 'block';
+                }
+                if (thumbsRow && (currentEventVideoContext.plateImg || currentEventVideoContext.fullImg)) {
+                    thumbsRow.style.display = 'block';
+                }
+                if (origBar) {
+                    origBar.classList.toggle('hidden', !(currentEventVideoContext.origFullImg || currentEventVideoContext.origPlateImg));
+                }
+            }
+
+            // 2. Cập nhật Popup Edit (#edit-log-modal) nếu đang mở đúng sự kiện này
+            const editModal = document.getElementById('edit-log-modal');
+            const editIdEl = document.getElementById('edit-log-id');
+            if (editModal && !editModal.classList.contains('hidden') && editIdEl && parseInt(editIdEl.value, 10) === numId) {
+                const editIdx = (typeof currentEditList !== 'undefined' && Array.isArray(currentEditList))
+                    ? currentEditList.findIndex(x => x.id === numId) : -1;
+                if (editIdx !== -1 && typeof populateEditModalWithItem === 'function') {
+                    populateEditModalWithItem(currentEditList[editIdx]);
+                }
+            }
+
+            // 3. Tải lại danh sách Dashboard & Lịch sử ngoài nền
+            if (typeof loadRecentDashboardLogs === 'function') loadRecentDashboardLogs();
+            if (typeof currentTab !== 'undefined' && currentTab === 'history' && typeof fetchHistoryLogs === 'function') {
+                fetchHistoryLogs(currentHistoryPage || 1);
+            }
+        }
+
+        function openEventVideoModal(videoUrl, plateNumber, detectedAt, camName, fullImg, plateImg, logId = null, origFullImg = '', origPlateImg = '') {
             if (!videoUrl) {
                 showToast("Video clip sự kiện chưa hoàn tất hoặc không khả dụng.", "warning");
                 return;
             }
+
+            const numericLogId = logId ? parseInt(logId, 10) : null;
+            const memRec = numericLogId ? findLogRecordInMemory(numericLogId) : null;
+
+            const resolvedPlate = (memRec && memRec.plate_number) ? memRec.plate_number : (plateNumber || 'UNKNOWN');
+            const resolvedTime = detectedAt || (memRec ? memRec.detected_at : '') || '';
+            const resolvedCam = camName || (memRec ? memRec.camera_name : '') || 'Camera';
+            const resolvedFull = (memRec && memRec.image_full_path) ? memRec.image_full_path : (fullImg || '');
+            const resolvedCrop = (memRec && memRec.image_plate_path) ? memRec.image_plate_path : (plateImg || '');
+            const resolvedOrigFull = origFullImg || (memRec && memRec.original_image_full_path) || '';
+            const resolvedOrigPlate = origPlateImg || (memRec && memRec.original_image_plate_path) || '';
+
+            currentEventVideoContext = {
+                logId: numericLogId,
+                videoUrl,
+                plateNumber: resolvedPlate,
+                detectedAt: resolvedTime,
+                camName: resolvedCam,
+                fullImg: resolvedFull,
+                plateImg: resolvedCrop,
+                origFullImg: resolvedOrigFull,
+                origPlateImg: resolvedOrigPlate
+            };
 
             const modal = document.getElementById('event-video-modal');
             const player = document.getElementById('event-video-player');
@@ -7200,31 +7516,49 @@
             const thumbCrop = document.getElementById('event-video-thumb-crop');
             const thumbFull = document.getElementById('event-video-thumb-full');
             const thumbsRow = document.getElementById('event-video-thumbs-row');
+            const adminBar = document.getElementById('event-video-admin-bar');
+            const editPlateInput = document.getElementById('event-video-edit-plate');
+            const origBar = document.getElementById('event-video-original-bar');
 
-            if (plateBadge) plateBadge.innerText = plateNumber || 'UNKNOWN';
-            if (timeEl) timeEl.innerText = detectedAt || '';
-            if (camEl) camEl.innerText = camName || 'Camera';
+            if (plateBadge) plateBadge.innerText = resolvedPlate;
+            if (timeEl) timeEl.innerText = resolvedTime;
+            if (camEl) camEl.innerText = resolvedCam;
             if (downloadBtn) {
                 downloadBtn.href = videoUrl;
-                downloadBtn.download = `${plateNumber || 'vehicle'}_event_clip.mp4`;
+                downloadBtn.download = `${resolvedPlate || 'vehicle'}_event_clip.mp4`;
             }
 
-            if (thumbCrop && plateImg) {
-                thumbCrop.src = plateImg;
+            // Phân quyền Admin: chỉ tài khoản admin mới thấy form sửa biển số, nút Lưu và nút Chụp ảnh
+            const isAdmin = typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'admin';
+            if (adminBar) {
+                if (isAdmin && numericLogId) {
+                    adminBar.classList.remove('hidden');
+                    if (editPlateInput) editPlateInput.value = resolvedPlate;
+                } else {
+                    adminBar.classList.add('hidden');
+                }
+            }
+
+            if (thumbCrop && resolvedCrop) {
+                thumbCrop.src = resolvedCrop;
                 thumbCrop.style.display = 'block';
             } else if (thumbCrop) {
                 thumbCrop.style.display = 'none';
             }
 
-            if (thumbFull && fullImg) {
-                thumbFull.src = fullImg;
+            if (thumbFull && resolvedFull) {
+                thumbFull.src = resolvedFull;
                 thumbFull.style.display = 'block';
             } else if (thumbFull) {
                 thumbFull.style.display = 'none';
             }
 
             if (thumbsRow) {
-                thumbsRow.style.display = (plateImg || fullImg) ? 'grid' : 'none';
+                thumbsRow.style.display = (resolvedCrop || resolvedFull) ? 'block' : 'none';
+            }
+
+            if (origBar) {
+                origBar.classList.toggle('hidden', !(resolvedOrigFull || resolvedOrigPlate));
             }
 
             if (player) {
@@ -7249,6 +7583,381 @@
                 player.src = '';
             }
             if (modal) modal.classList.add('hidden');
+        }
+
+        async function savePlateFromEventVideoModal() {
+            const isAdmin = typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'admin';
+            if (!isAdmin) {
+                showToast("Chỉ tài khoản Admin mới có quyền chỉnh sửa tại đây.", "error");
+                return;
+            }
+            const logId = currentEventVideoContext.logId;
+            if (!logId) {
+                showToast("Không xác định được mã sự kiện để lưu.", "error");
+                return;
+            }
+            const inputEl = document.getElementById('event-video-edit-plate');
+            const saveBtn = document.getElementById('event-video-save-plate-btn');
+            const newPlate = inputEl ? inputEl.value.trim().toUpperCase() : '';
+            if (!newPlate) {
+                showToast("Biển số xe không được để trống.", "warning");
+                if (inputEl) inputEl.focus();
+                return;
+            }
+
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang lưu...</span>';
+            }
+
+            try {
+                const res = await fetch(`/api/v1/vehicle-logs/${logId}`, {
+                    method: 'PUT',
+                    headers: typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plate_number: newPlate })
+                });
+                if (res.ok) {
+                    const updated = await res.json();
+                    syncUpdatedLogAcrossUi(updated);
+                    showToast(`Đã cập nhật biển số sự kiện #${updated.id} thành [${updated.plate_number}]!`, "success", 4000);
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast("Lỗi khi lưu biển số: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối: " + err, "error");
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i><span>Lưu</span>';
+                }
+            }
+        }
+
+        function captureFrameFromEventVideo() {
+            const isAdmin = typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'admin';
+            if (!isAdmin) {
+                showToast("Chỉ tài khoản Admin mới có quyền chụp lại ảnh sự kiện.", "error");
+                return;
+            }
+            const logId = currentEventVideoContext.logId;
+            if (!logId) {
+                showToast("Không xác định được mã sự kiện để cập nhật ảnh.", "error");
+                return;
+            }
+            const player = document.getElementById('event-video-player');
+            if (!player || !player.videoWidth || !player.videoHeight) {
+                showToast("Video chưa tải xong khung hình. Vui lòng chờ giây lát và thử lại.", "warning");
+                return;
+            }
+
+            player.pause();
+
+            try {
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = player.videoWidth;
+                offCanvas.height = player.videoHeight;
+                const ctx = offCanvas.getContext('2d');
+                ctx.drawImage(player, 0, 0, offCanvas.width, offCanvas.height);
+                const dataUrl = offCanvas.toDataURL('image/jpeg', 0.95);
+
+                const img = new Image();
+                img.onload = () => {
+                    eventCropState.logId = logId;
+                    eventCropState.plateNumber = currentEventVideoContext.plateNumber || '';
+                    eventCropState.dataUrl = dataUrl;
+                    eventCropState.img = img;
+                    eventCropState.box = { x: 0.2, y: 0.2, width: 0.6, height: 0.6 };
+                    eventCropState.mode = null;
+
+                    const badge = document.getElementById('crop-modal-plate-badge');
+                    if (badge) badge.innerText = eventCropState.plateNumber || `#${logId}`;
+
+                    const cropModal = document.getElementById('event-frame-crop-modal');
+                    if (cropModal) cropModal.classList.remove('hidden');
+
+                    setupEventCropCanvas();
+                };
+                img.src = dataUrl;
+            } catch (err) {
+                showToast("Không thể chụp khung hình từ video: " + err, "error");
+            }
+        }
+
+        function setupEventCropCanvas() {
+            const canvas = document.getElementById('event-crop-canvas');
+            const img = eventCropState.img;
+            if (!canvas || !img) return;
+
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+
+            if (!eventCropState.eventsBound) {
+                bindEventCropCanvasListeners(canvas);
+                eventCropState.eventsBound = true;
+            }
+            drawEventCropCanvas();
+        }
+
+        function getCropCanvasPoint(canvas, e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+            const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+            const nx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            const ny = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+            return { x: nx, y: ny };
+        }
+
+        function detectCropHitMode(pt, box) {
+            const tol = 0.03;
+            const x1 = box.x, y1 = box.y, x2 = box.x + box.width, y2 = box.y + box.height;
+            if (Math.hypot(pt.x - x1, pt.y - y1) <= tol) return 'nw';
+            if (Math.hypot(pt.x - x2, pt.y - y1) <= tol) return 'ne';
+            if (Math.hypot(pt.x - x1, pt.y - y2) <= tol) return 'sw';
+            if (Math.hypot(pt.x - x2, pt.y - y2) <= tol) return 'se';
+            if (pt.x >= x1 && pt.x <= x2 && pt.y >= y1 && pt.y <= y2) return 'move';
+            return 'draw';
+        }
+
+        function bindEventCropCanvasListeners(canvas) {
+            const onDown = (e) => {
+                if (!eventCropState.img) return;
+                e.preventDefault();
+                const pt = getCropCanvasPoint(canvas, e);
+                const mode = detectCropHitMode(pt, eventCropState.box);
+                eventCropState.mode = mode;
+                eventCropState.startX = pt.x;
+                eventCropState.startY = pt.y;
+                eventCropState.origBox = { ...eventCropState.box };
+                if (mode === 'draw') {
+                    eventCropState.box = { x: pt.x, y: pt.y, width: 0.01, height: 0.01 };
+                    drawEventCropCanvas();
+                }
+            };
+
+            const onMove = (e) => {
+                if (!eventCropState.img) return;
+                const pt = getCropCanvasPoint(canvas, e);
+
+                if (!eventCropState.mode) {
+                    const hoverMode = detectCropHitMode(pt, eventCropState.box);
+                    if (hoverMode === 'nw' || hoverMode === 'se') canvas.style.cursor = 'nwse-resize';
+                    else if (hoverMode === 'ne' || hoverMode === 'sw') canvas.style.cursor = 'nesw-resize';
+                    else if (hoverMode === 'move') canvas.style.cursor = 'move';
+                    else canvas.style.cursor = 'crosshair';
+                    return;
+                }
+
+                e.preventDefault();
+                const minSize = 0.03;
+                const ob = eventCropState.origBox;
+                const dx = pt.x - eventCropState.startX;
+                const dy = pt.y - eventCropState.startY;
+
+                if (eventCropState.mode === 'draw') {
+                    const x = Math.min(eventCropState.startX, pt.x);
+                    const y = Math.min(eventCropState.startY, pt.y);
+                    const w = Math.max(minSize, Math.abs(pt.x - eventCropState.startX));
+                    const h = Math.max(minSize, Math.abs(pt.y - eventCropState.startY));
+                    eventCropState.box = {
+                        x: Math.min(x, 1 - minSize),
+                        y: Math.min(y, 1 - minSize),
+                        width: Math.min(w, 1 - x),
+                        height: Math.min(h, 1 - y)
+                    };
+                } else if (eventCropState.mode === 'move') {
+                    const nx = Math.max(0, Math.min(1 - ob.width, ob.x + dx));
+                    const ny = Math.max(0, Math.min(1 - ob.height, ob.y + dy));
+                    eventCropState.box = { x: nx, y: ny, width: ob.width, height: ob.height };
+                } else {
+                    let x1 = ob.x, y1 = ob.y, x2 = ob.x + ob.width, y2 = ob.y + ob.height;
+                    if (eventCropState.mode === 'nw') { x1 = Math.min(x2 - minSize, Math.max(0, pt.x)); y1 = Math.min(y2 - minSize, Math.max(0, pt.y)); }
+                    if (eventCropState.mode === 'ne') { x2 = Math.max(x1 + minSize, Math.min(1, pt.x)); y1 = Math.min(y2 - minSize, Math.max(0, pt.y)); }
+                    if (eventCropState.mode === 'sw') { x1 = Math.min(x2 - minSize, Math.max(0, pt.x)); y2 = Math.max(y1 + minSize, Math.min(1, pt.y)); }
+                    if (eventCropState.mode === 'se') { x2 = Math.max(x1 + minSize, Math.min(1, pt.x)); y2 = Math.max(y1 + minSize, Math.min(1, pt.y)); }
+                    eventCropState.box = { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+                }
+                drawEventCropCanvas();
+            };
+
+            const onUp = () => {
+                eventCropState.mode = null;
+            };
+
+            canvas.addEventListener('mousedown', onDown);
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+
+            canvas.addEventListener('touchstart', onDown, { passive: false });
+            window.addEventListener('touchmove', onMove, { passive: false });
+            window.addEventListener('touchend', onUp);
+        }
+
+        function drawEventCropCanvas() {
+            const canvas = document.getElementById('event-crop-canvas');
+            const previewCanvas = document.getElementById('event-crop-preview-canvas');
+            const dimsEl = document.getElementById('crop-box-dims');
+            const img = eventCropState.img;
+            if (!canvas || !img) return;
+
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width;
+            const H = canvas.height;
+
+            ctx.clearRect(0, 0, W, H);
+            ctx.drawImage(img, 0, 0, W, H);
+
+            const bx = Math.round(eventCropState.box.x * W);
+            const by = Math.round(eventCropState.box.y * H);
+            const bw = Math.max(10, Math.round(eventCropState.box.width * W));
+            const bh = Math.max(10, Math.round(eventCropState.box.height * H));
+
+            // Lớp phủ tối bên ngoài khung crop
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.58)';
+            ctx.beginPath();
+            ctx.rect(0, 0, W, H);
+            ctx.rect(bx, by, bw, bh);
+            ctx.fill('evenodd');
+            ctx.restore();
+
+            // Khung viền vàng nổi bật + lưới 3x3 hỗ trợ căn chỉnh
+            const lw = Math.max(2, Math.round(W / 320));
+            ctx.save();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = lw;
+            ctx.strokeRect(bx, by, bw, bh);
+
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+            ctx.lineWidth = Math.max(1, Math.round(lw / 2));
+            ctx.setLineDash([6, 6]);
+            ctx.beginPath();
+            ctx.moveTo(bx + bw / 3, by); ctx.lineTo(bx + bw / 3, by + bh);
+            ctx.moveTo(bx + (2 * bw) / 3, by); ctx.lineTo(bx + (2 * bw) / 3, by + bh);
+            ctx.moveTo(bx, by + bh / 3); ctx.lineTo(bx + bw, by + bh / 3);
+            ctx.moveTo(bx, by + (2 * bh) / 3); ctx.lineTo(bx + bw, by + (2 * bh) / 3);
+            ctx.stroke();
+            ctx.restore();
+
+            // 4 nút kéo ở 4 góc
+            const hs = Math.max(10, Math.round(W / 75));
+            ctx.fillStyle = '#fbbf24';
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = Math.max(2, Math.round(lw / 1.5));
+            [[bx, by], [bx + bw, by], [bx, by + bh], [bx + bw, by + bh]].forEach(([hx, hy]) => {
+                ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
+                ctx.strokeRect(hx - hs / 2, hy - hs / 2, hs, hs);
+            });
+
+            if (dimsEl) dimsEl.innerText = `${bw} × ${bh} px`;
+
+            // Vẽ xem trước ảnh Crop
+            if (previewCanvas) {
+                previewCanvas.width = bw;
+                previewCanvas.height = bh;
+                const pctx = previewCanvas.getContext('2d');
+                pctx.clearRect(0, 0, bw, bh);
+                pctx.drawImage(img, bx, by, bw, bh, 0, 0, bw, bh);
+            }
+        }
+
+        function resetEventCropBox(preset) {
+            if (preset === 'full') {
+                eventCropState.box = { x: 0, y: 0, width: 1, height: 1 };
+            } else {
+                eventCropState.box = { x: 0.2, y: 0.2, width: 0.6, height: 0.6 };
+            }
+            drawEventCropCanvas();
+        }
+
+        function closeEventFrameCropModal() {
+            const cropModal = document.getElementById('event-frame-crop-modal');
+            if (cropModal) cropModal.classList.add('hidden');
+            eventCropState.mode = null;
+        }
+
+        async function saveRecapturedEventImages() {
+            const isAdmin = typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'admin';
+            if (!isAdmin) {
+                showToast("Chỉ tài khoản Admin mới có quyền lưu ảnh chụp lại.", "error");
+                return;
+            }
+            if (!eventCropState.logId || !eventCropState.dataUrl) {
+                showToast("Thiếu dữ liệu ảnh chụp để lưu.", "error");
+                return;
+            }
+
+            const btn = document.getElementById('btn-save-recaptured-images');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Đang lưu...</span>';
+            }
+
+            try {
+                const res = await fetch(`/api/v1/vehicle-logs/${eventCropState.logId}/recapture-images`, {
+                    method: 'POST',
+                    headers: typeof getAuthHeaders === 'function' ? getAuthHeaders() : { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        full_image_base64: eventCropState.dataUrl,
+                        crop_box: {
+                            x: eventCropState.box.x,
+                            y: eventCropState.box.y,
+                            width: eventCropState.box.width,
+                            height: eventCropState.box.height
+                        }
+                    })
+                });
+                if (res.ok) {
+                    const updated = await res.json();
+                    closeEventFrameCropModal();
+                    syncUpdatedLogAcrossUi(updated);
+                    showToast(`Đã cập nhật ảnh toàn cảnh & ảnh crop mới cho xe [${updated.plate_number}]! Ảnh gốc AI vẫn được lưu giữ.`, "success", 4500);
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast("Lỗi khi lưu ảnh mới: " + (err.detail || JSON.stringify(err)), "error");
+                }
+            } catch (err) {
+                showToast("Lỗi kết nối khi lưu ảnh: " + err, "error");
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i><span>Lưu Ảnh Mới</span>';
+                }
+            }
+        }
+
+        function openOriginalImagesModal(plateNumber, origCropUrl, origFullUrl) {
+            if (!origCropUrl && !origFullUrl) {
+                showToast("Sự kiện này chưa có ảnh gốc thay thế.", "info");
+                return;
+            }
+            const badge = document.getElementById('original-img-plate-badge');
+            const cropImg = document.getElementById('original-img-crop');
+            const fullImg = document.getElementById('original-img-full');
+            if (badge) badge.innerText = plateNumber || '--';
+            if (cropImg) cropImg.src = origCropUrl || origFullUrl || '';
+            if (fullImg) fullImg.src = origFullUrl || origCropUrl || '';
+            const modal = document.getElementById('original-images-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeOriginalImagesModal() {
+            const modal = document.getElementById('original-images-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function openOriginalImagesFromEditModal() {
+            if (typeof currentEditList === 'undefined' || currentEditIndex < 0 || !currentEditList[currentEditIndex]) return;
+            const item = currentEditList[currentEditIndex];
+            openOriginalImagesModal(item.plate_number, item.original_image_plate_path, item.original_image_full_path);
+        }
+
+        function openOriginalImagesFromVideoModal() {
+            openOriginalImagesModal(
+                currentEventVideoContext.plateNumber,
+                currentEventVideoContext.origPlateImg,
+                currentEventVideoContext.origFullImg
+            );
         }
 
         function setEventVideoSpeed(speed) {
@@ -7443,6 +8152,16 @@
             // Cập nhật khung xem ảnh lớn
             switchEditLogImage(currentEditActiveType || 'crop');
 
+            // Hiển thị nút Xem ảnh gốc AI chụp nếu sự kiện đã từng chụp lại ảnh
+            const viewOrigBtn = document.getElementById('edit-log-view-original-btn');
+            if (viewOrigBtn) {
+                if (item.original_image_full_path || item.original_image_plate_path) {
+                    viewOrigBtn.classList.remove('hidden');
+                } else {
+                    viewOrigBtn.classList.add('hidden');
+                }
+            }
+
             // Hiển thị khung xem Video Clip sự kiện nếu bản ghi có video_path
             const videoContainer = document.getElementById('edit-log-video-container');
             const playVideoBtn = document.getElementById('edit-log-play-video-btn');
@@ -7456,7 +8175,10 @@
                             item.detected_at,
                             item.camera_name,
                             item.image_full_path,
-                            item.image_plate_path
+                            item.image_plate_path,
+                            item.id,
+                            item.original_image_full_path || '',
+                            item.original_image_plate_path || ''
                         );
                     };
                 } else {
@@ -7467,8 +8189,10 @@
             // Cập nhật trạng thái các nút lùi / tới
             updateEditNavButtons();
 
-            // Tự động focus và bôi đen toàn bộ biển số để người dùng gõ ngay mà không cần dùng chuột
-            if (plateInput) {
+            // Tự động focus và bôi đen toàn bộ biển số để người dùng gõ ngay mà không cần dùng chuột (trừ khi popup video 10s đang đè lên trên)
+            const evModal = document.getElementById('event-video-modal');
+            const isVideoOpen = evModal && !evModal.classList.contains('hidden');
+            if (plateInput && !isVideoOpen) {
                 setTimeout(() => {
                     plateInput.focus();
                     plateInput.select();
@@ -7895,13 +8619,33 @@
                 }
             }
 
+            const origModal = document.getElementById('original-images-modal');
+            if (origModal && !origModal.classList.contains('hidden')) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeOriginalImagesModal();
+                    return;
+                }
+            }
+
+            const cropModal = document.getElementById('event-frame-crop-modal');
+            if (cropModal && !cropModal.classList.contains('hidden')) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeEventFrameCropModal();
+                    return;
+                }
+            }
+
             const vModal = document.getElementById('event-video-modal');
             if (vModal && !vModal.classList.contains('hidden')) {
+                const activeTag = document.activeElement ? document.activeElement.tagName : '';
+                const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
                 if (e.key === 'Escape') {
                     e.preventDefault();
                     closeEventVideoModal();
                     return;
-                } else if (e.key === ' ' || e.code === 'Space') {
+                } else if (!isTyping && (e.key === ' ' || e.code === 'Space')) {
                     e.preventDefault();
                     const player = document.getElementById('event-video-player');
                     if (player) {
@@ -7909,11 +8653,11 @@
                         else player.pause();
                     }
                     return;
-                } else if (e.key === 'ArrowLeft') {
+                } else if (!isTyping && e.key === 'ArrowLeft') {
                     e.preventDefault();
                     stepEventVideoFrame(-1);
                     return;
-                } else if (e.key === 'ArrowRight') {
+                } else if (!isTyping && e.key === 'ArrowRight') {
                     e.preventDefault();
                     stepEventVideoFrame(1);
                     return;
@@ -8181,7 +8925,7 @@
                             </td>
                             <td class="p-2.5 sm:p-3 text-right whitespace-nowrap space-x-1" id="dash-row-actions-${data.id}">
                                 ${data.video_path ? `
-                                    <button onclick="openEventVideoModal('${data.video_path}', '${data.plate_number}', '${data.detected_at}', '${(data.camera_name || '').replace(/'/g, "\\'")}', '${data.image_full_path}', '${data.image_plate_path}')" class="btn-event-video px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all" title="Xem clip 10s sự kiện (-5s đến +5s)">
+                                    <button onclick="openEventVideoModal('${data.video_path}', '${data.plate_number}', '${data.detected_at}', '${(data.camera_name || '').replace(/'/g, "\\'")}', '${data.image_full_path}', '${data.image_plate_path}', ${data.id || 'null'})" class="btn-event-video px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all" title="Xem clip 10s sự kiện (-5s đến +5s)">
                                         <i class="fa-solid fa-circle-play mr-1 text-blue-400"></i>Clip 10s
                                     </button>
                                 ` : (data.has_event_clip ? `
@@ -8337,7 +9081,7 @@
                         btn.className = 'btn-event-video px-2 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-lg font-medium transition-all animate-bounce';
                         btn.title = 'Xem clip 10s sự kiện (-5s đến +5s)';
                         btn.innerHTML = '<i class="fa-solid fa-circle-play mr-1 text-blue-400"></i>Clip 10s';
-                        btn.onclick = () => openEventVideoModal(videoUrl, data.plate_number, '', '', '', '');
+                        btn.onclick = () => openEventVideoModal(videoUrl, data.plate_number, '', '', '', '', logId);
                         if (pendingBadge) {
                             pendingBadge.replaceWith(btn);
                         } else {
@@ -8353,7 +9097,7 @@
                         const playVideoBtn = document.getElementById('edit-log-play-video-btn');
                         if (videoContainer && playVideoBtn) {
                             videoContainer.classList.remove('hidden');
-                            playVideoBtn.onclick = () => openEventVideoModal(videoUrl, data.plate_number, '', '', '', '');
+                            playVideoBtn.onclick = () => openEventVideoModal(videoUrl, data.plate_number, '', '', '', '', logId);
                         }
                     }
 

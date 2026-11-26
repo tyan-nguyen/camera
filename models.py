@@ -165,6 +165,8 @@ class VehicleLog(Base):
     is_edited = Column(Boolean, default=False, index=True)
     original_plate_number = Column(String(50), nullable=True)
     original_vehicle_view = Column(String(20), nullable=True)
+    original_image_full_path = Column(String(500), nullable=True)
+    original_image_plate_path = Column(String(500), nullable=True)
     updated_by = Column(String(100), nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
